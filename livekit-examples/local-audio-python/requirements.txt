@@ -1,0 +1,5 @@
+livekit>=1.0.6
+livekit_api>=1.0.2
+python-dotenv>=1.1.0
+PyAudio>=0.2.14
+numpy>=2.0.2

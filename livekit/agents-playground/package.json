@@ -1,0 +1,42 @@
+{
+  "name": "agents-playground",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@livekit/components-react": "^2.9.3",
+    "@livekit/components-styles": "^1.1.5",
+    "@radix-ui/react-dropdown-menu": "^2.1.2",
+    "cookies-next": "^4.3.0",
+    "framer-motion": "^10.18.0",
+    "js-yaml": "^4.1.0",
+    "livekit-client": "^2.9.5",
+    "livekit-server-sdk": "^2.13.0",
+    "lodash": "^4.17.21",
+    "next": "^14.2.20",
+    "next-plugin-preval": "^1.2.6",
+    "qrcode.react": "^4.1.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/lodash": "^4.17.13",
+    "@types/node": "^20.17.9",
+    "@types/react": "^18.3.14",
+    "@types/react-dom": "^18.3.3",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.26",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "typescript": "^5.7.2",
+    "prettier": "^3.4.2"
+  }
+}

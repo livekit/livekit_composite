@@ -1,0 +1,41 @@
+{
+  "name": "livekit-meet",
+  "version": "0.2.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "lint:fix": "next lint --fix",
+    "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
+    "format:write": "prettier --write \"**/*.{ts,tsx,md,json}\""
+  },
+  "dependencies": {
+    "@datadog/browser-logs": "^5.23.3",
+    "@livekit/components-react": "2.9.9",
+    "@livekit/components-styles": "1.1.6",
+    "@livekit/krisp-noise-filter": "0.3.0",
+    "@livekit/track-processors": "^0.5.4",
+    "livekit-client": "2.13.3",
+    "livekit-server-sdk": "2.13.0",
+    "next": "15.2.4",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-hot-toast": "^2.5.2",
+    "tinykeys": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.19",
+    "@types/react": "18.3.21",
+    "@types/react-dom": "18.3.7",
+    "eslint": "9.27.0",
+    "eslint-config-next": "15.3.2",
+    "source-map-loader": "^5.0.0",
+    "typescript": "5.8.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@9.15.9"
+}

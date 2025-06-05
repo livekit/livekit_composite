@@ -1,0 +1,30 @@
+{
+  "plugins": ["@typescript-eslint", "eslint-plugin-tsdoc"],
+  "extends": [
+    "plugin:@typescript-eslint/recommended",
+    "turbo",
+    "prettier"
+  ],
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": {
+    "ecmaVersion": 2022,
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  },
+  
+  "rules": {
+    "tsdoc/syntax": "warn",
+    "space-before-function-parens": 0,
+    "@typescript-eslint/no-unused-vars": "error",
+    "import/export": 0,
+    "@typescript-eslint/ban-ts-comment": "warn",
+    "@typescript-eslint/no-empty-interface": "warn",
+    "@typescript-eslint/consistent-type-imports": "warn",
+    "@typescript-eslint/no-explicit-any": "warn"
+  }
+}

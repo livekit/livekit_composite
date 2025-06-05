@@ -1,0 +1,23 @@
+{
+  "name": "agent-dispatch",
+  "version": "0.0.17",
+  "description": "An example demonstrating dispatching agents with an API call",
+  "private": "true",
+  "author": "LiveKit",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "build": "tsc --incremental",
+    "lint": "eslint -f unix \"**/*.ts\""
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "livekit-server-sdk": "workspace:*",
+    "@livekit/protocol": "^1.30.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.4",
+    "tsx": "^4.7.1"
+  }
+}

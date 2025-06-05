@@ -1,0 +1,137 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlinx-serialization'
+    id 'org.jetbrains.dokka'
+    id 'app.cash.molecule'
+}
+
+android {
+    namespace 'io.livekit.android.compose'
+    compileSdkVersion androidSdk.compileVersion
+
+    defaultConfig {
+        minSdkVersion androidSdk.minVersion
+        targetSdkVersion androidSdk.targetVersion
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    publishing {
+        singleVariant("release") {
+            withJavadocJar()
+            withSourcesJar()
+        }
+    }
+
+    buildFeatures {
+        compose = true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion compose_compiler_version
+    }
+    compileOptions {
+        sourceCompatibility java_version
+        targetCompatibility java_version
+    }
+    kotlinOptions {
+        jvmTarget = java_version
+    }
+
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+}
+
+molecule {
+    kotlinCompilerPlugin = "androidx.compose.compiler:compiler:$compose_compiler_version"
+}
+
+dokkaHtml {
+    moduleName.set("livekit-compose-components")
+    dokkaSourceSets {
+        configureEach {
+            skipEmptyPackages.set(true)
+            includeNonPublic.set(false)
+            includes.from("module.md")
+            displayName.set("SDK")
+            sourceLink {
+                localDirectory.set(file("src/main/java"))
+
+                // URL showing where the source code can be accessed through the web browser
+                remoteUrl.set(new URL(
+                        "https://github.com/livekit/client-sdk-android/tree/master/livekit-android-sdk/src/main/java"))
+                // Suffix which is used to append the line number to the URL. Use #L for GitHub
+                remoteLineSuffix.set("#L")
+            }
+
+            perPackageOption {
+                matchingRegex.set(".*\\.dagger.*")
+                suppress.set(true)
+            }
+
+            perPackageOption {
+                matchingRegex.set(".*\\.util.*")
+                suppress.set(true)
+            }
+        }
+    }
+}
+
+var livekitVersion = "2.16.0"
+dependencies {
+    // For local development with the LiveKit Android SDK only.
+    // api "io.livekit:livekit-android-sdk"
+
+    api "io.livekit:livekit-android:${livekitVersion}"
+
+    implementation libs.kotlinx.serialization.json
+    implementation libs.noise
+
+    implementation platform(libs.compose.bom)
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.material3:material3'
+
+    implementation libs.androidx.core
+    testImplementation libs.junit
+    testImplementation libs.robolectric
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.kotlin
+    testImplementation 'net.bytebuddy:byte-buddy:1.17.4'
+    testImplementation libs.androidx.test.core
+    testImplementation libs.coroutines.test
+    testImplementation 'app.cash.turbine:turbine:1.0.0'
+    //noinspection GradleDynamicVersion
+    testImplementation "io.livekit:livekit-android-test:${livekitVersion}"
+    androidTestImplementation libs.androidx.test.junit
+    androidTestImplementation libs.espresso
+}
+
+apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
+
+afterEvaluate {
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                from components.release
+
+                // You can then customize attributes of the publication as shown below.
+                groupId = GROUP
+                artifactId = POM_ARTIFACT_ID
+                version = VERSION_NAME
+            }
+        }
+    }
+}

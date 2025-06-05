@@ -1,0 +1,3 @@
+{
+  "extends": ["github>livekit-examples/renovate-config"]
+}

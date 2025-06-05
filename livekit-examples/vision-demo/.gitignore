@@ -1,0 +1,9 @@
+venv
+.env
+.env.local
+.env.xcconfig
+xcuserdata
+.DS_Store
+__pycache__
+swift-frontend/build
+.venv

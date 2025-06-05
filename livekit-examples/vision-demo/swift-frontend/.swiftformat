@@ -1,0 +1,12 @@
+--allman false
+--indent 4
+--indentcase false
+--trimwhitespace always
+--linebreaks lf
+--stripunusedargs closure-only
+--self remove
+--semicolons never
+--commas always
+--wraparguments before-first
+--wrapcollections before-first
+--maxwidth 120

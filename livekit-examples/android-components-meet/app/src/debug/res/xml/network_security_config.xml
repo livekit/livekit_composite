@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+    A debug network security config allowing for unsecured traffic (i.e. ws://)
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">example.com</domain>
+    </domain-config>
+
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

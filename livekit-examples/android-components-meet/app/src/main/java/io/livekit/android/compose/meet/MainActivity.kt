@@ -1,0 +1,199 @@
+/*
+ * Copyright 2023 LiveKit, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package io.livekit.android.compose.meet
+
+import android.content.Intent
+import android.os.Bundle
+import android.widget.Toast
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.viewModels
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import io.livekit.android.compose.meet.ui.theme.LKMeetAppTheme
+
+class MainActivity : ComponentActivity() {
+
+    private val viewModel by viewModels<MainViewModel>()
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        setContent {
+            MainContent(
+                defaultUrl = viewModel.getSavedUrl(),
+                defaultToken = viewModel.getSavedToken(),
+                defaultE2eeKey = viewModel.getSavedE2EEKey(),
+                defaultE2eeOn = viewModel.getE2EEOptionsOn(),
+                onConnect = { url, token, e2eeKey, e2eeOn ->
+                    // Save settings for future app launches.
+                    viewModel.setSavedUrl(url)
+                    viewModel.setSavedToken(token)
+                    viewModel.setSavedE2EEKey(e2eeKey)
+                    viewModel.setSavedE2EEOn(e2eeOn)
+
+                    val intent = Intent(this@MainActivity, CallActivity::class.java).apply {
+                        putExtra(
+                            CallActivity.KEY_ARGS,
+                            CallActivity.BundleArgs(
+                                url,
+                                token,
+                                e2eeKey,
+                                e2eeOn,
+                            ),
+                        )
+                    }
+                    startActivity(intent)
+                },
+                onReset = {
+                    viewModel.reset()
+                    Toast.makeText(
+                        this@MainActivity,
+                        "Values reset.",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                },
+            )
+        }
+    }
+
+    @Preview(
+        showBackground = true,
+        showSystemUi = true,
+    )
+    @Composable
+    fun MainContent(
+        defaultUrl: String = MainViewModel.URL,
+        defaultToken: String = MainViewModel.TOKEN,
+        defaultE2eeKey: String = MainViewModel.E2EE_KEY,
+        defaultE2eeOn: Boolean = false,
+        onConnect: (url: String, token: String, e2eeKey: String, e2eeOn: Boolean) -> Unit = { _, _, _, _ -> },
+        onReset: () -> Unit = {},
+    ) {
+        LKMeetAppTheme {
+            var url by remember { mutableStateOf(defaultUrl) }
+            var token by remember { mutableStateOf(defaultToken) }
+            var e2eeKey by remember { mutableStateOf(defaultE2eeKey) }
+            var e2eeOn by remember { mutableStateOf(defaultE2eeOn) }
+            val scrollState = rememberScrollState()
+            // A surface container using the 'background' color from the theme
+            Surface(
+                color = MaterialTheme.colorScheme.background,
+                modifier = Modifier
+                    .fillMaxSize(),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .verticalScroll(scrollState),
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .padding(10.dp),
+                    ) {
+                        Spacer(modifier = Modifier.height(50.dp))
+                        Image(
+                            painter = painterResource(id = R.drawable.banner_dark),
+                            contentDescription = "LiveKit Banner",
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        OutlinedTextField(
+                            value = url,
+                            onValueChange = { url = it },
+                            label = { Text("URL") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        OutlinedTextField(
+                            value = token,
+                            onValueChange = { token = it },
+                            label = { Text("Token") },
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+
+                        if (e2eeOn) {
+                            Spacer(modifier = Modifier.height(20.dp))
+                            OutlinedTextField(
+                                value = e2eeKey,
+                                onValueChange = { e2eeKey = it },
+                                label = { Text("E2EE Key") },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = e2eeOn,
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text("Enable end-to-end encryption (E2EE)")
+                            Switch(
+                                checked = e2eeOn,
+                                onCheckedChange = { e2eeOn = it },
+                                modifier = Modifier.defaultMinSize(minHeight = 100.dp),
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(onClick = { onConnect(url, token, e2eeKey, e2eeOn) }) {
+                            Text("Connect")
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Button(
+                            onClick = {
+                                onReset()
+                                url = MainViewModel.URL
+                                token = MainViewModel.TOKEN
+                            },
+                        ) {
+                            Text("Reset Values")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

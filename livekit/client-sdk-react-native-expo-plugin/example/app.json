@@ -1,0 +1,48 @@
+{
+  "expo": {
+    "name": "react-native-expo-plugin-example",
+    "slug": "react-native-expo-plugin-example",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "io.livekit.reactnative.expo.example"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "package": "io.livekit.reactnative.expo.example"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "436b85b6-499e-427e-b3be-50f71b1d66bc"
+      }
+    },
+    "plugins": [
+      [
+        "../app.plugin.js",
+        { 
+          "android": {
+            "audioType": "media"
+          }
+        }
+      ],
+      "@config-plugins/react-native-webrtc"
+    ]
+  }
+}

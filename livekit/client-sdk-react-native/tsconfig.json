@@ -1,0 +1,37 @@
+{
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": "./",
+    "paths": {
+      "@livekit/react-native": ["./src/index"]
+    },
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+    "allowSyntheticDefaultImports" : true,
+    "esModuleInterop": true,
+    "noFallthroughCasesInSwitch": true,
+    "noEmit": false,
+    "noImplicitReturns": true,
+    "noImplicitUseStrict": false,
+    "noStrictGenericChecks": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "resolveJsonModule": true,
+    "resolvePackageJsonExports": false,
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "esnext",
+    "verbatimModuleSyntax": true
+  },
+  "typedocOptions": {
+    "entryPoints": ["src/index.tsx"],
+    "excludeInternal": true,
+    "excludePrivate": true,
+    "excludeProtected": true,
+    "excludeExternals": true,
+    "includeVersion": true,
+    "name": "LiveKit React Native Client SDK",
+    "out": "docs",
+    "theme": "default"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "io.livekit.livekit-sdk",
+  "version": "1.2.3",
+  "displayName": "LiveKit SDK",
+  "description": "LiveKit",
+  "unity": "2021.3",
+  "author": {
+    "name": "Th\u00e9o Monnom",
+    "email": "theo.monnom@outlook.com"
+  },
+  "samples": [
+    {
+      "displayName": "Basic",
+      "description": "Basic example of how to connect to a room",
+      "path": "Samples~/Basic"
+    }
+  ],
+  "type": "library"
+}

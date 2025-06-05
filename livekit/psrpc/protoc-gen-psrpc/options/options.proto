@@ -1,0 +1,74 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package psrpc;
+option go_package = "github.com/livekit/psrpc/protoc-gen-psrpc/options";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MethodOptions {
+  optional Options options = 2198;
+}
+
+// RPC types
+enum Routing {
+  QUEUE = 0;    // Servers will join a queue, and only one will receive each request
+  AFFINITY = 1; // Servers will implement an affinity function for handler selection
+  MULTI = 2;    // Every server will respond to every request (for subscriptions, all clients will receive every message)
+}
+
+message Options {
+  // This method is a pub/sub.
+  bool subscription = 1;
+
+  // This method uses topics.
+  bool topics = 2;
+
+  TopicParamOptions topic_params = 3;
+
+  // The method uses bidirectional streaming.
+  bool stream = 4;
+
+  // RPC type
+  Routing type = 8;
+
+  // deprecated
+  oneof routing {
+    // For RPCs, each client request will receive a response from every server.
+    // For subscriptions, every client will receive every update.
+    bool multi = 5;
+
+    // Your service will supply an affinity function for handler selection.
+    bool affinity_func = 6;
+
+    // Requests load balancing is provided by a pub/sub server queue
+    bool queue = 7;
+  }
+}
+
+message TopicParamOptions {
+  // The rpc can be registered/deregistered atomically with other group members
+  string group = 1;
+
+  // The topic is composed of one or more string-like parameters.
+  repeated string names = 2;
+
+  // The topic parameters have associated string-like type parameters
+  bool typed = 3;
+
+  // At most one server will be registered for each topic
+  bool single_server = 4;
+}

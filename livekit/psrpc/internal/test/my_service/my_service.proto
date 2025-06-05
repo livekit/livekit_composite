@@ -1,0 +1,72 @@
+// Copyright 2023 LiveKit, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package psrpc.internal.test.customservice;
+
+import "options.proto";
+
+// Test to make sure that a service with no methods doesn't break.
+option go_package = "/my_service";
+
+service MyService {
+  // A normal RPC - one request, one response. The request will be handled by the first available server
+  rpc NormalRPC(MyRequest) returns (MyResponse);
+
+  // An RPC with a server affinity function for handler selection.
+  rpc IntensiveRPC(MyRequest) returns (MyResponse) {
+    option (psrpc.options).type = AFFINITY;
+  };
+
+  // A multi-rpc - a client will send one request, and receive one response each from every server
+  rpc GetStats(MyRequest) returns (MyResponse) {
+    option (psrpc.options).type = MULTI;
+  };
+
+  // A streaming RPC - a client opens a stream, the first server to respond accepts it and both send and
+  // receive messages until one side closes the stream.
+  rpc ExchangeUpdates(MyClientMessage) returns (MyServerMessage) {
+    option (psrpc.options).stream = true;
+  };
+
+  // An RPC with topics - a client can send one request, and receive one response from each server in one region
+  rpc GetRegionStats(MyRequest) returns (MyResponse) {
+    option (psrpc.options).type = MULTI;
+    option (psrpc.options).topics = true;
+  }
+
+  // A queue subscription - even if multiple clients are subscribed, only one will receive this update.
+  // The request parameter (Ignored) will be ignored when generating go files.
+  rpc ProcessUpdate(Ignored) returns (MyUpdate) {
+    option (psrpc.options).subscription = true;
+  };
+
+  // A subscription with topics - every client subscribed to the topic will receive every update.
+  // The request parameter (Ignored) will be ignored when generating go files.
+  rpc UpdateRegionState(Ignored) returns (MyUpdate) {
+    option (psrpc.options).type = MULTI;
+    option (psrpc.options).subscription = true;
+    option (psrpc.options).topics = true;
+  }
+}
+
+message Ignored {}
+message MyRequest {
+  int32 return_error = 1;
+}
+message MyResponse {}
+message MyUpdate {}
+message MyClientMessage {}
+message MyServerMessage {}

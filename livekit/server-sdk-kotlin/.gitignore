@@ -1,0 +1,57 @@
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+local.properties
+
+### IntelliJ IDEA ###
+.idea/AndroidProjectSystem.xml
+.idea/modules.xml
+.idea/jarRepositories.xml
+.idea/compiler.xml
+.idea/kotlinc.xml
+.idea/kotlinScripting.xml
+.idea/libraries/
+.idea/migrations.xml
+.idea/protoeditor.xml
+.idea/runConfigurations.xml
+.idea/caches/
+.idea/**/gradle.xml
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+### Eclipse ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/main/**/bin/
+!**/src/test/**/bin/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Yarn
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log

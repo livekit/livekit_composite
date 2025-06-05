@@ -1,0 +1,85 @@
+##############
+# if anchors #
+##############
+.if-web: &if-web
+  if: '$CI_PIPELINE_SOURCE == "web"'
+
+.if-ref-main: &if-ref-main
+  if: '$CI_COMMIT_REF_NAME == "main"'
+
+.if-trigger: &if-trigger
+  if: '$CI_PIPELINE_SOURCE == "trigger"'
+
+.if-pipeline: &if-pipeline
+  if: '$CI_PIPELINE_SOURCE == "pipeline"'
+
+.if-schedule: &if-schedule
+  if: '$CI_PIPELINE_SOURCE == "schedule"'
+
+.if-merge_request_event: &if-merge_request_event
+  if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+.if-open-merge-request: &if-open-merge-request
+  if: '$CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS && ($CI_PIPELINE_SOURCE == "push")'
+
+.if-dev-push: &if-dev-push
+  if: '$CI_COMMIT_REF_NAME != "main" && $CI_COMMIT_BRANCH !~ /^release\/v/ && $CI_COMMIT_TAG !~ /^v\d+\.\d+(\.\d+)?($|-)/ && ($CI_PIPELINE_SOURCE == "push")'
+
+.if-protected: &if-protected
+  if: '($CI_COMMIT_REF_NAME == "main" || $CI_COMMIT_BRANCH =~ /^release\/v/ || $CI_COMMIT_TAG =~ /^v\d+\.\d+(\.\d+)?($|-)/)'
+
+.if-label-unit_test: &if-label-unit_test
+  if: '$BOT_LABEL_UNIT_TEST || $CI_MERGE_REQUEST_LABELS =~ /^(?:[^,\n\r]+,)*unit_test(?:,[^,\n\r]+)*$/i'
+
+.if-label-example_test: &if-label-example_test
+  if: '$BOT_LABEL_EXAMPLE_TEST || $CI_MERGE_REQUEST_LABELS =~ /^(?:[^,\n\r]+,)*example_test(?:,[^,\n\r]+)*$/i'
+
+.if-label-example: &if-label-example
+  if: '$BOT_LABEL_EXAMPLE_TEST || $CI_MERGE_REQUEST_LABELS =~ /^(?:[^,\n\r]+,)*example(?:,[^,\n\r]+)*$/i'
+
+.if-idf-version-tag-v5-3: &if-idf-version-tag-v5-3
+  if: '$IDF_VERSION_TAG == "v5.3"'
+  variables:
+      IMAGE: "$CI_DOCKER_REGISTRY/esp-env-v5.3:1"
+
+.rules:build:unit-test:
+  rules:
+    - <<: *if-protected
+    - <<: *if-label-unit_test
+
+.rules:ref:main-schedule:
+  rules:
+    - <<: *if-ref-main
+    - <<: *if-schedule
+
+.rules:ref:check-label:
+  rules:
+    - <<: *if-merge_request_event
+
+.rules:build:regular-board-idf-ver-tag:
+  rules:
+    - <<: *if-dev-push
+      when: never
+    - <<: *if-schedule
+      when: never
+    - <<: *if-idf-version-tag-v5-3
+
+.rules:build:non-regular-board-idf-ver-tag:
+  rules:
+    - <<: *if-dev-push
+      when: never
+    - <<: *if-merge_request_event
+      when: never
+    - <<: *if-idf-version-tag-v5-3
+
+.rules:build:protected-merge-requests-pipeline:
+  rules:
+    - <<: *if-trigger
+    - <<: *if-pipeline
+    - <<: *if-protected
+    - <<: *if-merge_request_event
+
+.rules:build:protected-merge-requests:
+  rules:
+    - <<: *if-protected
+    - <<: *if-merge_request_event

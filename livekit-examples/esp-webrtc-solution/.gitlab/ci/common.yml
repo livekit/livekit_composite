@@ -1,0 +1,25 @@
+variables:
+  DOCKER_IMAGE: ${CI_DOCKER_REGISTRY}/esp-env-v5.4:1
+  BASE_FRAMEWORK_PATH: "$CI_PROJECT_DIR/esp-idf"
+  BASE_FRAMEWORK: "ssh://git@gitlab.espressif.cn:27227/espressif/esp-idf.git"
+  IDF_VERSION_TAG: v5.4
+  IDF_TAG_FLAG: false
+
+.update_source: &update_source
+  - source ${CI_PROJECT_DIR}/tools/ci/utils.sh
+  - add_gitlab_ssh_keys
+  - echo ${IDF_PATH}
+  - cd ${IDF_PATH}
+  - idf.py --version
+  - fetch_idf_branch ${IDF_VERSION_TAG}
+  - common_before_scripts
+  - setup_tools_and_idf_python_venv
+  - set_env_variable
+
+.build_template:
+  stage: build
+  image: ${CI_DOCKER_REGISTRY}/esp-env-v5.4:1
+  tags:
+    - multimedia_build
+  before_script:
+    - *update_source

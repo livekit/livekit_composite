@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ESP32 Doorbell WebRTC Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .main-container {
+            display: flex;
+            gap: 20px;
+        }
+        .video-container {
+            flex: 1;
+            position: relative;
+            min-height: 480px;
+            background: #000;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: fit-content;
+        }
+        .video-box {
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            will-change: transform, width, height;
+            backface-visibility: hidden;
+        }
+        .video-box.remote {
+            z-index: 1;
+        }
+        .video-box.local {
+            width: 240px;
+            height: 180px;
+            top: auto;
+            left: auto;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        .video-box.local:hover {
+            transform: scale(1.05);
+        }
+        .video-box.local.minimized {
+            width: 160px;
+            height: 120px;
+        }
+        .video-box.local.maximized {
+            width: 100%;
+            height: 100%;
+            bottom: 0;
+            right: 0;
+            z-index: 1;
+        }
+        .video-box.remote.minimized {
+            width: 160px;
+            height: 120px;
+            top: auto;
+            left: auto;
+            bottom: 20px;
+            right: 20px;
+            z-index: 2;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+            border-radius: 4px;
+        }
+        .video-box h3 {
+            margin: 0 0 10px 0;
+            padding: 0;
+            color: #333;
+            font-size: 16px;
+        }
+        button {
+            padding: 16px 24px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.3s ease;
+            color: white;
+            min-width: 160px;
+            justify-content: center;
+            white-space: nowrap;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        button svg {
+            width: 32px;
+            height: 32px;
+            fill: currentColor;
+        }
+        #status {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        .disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .call-actions {
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .call-actions.visible {
+            display: block;
+        }
+        .call-button {
+            background-color: #6c757d;  /* Default gray */
+            transition: all 0.3s ease;
+        }
+        .call-button.ringing {
+            background-color: #28a745;  /* Green when ringing */
+        }
+        .call-button:disabled {
+            background-color: #6c757d;
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        .hangup-button {
+            background-color: #dc3545;
+        }
+        .hangup-button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        .open-door-button {
+            background-color: #007bff;
+        }
+        .open-door-button:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+        .open-door-button svg {
+            fill: white;
+        }
+    </style>
+</head>
+<body>
+    <h1>ESP32 Doorbell WebRTC Test</h1>
+    
+    <div class="main-container">
+        <div class="video-container">
+            <div class="video-box remote" id="remoteVideoBox">
+                <h3>Remote Video</h3>
+                <video id="remoteVideo" autoplay playsinline></video>
+            </div>
+            <div class="video-box local" id="localVideoBox">
+                <h3>Local Video</h3>
+                <video id="localVideo" autoplay playsinline muted></video>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="callButton" class="call-button">
+                <svg viewBox="0 0 24 24">
+                    <path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.11-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/>
+                </svg>
+                Call
+            </button>
+            <button id="hangupButton" class="hangup-button" disabled>
+                <svg viewBox="0 0 24 24">
+                    <path d="M12 9c-1.6 0-3.15.25-4.6.72v3.1c0 .39-.23.74-.56.9-.98.49-1.87 1.12-2.66 1.85-.18.18-.43.28-.7.28-.28 0-.53-.11-.71-.29L.29 13.08c-.18-.17-.29-.42-.29-.7 0-.28.11-.53.29-.71C3.34 8.78 7.46 7 12 7s8.66 1.78 11.71 4.66c.18.18.29.43.29.71 0 .28-.11.53-.29.71l-2.48 2.48c-.18.18-.43.29-.71.29-.27 0-.52-.11-.7-.28-.79-.74-1.69-1.36-2.67-1.85-.33-.16-.56-.5-.56-.9v-3.1C15.15 9.25 13.6 9 12 9z"/>
+                </svg>
+                Hang Up
+            </button>
+            <button id="openDoorButton" class="open-door-button">
+                <svg viewBox="0 0 24 24">
+                    <path d="M17 11.5V10h-2v1.5h-2V10H9v1.5H7V10H5v12h14V10h-2v1.5h-2zM12 22h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2v-2h2v2zm4 8h-2v-2h2v2zm0-4h-2v-2h2v2zm0-4h-2v-2h2v2z"/>
+                </svg>
+                Open Door
+            </button>
+        </div>
+    </div>
+
+    <div id="status" class="disconnected">Disconnected</div>
+
+    <!-- Hidden audio element for ring sound -->
+    <audio id="ringSound" preload="auto" loop>
+        <source src="/webrtc/ring.aac" type="audio/aac">
+    </audio>
+
+    <script>
+        let localStream = null;
+        let peerConnection = null;
+        let signalingUrl = '/webrtc/signal';
+        let signalingPostUrl = '/webrtc/signal/post';
+        let eventSource = null;
+        let ringSound = null;
+        let isRinging = false;
+        let pendingCandidates = [];
+        let dataChannels = [];
+
+        const localVideo = document.getElementById('localVideo');
+        const remoteVideo = document.getElementById('remoteVideo');
+        const callButton = document.getElementById('callButton');
+        const hangupButton = document.getElementById('hangupButton');
+        const openDoorButton = document.getElementById('openDoorButton');
+        const statusDiv = document.getElementById('status');
+
+        // Initialize ring sound
+        function initRingSound() {
+            console.log('Start to load ring');
+            ringSound = document.getElementById('ringSound');
+            ringSound.load();
+            ringSound.addEventListener('error', (e) => {
+                console.error('Error loading ring sound:', e);
+            });
+            ringSound.addEventListener('canplaythrough', () => {
+                console.log('Ring sound loaded and ready to play');
+            });
+        }
+
+        // Play ring sound
+        function playRingSound() {
+            if (ringSound) {
+                isRinging = true;
+                ringSound.currentTime = 0;
+                ringSound.play().then(() => {
+                    console.log('Ring sound started playing');
+                }).catch(error => {
+                    console.error('Error playing ring sound:', error);
+                    setTimeout(() => {
+                        ringSound.play().catch(e => console.error('Retry failed:', e));
+                    }, 1000);
+                });
+            }
+        }
+
+        // Stop ring sound
+        function stopRingSound() {
+            if (ringSound) {
+                isRinging = false;
+                ringSound.pause();
+                ringSound.currentTime = 0;
+            }
+        }
+
+        // Call button click handler
+        callButton.onclick = async () => {
+            try {
+                if (!localStream) {
+                    localStream = await navigator.mediaDevices.getUserMedia({
+                        video: true,
+                        audio: true
+                    });
+                    localVideo.srcObject = localStream;
+                }
+                sendCustomCommand('ACCEPT_CALL');
+                stopRingSound();
+                callButton.disabled = true;
+                callButton.classList.remove('ringing');
+                hangupButton.disabled = false;
+            } catch (e) {
+                console.error('Error getting user media:', e);
+                statusDiv.textContent = 'Error: ' + e.message;
+            }
+        };
+
+        // Hangup button click handler
+        hangupButton.onclick = () => {
+            handleHangup();
+        };
+
+        // Open door button click handler
+        openDoorButton.onclick = () => {
+            sendCustomCommand('OPEN_DOOR');
+        };
+
+        // Handle hangup
+        function handleHangup() {
+            sendCustomCommand('DENY_CALL');
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            // Should keep event source open
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    track.stop();
+                    track.enabled = false;
+                });
+                localStream = null;
+            }
+            remoteVideo.srcObject = null;
+            localVideo.srcObject = null;
+            callButton.disabled = false;
+            callButton.classList.remove('ringing');
+            hangupButton.disabled = true;
+            statusDiv.textContent = 'Call ended';
+            statusDiv.className = 'disconnected';
+            stopRingSound();
+            pendingCandidates = []; // Clear pending candidates
+        }
+
+        // Send custom command
+        function sendCustomCommand(cmd) {
+            try {
+                sendSignalingMessage({
+                    type: 'customized',
+                    data: cmd
+                });
+            } catch (error) {
+                console.error('Error sending custom command:', error);
+                statusDiv.textContent = 'Error sending command';
+                statusDiv.className = 'disconnected';
+            }
+        }
+
+        // Start listening for signaling events
+        function startSignaling() {
+            if (eventSource) {
+                eventSource.close();
+            }
+
+            eventSource = new EventSource(signalingUrl);
+            
+            eventSource.onopen = () => {
+                console.log('SSE connection opened');
+                statusDiv.textContent = 'Connected to signaling server';
+                statusDiv.className = 'connected';
+            };
+
+            eventSource.onmessage = async (event) => {
+                console.log('Received SSE message:', event.data);
+                try {
+                    const message = JSON.parse(event.data);
+                    
+                    switch (message.type) {
+                        case 'connected':
+                            console.log('Signaling server connected');
+                            break;
+                        case 'offer':
+                            if (!peerConnection) {
+                                await handleOffer(message);
+                            } else {
+                                console.warn('Received offer while connection exists');
+                            }
+                            break;
+                        case 'answer':
+                            if (peerConnection) {
+                                await handleAnswer(message);
+                            } else {
+                                console.warn('Received answer without connection');
+                            }
+                            break;
+                        case 'candidate':
+                            if (peerConnection) {
+                                await handleCandidate(message);
+                            } else {
+                                console.warn('Received candidate without connection');
+                            }
+                            break;
+                        case 'bye':
+                            handleHangup();
+                            break;
+                        case 'customized':
+                            handleCustomCommand(message.data);
+                            break;
+                        case 'heartbeat':
+                            break;
+                        default:
+                            console.warn('Unknown message type:', message.type);
+                    }
+                } catch (e) {
+                    console.error('Error processing SSE message:', e);
+                    statusDiv.textContent = 'Error processing message';
+                    statusDiv.className = 'disconnected';
+                }
+            };
+
+            eventSource.onerror = (error) => {
+                console.error('EventSource error:', error);
+                statusDiv.textContent = 'Signaling connection error';
+                statusDiv.className = 'disconnected';
+                
+                if (eventSource) {
+                    eventSource.close();
+                    setTimeout(() => {
+                        console.log('Attempting to reconnect...');
+                        startSignaling();
+                    }, 5000);
+                }
+            };
+        }
+
+        // Handle custom command
+        function handleCustomCommand(cmd) {
+            console.log('Received custom command:', cmd);
+            switch (cmd) {
+                case 'DOOR_OPENED':
+                    console.log('Door is opened now...');
+                    break;
+                case 'RING':
+                    console.log('Doorbell ringing...');
+                    playRingSound();
+                    callButton.disabled = false;
+                    callButton.classList.add('ringing');
+                    hangupButton.disabled = false;
+                    break;
+                // Following command is by controlling only
+                case 'OPEN_DOOR':
+                    console.log('Opening door...');
+                    break;
+                case 'ACCEPT_CALL':
+                    console.log('Call accepted...');
+                    stopRingSound();
+                    callButton.disabled = true;
+                    callButton.classList.remove('ringing');
+                    hangupButton.disabled = false;
+                    break;
+                case 'DENY_CALL':
+                    console.log('Call ended...');
+                    handleHangup();
+                    break;
+                default:
+                    console.warn('Unknown doorbell command:', cmd);
+            }
+        }
+
+        function createPeerConnection() {
+            const configuration = {
+                iceServers: [
+                    {
+                        urls: [
+                            'stun:stun.l.google.com:19302',
+                            'stun:stun1.l.google.com:19302'
+                        ]
+                    }
+                ],
+                iceCandidatePoolSize: 10,
+                bundlePolicy: 'max-bundle',
+                rtcpMuxPolicy: 'require',
+                sdpSemantics: 'unified-plan'
+            };
+
+            try {
+                peerConnection = new RTCPeerConnection(configuration);
+                
+                // Create two data channels
+                const dataChannel1 = peerConnection.createDataChannel('channel1');
+                const dataChannel2 = peerConnection.createDataChannel('channel2');
+                
+                // Setup data channel 1
+                setupDataChannel(dataChannel1);
+                
+                // Setup data channel 2
+                setupDataChannel(dataChannel2);
+                
+                // Handle incoming data channels
+                peerConnection.ondatachannel = (event) => {
+                    console.log('Received data channel:', event.channel.label);
+                    setupDataChannel(event.channel);
+                };
+
+                // Monitor ICE connection state
+                peerConnection.oniceconnectionstatechange = () => {
+                    console.log('ICE Connection State:', peerConnection.iceConnectionState);
+                    if (peerConnection.iceConnectionState === 'failed') {
+                        console.error('ICE connection failed - attempting to restart ICE');
+                        peerConnection.restartIce();
+                    }
+                };
+
+                // Monitor ICE gathering state
+                peerConnection.onicegatheringstatechange = () => {
+                    console.log('ICE Gathering State:', peerConnection.iceGatheringState);
+                };
+
+                // Monitor ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        console.log('Local ICE candidate:', event.candidate);
+                        sendSignalingMessage({
+                            type: 'candidate',
+                            candidate: event.candidate.candidate,
+                            sdpMid: event.candidate.sdpMid,
+                            sdpMLineIndex: event.candidate.sdpMLineIndex
+                        });
+                    } else {
+                        console.log('ICE candidate gathering completed');
+                    }
+                };
+
+                // Handle incoming tracks
+                peerConnection.ontrack = event => {
+                    console.log('Received remote track:', event.track.kind);
+                    if (event.streams && event.streams[0]) {
+                        remoteVideo.srcObject = event.streams[0];
+                    }
+                };
+
+                // Handle connection state changes
+                peerConnection.onconnectionstatechange = () => {
+                    console.log('Connection state changed:', peerConnection.connectionState);
+                    if (peerConnection.connectionState === 'disconnected' || 
+                        peerConnection.connectionState === 'failed' || 
+                        peerConnection.connectionState === 'closed') {
+                        handleHangup();
+                    }
+                };
+
+                return peerConnection;
+            } catch (error) {
+                console.error('Error creating peer connection:', error);
+                statusDiv.textContent = 'Error creating connection';
+                statusDiv.className = 'disconnected';
+                return null;
+            }
+        }
+
+        // Handle incoming offer
+        async function handleOffer(message) {
+            try {
+                if (!peerConnection) {
+                    console.log('Creating new RTCPeerConnection');
+                    peerConnection = createPeerConnection();
+                    if (!peerConnection) {
+                        throw new Error('Failed to create peer connection');
+                    }
+                    
+                    if (!localStream) {
+                        localStream = await navigator.mediaDevices.getUserMedia({
+                            video: true,
+                            audio: true
+                        });
+                        localVideo.srcObject = localStream;
+                    }
+                    
+                    // Add local stream
+                    if (localStream) {
+                        console.log('Adding local tracks to peer connection');
+                        localStream.getTracks().forEach(track => {
+                            peerConnection.addTrack(track, localStream);
+                        });
+                    }
+                }
+
+                console.log('Setting remote description (offer)');
+                await peerConnection.setRemoteDescription(new RTCSessionDescription({
+                    type: 'offer',
+                    sdp: message.sdp
+                }));
+
+                // Apply any queued candidates
+                console.log('Applying queued ICE candidates:', pendingCandidates.length);
+                for (const candidate of pendingCandidates) {
+                    try {
+                        await peerConnection.addIceCandidate(new RTCIceCandidate({
+                            candidate: candidate.candidate,
+                            sdpMid: candidate.sdpMid || '0',
+                            sdpMLineIndex: candidate.sdpMLineIndex || 0
+                        }));
+                        console.log('Applied queued ICE candidate successfully');
+                    } catch (error) {
+                        console.error('Error applying queued ICE candidate:', error);
+                    }
+                }
+                pendingCandidates = [];  // Clear the queue
+
+                console.log('Creating answer');
+                const answer = await peerConnection.createAnswer();
+                console.log('Setting local description (answer)');
+                await peerConnection.setLocalDescription(answer);
+
+                console.log('Sending answer');
+                sendSignalingMessage({
+                    type: 'answer',
+                    sdp: answer.sdp
+                });
+            } catch (e) {
+                console.error('Error handling offer:', e);
+                handleHangup();
+            }
+        }
+
+        // Handle incoming answer
+        async function handleAnswer(message) {
+            try {
+                if (peerConnection) {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription({
+                        type: 'answer',
+                        sdp: message.sdp
+                    }));
+                } else {
+                    console.warn('Received answer without peer connection');
+                }
+            } catch (e) {
+                console.error('Error handling answer:', e);
+                handleHangup();
+            }
+        }
+
+        // Handle incoming ICE candidate
+        async function handleCandidate(message) {
+            try {
+                console.log('Received ICE candidate:', message);
+                if (peerConnection) {
+                    if (peerConnection.remoteDescription && peerConnection.remoteDescription.type) {
+                        // Remote description is set, add the candidate
+                        await peerConnection.addIceCandidate(new RTCIceCandidate({
+                            candidate: message.candidate,
+                            sdpMid: message.sdpMid || '0',
+                            sdpMLineIndex: message.sdpMLineIndex || 0
+                        }));
+                        console.log('Added ICE candidate successfully');
+                    } else {
+                        // Remote description not set yet, queue the candidate
+                        console.log('Remote description not set, queueing ICE candidate');
+                        pendingCandidates.push(message);
+                    }
+                } else {
+                    console.warn('Received ICE candidate but no peer connection exists');
+                }
+            } catch (error) {
+                console.error('Error adding ICE candidate:', error);
+            }
+        }
+
+        // Send signaling message to server
+        function sendSignalingMessage(message) {
+            fetch(signalingPostUrl, {  // Use the new endpoint for POST requests
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(message)
+            }).catch(error => {
+                console.error('Error sending signaling message:', error);
+                statusDiv.textContent = 'Error sending message: ' + error.message;
+                statusDiv.className = 'disconnected';
+            });
+        }
+
+        // Initialize when page loads
+        window.onload = function() {
+            initRingSound();
+            startSignaling();
+            // Set initial button states
+            callButton.disabled = false;
+            callButton.classList.remove('ringing');
+            hangupButton.disabled = true;
+            openDoorButton.disabled = false;
+
+            // Add click handler for video toggle
+            const localVideoBox = document.getElementById('localVideoBox');
+            const remoteVideoBox = document.getElementById('remoteVideoBox');
+            
+            localVideoBox.addEventListener('click', function() {
+                const isMaximized = localVideoBox.classList.contains('maximized');
+                
+                // Disable click during transition
+                localVideoBox.style.pointerEvents = 'none';
+                
+                if (!isMaximized) {
+                    // Maximize local video
+                    localVideoBox.classList.add('maximized');
+                    localVideoBox.classList.remove('minimized');
+                    remoteVideoBox.classList.add('minimized');
+                    localVideoBox.querySelector('h3').textContent = 'Local Video';
+                    remoteVideoBox.querySelector('h3').textContent = 'Remote Video';
+                    // Ensure proper z-index ordering
+                    localVideoBox.style.zIndex = '1';
+                    remoteVideoBox.style.zIndex = '2';
+                } else {
+                    // Minimize local video
+                    localVideoBox.classList.remove('maximized');
+                    localVideoBox.classList.add('minimized');
+                    remoteVideoBox.classList.remove('minimized');
+                    localVideoBox.querySelector('h3').textContent = 'Local Video';
+                    remoteVideoBox.querySelector('h3').textContent = 'Remote Video';
+                    // Reset z-index ordering
+                    localVideoBox.style.zIndex = '2';
+                    remoteVideoBox.style.zIndex = '1';
+                }
+
+                // Wait for transition to complete
+                const handleTransitionEnd = () => {
+                    localVideoBox.style.pointerEvents = 'auto';
+                    localVideoBox.removeEventListener('transitionend', handleTransitionEnd);
+                };
+                localVideoBox.addEventListener('transitionend', handleTransitionEnd);
+            });
+        };
+
+
+        function getCountChar(count) {
+            // Use ASCII 33-126 range (printable characters) to avoid null character
+            const asciiValue = ((count & 0xFF) % 94) + 33; // This ensures value is between 33-126
+            return String.fromCharCode(asciiValue);
+        }
+
+        // Add this new function after createPeerConnection
+        function setupDataChannel(channel) {
+            let messageCount = 0;
+            
+            // Store channel handle in the array
+            dataChannels.push(channel);
+            console.log(`Data channel ${channel.label} added to dataChannels array. Access via dataChannels[${dataChannels.length-1}]`);
+            
+            // Function to create 8KB message
+            function createLargeMessage(count) {
+                const header = `This is the ${count} on ${channel.label}\n`;
+                const remainingSize = 8192 - header.length; // 8KB - header length
+                const padding = getCountChar(count).repeat(remainingSize);
+                return header + padding;
+            }
+            
+            channel.onopen = () => {
+                console.log(`Data channel ${channel.label} opened`);
+                // Start sending messages every 2 seconds
+                setInterval(() => {
+                    if (channel.readyState === 'open') {
+                        messageCount++;
+                        const message = createLargeMessage(messageCount);
+                        channel.send(message);
+                        console.log(`Sent on ${channel.label}: ${message.length} bytes`);
+                    }
+                }, 2000);
+            };
+
+            channel.onclose = () => {
+                console.log(`Data channel ${channel.label} closed`);
+                // Remove channel from dataChannels array
+                const index = dataChannels.indexOf(channel);
+                if (index > -1) {
+                    dataChannels.splice(index, 1);
+                    console.log(`Data channel ${channel.label} removed from dataChannels array`);
+                }
+            };
+
+            channel.onerror = (error) => {
+                console.error(`Data channel ${channel.label} error:`, error);
+            };
+
+            channel.onmessage = (event) => {
+                // Get only the first line (up to the newline character)
+                const firstLine = event.data.split('\n')[0];
+                console.log(`Received ${firstLine} ${event.data.length} bytes`);
+                
+                // Extract only the count number using regex
+                const countMatch = firstLine.match(/Send to .* count (\d+)/);
+                const sendCount = countMatch ? countMatch[1] : 0;
+                const expectedChar = getCountChar(sendCount);
+                const remainingData = event.data.substring(firstLine.length + 1); // +1 for the newline
+                // Check if all characters in remaining data match the expected pattern
+                const allMatch = remainingData.split('').every(char => char === expectedChar);
+                if (!allMatch) {
+                    console.error(`Pattern verification expected all characters to be: ${expectedChar})`);
+                    // Log first 10 characters that don't match
+                    const mismatches = remainingData.split('').slice(0, 10).map(char => 
+                        `${char} (ASCII ${char.charCodeAt(0)})`
+                    );
+                    console.error(`First 10 received characters: ${mismatches.join(', ')}`);
+                }
+            };
+        }
+    </script>
+</body>
+</html> 

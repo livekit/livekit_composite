@@ -1,0 +1,59 @@
+.build_templates: &build_templates
+  stage: build
+  tags:
+    - build
+  image: espressif/idf:latest
+  variables:
+    # Enable ccache for all build jobs. See configure_ci_environment.sh for more ccache related settings.
+    IDF_CCACHE_ENABLE: "1"
+    BATCH_BUILD: "1"
+    V: "0"
+    WARNING_STR: ""
+
+.build_solutions:
+  extends:
+    - .build_templates
+  artifacts:
+    expire_in: 4 days
+    paths:
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/size.json
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/build_log.txt
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/*.bin
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/*.elf
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/flasher_args.json
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/flash_project_args
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/config/sdkconfig.json
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/sdkconfig
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/bootloader/*.bin
+      - ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER/build*/partition_table/*.bin
+  script:
+    - export OPENAI_API_KEY=FAKE_KEY_FOR_BUILD_ONLY
+    - cd $IDF_PATH
+    - perl ${CI_PROJECT_DIR}/tools/build_apps.pl ${CI_PROJECT_DIR}/solutions/$CI_BUILD_FOLDER $IDF_TARGET
+
+build_matrix:
+  extends: .build_solutions
+  parallel:
+    matrix:
+      - CI_BUILD_FOLDER: ["doorbell_demo"]
+        IDF_TARGET: ["esp32p4", "esp32s3"]
+      - CI_BUILD_FOLDER: ["openai_demo"]
+        IDF_TARGET: ["esp32s3"]
+      - CI_BUILD_FOLDER: ["peer_demo"]
+        IDF_TARGET: ["esp32", "esp32s2", "esp32s3"]
+      - CI_BUILD_FOLDER: ["videocall_demo"]
+        IDF_TARGET: ["esp32p4"]
+      - CI_BUILD_FOLDER: ["whip_demo"]
+        IDF_TARGET: ["esp32p4"]
+      - CI_BUILD_FOLDER: ["doorbell_local"]
+        IDF_TARGET: ["esp32p4"]
+
+stages:
+  - build
+
+variables:
+  DOCKER_IMAGE: ${CI_DOCKER_REGISTRY}/esp-env-v5.4:1
+  BASE_FRAMEWORK_PATH: "$CI_PROJECT_DIR/esp-idf"
+  BASE_FRAMEWORK: "ssh://git@gitlab.espressif.cn:27227/espressif/esp-idf.git"
+  IDF_VERSION_TAG: v5.4
+  IDF_TAG_FLAG: false

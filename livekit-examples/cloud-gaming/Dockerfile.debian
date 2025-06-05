@@ -1,0 +1,541 @@
+# Builder Stage
+FROM debian:bookworm-slim AS builder
+
+# Set environment variables
+ARG DEBIAN_FRONTEND=noninteractive
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+ENV PATH="/root/.cargo/bin:${PATH}"
+ENV DEBUG=false
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    build-essential \
+    curl \
+    wget \
+    git \
+    golang \
+    libssl-dev \
+    python3 \
+    python3-pip \
+    python3-setuptools \
+    ninja-build \
+    pkg-config \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
+    gstreamer1.0-tools
+
+RUN git clone https://github.com/mesonbuild/meson.git /meson \
+    && cd /meson \
+    && python3 setup.py install \
+    && cd / \
+    && rm -rf /meson
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+
+RUN cargo install cargo-c
+
+# Download gst-plugins-rs
+RUN wget https://gitlab.freedesktop.org/gstreamer/gst-plugins-rs/-/archive/gstreamer-1.24.3/gst-plugins-rs-gstreamer-1.24.3.tar.gz \
+    && tar xfz gst-plugins-rs-gstreamer-1.24.3.tar.gz \
+    && rm gst-plugins-rs-gstreamer-1.24.3.tar.gz \
+    && mv gst-plugins-rs-gstreamer-1.24.3 gst-plugins-rs
+
+WORKDIR /gst-plugins-rs
+# Remove unsported section
+RUN sed -i '3553,3564d' net/webrtc/src/webrtcsink/imp.rs
+
+COPY input-handler /input-handler
+WORKDIR /input-handler
+RUN go build -o input-handler
+
+WORKDIR /
+COPY compile-rs.sh /
+RUN /compile-rs.sh 
+
+FROM debian:bookworm-slim
+
+# Update package repos
+ARG DEBIAN_FRONTEND=noninteractive
+RUN \
+    echo "**** Update apt database ****" \
+        && sed -i '/^Components: main/ s/$/ contrib non-free/' /etc/apt/sources.list.d/debian.sources \
+    && \
+    echo
+
+# Update locale
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install and configure locals ****" \
+        && apt-get install -y --no-install-recommends \
+            locales \
+        && echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen \
+        && locale-gen \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+ENV \
+    LANG=en_US.UTF-8 \
+    LANGUAGE=en_US:en \
+    LC_ALL=en_US.UTF-8
+
+# Re-install certificates
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install certificates ****" \
+        && apt-get install -y --reinstall \
+            ca-certificates \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Install core packages
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install tools ****" \
+        && apt-get install -y --no-install-recommends \
+            bash \
+            bash-completion \
+            curl \
+            git \
+            jq \
+            less \
+            man-db \
+            mlocate \
+            nano \
+            net-tools \
+            p7zip-full \
+            patch \
+            pciutils \
+            pkg-config \
+            procps \
+            psmisc \
+            psutils \
+            rsync \
+            screen \
+            sudo \
+            unzip \
+            vim \
+            wget \
+            xmlstarlet \
+            xz-utils \
+    && \
+    echo "**** Install python ****" \
+        && apt-get install -y --no-install-recommends \
+            python3 \
+            python3-numpy \
+            python3-pip \
+            python3-setuptools \
+            python3-venv \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Configure default user and set user env
+ENV \
+    PUID=99 \
+    PGID=100 \
+    UMASK=000 \
+    USER="default" \
+    USER_PASSWORD="password" \
+    USER_HOME="/home/default" \
+    TZ="America/Los_Angeles" \
+    USER_LOCALES="en_US.UTF-8 UTF-8"
+RUN \
+    echo "**** Configure default user '${USER}' ****" \
+        && mkdir -p \
+            ${USER_HOME} \
+        && useradd -d ${USER_HOME} -s /bin/bash ${USER} \
+        && chown -R ${USER} \
+            ${USER_HOME} \
+        && echo "${USER} ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers \
+    && \
+    echo
+
+# Install supervisor
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install supervisor ****" \
+        && apt-get install -y \
+            supervisor \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Install X Server requirements
+# TODO: Refine this list of packages to only what is required.
+ENV \
+    XORG_SOCKET_DIR="/tmp/.X11-unix" \
+    XDG_RUNTIME_DIR="/tmp/.X11-unix/run" \
+    XDG_SESSION_TYPE="x11" \
+    FORCE_X11_DUMMY_CONFIG="false"
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install X Server requirements ****" \
+        && apt-get install -y --no-install-recommends \
+            avahi-utils \
+            dbus-x11 \
+            libxcomposite-dev \
+            libxcursor1 \
+            wmctrl \
+            libfuse2 \
+            x11-utils \
+            x11-xfs-utils \
+            x11-xkb-utils \
+            x11-xserver-utils \
+            x11vnc \
+            xauth \
+            xbindkeys \
+            xclip \
+            xcvt \
+            xdotool \
+            xfishtank \
+            xfonts-base \
+            xinit \
+            xorg \
+            xserver-xorg-core \
+            xserver-xorg-input-evdev \
+            xserver-xorg-input-libinput \
+            xserver-xorg-legacy \
+            xserver-xorg-video-all \
+            xserver-xorg-video-dummy \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Install audio requirements
+ENV \
+    PULSE_SOCKET_DIR="/tmp/pulse" \
+    PULSE_SERVER="unix:/tmp/pulse/pulse-socket"
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install pulseaudio requirements ****" \
+        && apt-get install -y --no-install-recommends \
+            pulseaudio \
+            alsa-utils \
+            libasound2 \
+            libasound2-plugins \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Install desktop environment
+# TODO: Specify all needed packages and add '--no-install-recommends'
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install desktop requirements ****" \
+        && apt-get install -y --no-install-recommends \
+            libdbus-1-3 \
+            libegl1 \
+            libgtk-3-0 \
+            libgtk2.0-0 \
+            libsdl2-2.0-0 \
+    && \
+    echo "**** Install desktop environment ****" \
+        && apt-get install -y \
+            fonts-vlgothic \
+            gedit \
+            imagemagick \
+            msttcorefonts \
+            xdg-utils \
+            xfce4 \
+            xfce4-terminal \
+        # Delete these as they are not needed at all
+        && rm -f \
+            /usr/share/applications/software-properties-drivers.desktop \
+            /usr/share/applications/xfce4-about.desktop \
+            /usr/share/applications/xfce4-session-logout.desktop \
+        # Hide these apps. They can be displayed if a user really wants them.
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/xfce4-accessibility-settings.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/xfce4-color-settings.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/xfce4-mail-reader.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/xfce4-web-browser.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/vim.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/thunar-settings.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/thunar.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/pavucontrol.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/x11vnc.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/display-im6.q16.desktop \
+        # These are named specifically for Debain
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/debian-xterm.desktop \
+        && sed -i '/[Desktop Entry]/a\NoDisplay=true' /usr/share/applications/debian-uxterm.desktop \
+        # Force these apps to be "System" Apps rather than "Categories=System;Utility;Core;GTK;Filesystem;"
+        && sed -i 's/^Categories=.*$/Categories=System;/' /usr/share/applications/xfce4-appfinder.desktop \
+        && sed -i 's/^Categories=.*$/Categories=System;/' /usr/share/applications/thunar-bulk-rename.desktop \
+        && sed -i 's/^Categories=.*$/Categories=System;/' /usr/share/applications/org.gnome.gedit.desktop \
+    && \
+    echo "**** Install WoL Manager requirements ****" \
+        && apt-get install -y \
+            tcpdump \
+            xprintidle \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Add support for flatpaks
+ENV \
+    XDG_DATA_DIRS="/home/default/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share:/usr/local/share/:/usr/share/"
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install flatpak support ****" \
+        && apt-get install -y --no-install-recommends \
+            flatpak \
+            gnome-software-plugin-flatpak \
+    && \
+    echo "**** Configure flatpak ****" \
+        && flatpak remote-add flathub https://flathub.org/repo/flathub.flatpakrepo \
+        && dpkg-statoverride --update --add root root 0755 /usr/bin/bwrap \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Setup audio streaming deps
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install audio streaming deps ****" \
+        && apt-get install -y --no-install-recommends \
+            bzip2 \
+            gstreamer1.0-alsa \
+            gstreamer1.0-gl \
+            gstreamer1.0-gtk3 \
+            gstreamer1.0-libav \
+            gstreamer1.0-plugins-bad \
+            gstreamer1.0-plugins-base \
+            gstreamer1.0-plugins-good \
+            gstreamer1.0-plugins-ugly \
+            gstreamer1.0-pulseaudio \
+            gstreamer1.0-qt5 \
+            gstreamer1.0-tools \
+            gstreamer1.0-vaapi \
+            gstreamer1.0-x \
+            libgstreamer1.0-0 \
+            libncursesw5 \
+            libopenal1 \
+            libsdl-image1.2 \
+            libsdl-ttf2.0-0 \
+            libsdl1.2debian \
+            libsndfile1 \
+            ucspi-tcp \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Setup video streaming deps
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install Intel media drivers and VAAPI ****" \
+        && apt-get install -y --no-install-recommends \
+            intel-media-va-driver-non-free \
+            i965-va-driver-shaders \
+            libva2 \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Install gstreamer/livekit deps
+RUN apt-get update && apt-get install -y \
+    golang \
+    libgstreamer1.0-dev \
+    libgstreamer-plugins-base1.0-dev \
+    libgstreamer-plugins-bad1.0-dev \
+    libnice10 \
+    gstreamer1.0-nice \
+    build-essential \
+    curl \
+    git \
+    libssl-dev \
+    pkg-config
+
+# Install tools for monitoring hardware
+RUN \
+    echo "**** Update apt database ****" \
+        && apt-get update \
+    && \
+    echo "**** Install useful HW monitoring tools ****" \
+        && apt-get install -y --no-install-recommends \
+            cpu-x \
+            htop \
+            vainfo \
+            vdpauinfo \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Install Steam
+RUN \
+    echo "**** Update apt database ****" \
+        && dpkg --add-architecture i386 \
+        && apt-get update \
+    && \
+    echo "**** Install Steam ****" \
+        && apt-get install -y --no-install-recommends \
+            steam-installer \
+        && ln -sf /usr/games/steam /usr/bin/steam \
+    && \
+    echo "**** Section cleanup ****" \
+        && apt-get clean autoclean -y \
+        && apt-get autoremove -y \
+        && rm -rf \
+            /var/lib/apt/lists/* \
+            /var/tmp/* \
+            /tmp/* \
+    && \
+    echo
+
+# Various other tools
+ARG DUMB_INIT_VERSION=1.2.5
+ARG DUMB_UDEV_VERSION=64d1427
+RUN \
+    echo "**** Install dumb-init ****" \
+        && wget --no-check-certificate --no-cookies --quiet \
+            -O /usr/bin/dumb-init \
+            https://github.com/Yelp/dumb-init/releases/download/v${DUMB_INIT_VERSION}/dumb-init_${DUMB_INIT_VERSION}_x86_64 \
+        && chmod +x /usr/bin/dumb-init \
+    && \
+    echo "**** Install dumb-udev ****" \
+        && python3 -m pip install \
+            --break-system-packages \
+            --pre \
+            --upgrade \
+            --no-cache-dir \
+            git+https://github.com/Steam-Headless/dumb-udev.git@${DUMB_UDEV_VERSION} \
+    && \
+    echo
+
+# Add FS overlay
+COPY steam-headless/overlay /
+
+# Add input-handler
+COPY --from=builder /input-handler/input-handler /usr/bin/input-handler
+
+# Copy built plugins from builder stage
+#COPY --from=builder /gst-plugins-rs/target/x86_64-unknown-linux-gnu/*.so /usr/lib/x86_64-linux-gnu/gstreamer-1.0/
+RUN mkdir /compiled-binaries
+COPY --from=builder /compiled-binaries/* /compiled-binaries/
+RUN cp /compiled-binaries/lib/x86_64-linux-gnu/gstreamer-1.0/libgst* /usr/lib/x86_64-linux-gnu/gstreamer-1.0/
+
+# Set display environment variables
+ENV \
+    DISPLAY_CDEPTH="24" \
+    DISPLAY_REFRESH="120" \
+    DISPLAY_SIZEH="900" \
+    DISPLAY_SIZEW="1600" \
+    DISPLAY_VIDEO_PORT="DFP" \
+    DISPLAY=":55"
+ENV \
+    NVIDIA_DRIVER_CAPABILITIES="all" \
+    NVIDIA_VISIBLE_DEVICES="all"
+
+# Set container configuration environment variables
+ENV \
+    MODE="primary" \
+    ENABLE_STEAM="true" \
+    STEAM_ARGS="-silent" \
+    ENABLE_EVDEV_INPUTS="true" \
+    ENABLE_WOL_POWER_MANAGER="false"
+
+# Set entrypoint
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+

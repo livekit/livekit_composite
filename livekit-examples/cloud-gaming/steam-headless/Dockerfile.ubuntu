@@ -1,0 +1,35 @@
+# Use Ubuntu as base
+FROM ubuntu:latest
+LABEL maintainer="Josh.5 <jsunnex@gmail.com>"
+
+# Update package repos
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+
+# Update locale
+RUN apt-get install -y --no-install-recommends locales \
+    && echo 'en_US.UTF-8 UTF-8' > /etc/locale.gen \
+    && locale-gen
+ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
+
+# Re-install certificates
+RUN apt-get update \
+    && apt-get install -y --reinstall ca-certificates
+
+# Cleanup
+RUN apt-get clean autoclean -y && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*
+
+# This can continue as before, for example:
+RUN apt-get update && apt-get install -y --no-install-recommends bash bash-completion curl ...
+
+# ... (keep everything as is until) ...
+
+# Install Nvidia CUDA drivers
+RUN apt-get update && apt-get install -y nvidia-cuda-toolkit
+
+# Continue with your Dockerfile as before...
+
+# ... rest of your Dockerfile ...
+
+# Cleanup at the end
+RUN apt-get clean autoclean -y && apt-get autoremove -y && rm -rf /var/lib/apt/lists/* /var/tmp/* /tmp/*

@@ -1,0 +1,38 @@
+stages:
+  - pre_check
+  - build
+  - deploy
+
+variables:
+  GIT_STRATEGY: clone
+  GET_SOURCES_ATTEMPTS: "10"
+  ARTIFACT_DOWNLOAD_ATTEMPTS: "10"
+  GIT_SUBMODULE_STRATEGY: none
+  IDF_SKIP_CHECK_SUBMODULES: 1
+  GIT_DEPTH: 1
+
+.common_before_scripts: &common-before_scripts |
+  source tools/ci/utils.sh
+
+.setup_tools_and_idf_python_venv: &setup_tools_and_idf_python_venv |
+  # must use after setup_tools_except_target_test
+  # otherwise the export.sh won't work properly
+
+  # Install esp-clang if necessary
+  if [[ "$IDF_TOOLCHAIN" == "clang" ]]; then
+    $IDF_PATH/tools/idf_tools.py --non-interactive install esp-clang
+  fi
+
+  source $IDF_PATH/export.sh
+
+.before_script:build:
+  before_script:
+    - *common-before_scripts
+    - *setup_tools_and_idf_python_venv
+
+include:
+  - '.gitlab/ci/rules.yml'
+  - '.gitlab/ci/common.yml'
+#  - '.gitlab/ci/pre_check.yml'
+  - '.gitlab/ci/build_webrtc_solutions.yml'
+  - '.gitlab/ci/deploy.yml'

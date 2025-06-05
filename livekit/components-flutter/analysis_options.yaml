@@ -1,0 +1,18 @@
+include: package:lints/recommended.yaml
+
+analyzer:
+  errors:
+    constant_identifier_names: ignore
+    must_be_immutable: ignore
+    no_wildcard_variable_uses: ignore
+    use_super_parameters: ignore
+
+linter:
+  rules:
+    #
+    # Additional recommended rules
+    #
+    prefer_single_quotes: true
+    unnecessary_brace_in_string_interps: false
+    unawaited_futures: true
+    depend_on_referenced_packages: false

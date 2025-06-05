@@ -1,0 +1,28 @@
+name: flutter_rpc_demo
+description: "A new Flutter project."
+version: 1.0.0+1
+environment:
+  sdk: ^3.6.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  livekit_client:
+    path: ../client-sdk-flutter
+  http: ^1.0.0
+  flutter_dotenv: ^5.2.1
+  livekit_server_sdk: ^1.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - .env

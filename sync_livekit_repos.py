@@ -2,6 +2,7 @@ import os
 import shutil
 import time
 import requests
+from datetime import datetime, timedelta
 from tqdm import tqdm
 from subprocess import run, CalledProcessError
 
@@ -29,7 +30,28 @@ def fetch_public_repos(org):
             break
         repos.extend(data)
         page += 1
-    return [repo['clone_url'] for repo in repos]
+    
+    cutoff_date = datetime.now() - timedelta(days=365)
+    filtered_repos = []
+    
+    for repo in repos:
+        # Skip archived repositories
+        if repo.get('archived', False):
+            continue
+            
+        # Check if repo was updated within the past 365 days
+        pushed_at_str = repo.get('pushed_at')
+        if pushed_at_str:
+            try:
+                # GitHub API returns ISO format: "2023-12-01T10:30:00Z"
+                pushed_at = datetime.fromisoformat(pushed_at_str.replace('Z', '+00:00'))
+                if pushed_at.replace(tzinfo=None) > cutoff_date:
+                    filtered_repos.append(repo['clone_url'])
+            except (ValueError, TypeError):
+                # If date parsing fails, skip this repo
+                continue
+    
+    return filtered_repos
 
 def clean_and_prepare_dir(path):
     if os.path.exists(path):

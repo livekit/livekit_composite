@@ -1,0 +1,28 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: true
+
+      - uses: actions/setup-python@v4
+      - name: Run tests
+        run: |
+          python3 ./livekit-rtc/rust-sdks/download_ffi.py --output livekit-rtc/livekit/rtc/resources
+          pip3 install ./livekit-protocol ./livekit-api ./livekit-rtc
+          pip3 install -r dev-requirements.txt
+          pytest . --ignore=livekit-rtc/rust-sdks

@@ -1,0 +1,16 @@
+# download binaries
+requests
+
+# build wheels
+wheel
+setuptools
+twine
+auditwheel; sys_platform == 'linux'
+cibuildwheel
+
+pytest
+pytest-asyncio
+
+matplotlib
+pydantic
+numpy

@@ -1,0 +1,145 @@
+name: Build RTC
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - livekit-rtc/**
+    tags:
+      - "rtc-v*.*.*"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - livekit-rtc/**
+  workflow_dispatch:
+
+env:
+  PACKAGE_DIR: ./livekit-rtc
+
+jobs:
+  generate_protobuf:
+    runs-on: ubuntu-latest
+    name: Generating protobuf
+    if: github.event_name == 'pull_request'
+
+    defaults:
+      run:
+        working-directory: ${{ env.PACKAGE_DIR }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: true
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - uses: actions/setup-python@v4
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "25.1"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install deps
+        run: |
+          pip3 install mypy-protobuf==3.6.0 "protobuf>=4.25.0,<5.0.0"
+
+      - name: generate python stubs
+        run: ./generate_proto.sh
+
+      - name: Add changes
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: '["livekit-rtc/"]'
+          default_author: github_actions
+          message: generated protobuf
+
+  build_wheels:
+    name: Build RTC wheels (${{ matrix.archs }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # wheels to build:
+        include:
+          - os: ubuntu-latest
+            archs: x86_64
+          - os: namespace-profile-default-arm64
+            archs: aarch64
+          - os: windows-latest
+            archs: AMD64
+          - os: macos-latest
+            archs: x86_64 arm64
+    defaults:
+      run:
+        working-directory: ${{ env.PACKAGE_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v4
+
+      - name: Install cibuildwheel
+        if: runner.os != 'macOS'
+        run: python3 -m pip install cibuildwheel==2.17.0
+
+      - name: Install cibuildwheel on macOS
+        if: runner.os == 'macOS'
+        run: python3 -m pip install --break-system-packages cibuildwheel==2.17.0
+
+      - name: Build wheels
+        run: python3 -m cibuildwheel --output-dir dist
+        env:
+          CIBW_ARCHS: ${{ matrix.archs }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rtc-release-${{ matrix.os }}
+          path: livekit-rtc/dist/*.whl
+
+  make_sdist:
+    name: Make RTC sdist
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ env.PACKAGE_DIR }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Build sdist
+        run: |
+          pip3 install build
+          python3 -m build --sdist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rtc-release-sdist
+          path: livekit-rtc/dist/*.tar.gz
+
+  publish:
+    name: Publish RTC release
+    needs: [build_wheels, make_sdist]
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+    if: startsWith(github.ref, 'refs/tags/rtc-v') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rtc-release-*
+          path: dist
+          merge-multiple: true
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  docs:
+    needs: [publish]
+    uses: ./.github/workflows/build-docs.yml
+    with:
+      package_dir: "livekit-rtc"
+      package_name: "livekit.rtc"
+    secrets: inherit

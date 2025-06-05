@@ -1,0 +1,5 @@
+node_modules/
+dist
+src/gen/*
+!src/gen/version.d.ts
+

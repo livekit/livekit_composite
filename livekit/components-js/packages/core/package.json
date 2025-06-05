@@ -1,0 +1,64 @@
+{
+  "name": "@livekit/components-core",
+  "version": "0.12.7",
+  "license": "Apache-2.0",
+  "author": "LiveKit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/livekit/components-js.git",
+    "directory": "/packages/core"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsup --onSuccess \"tsc --declaration --emitDeclarationOnly\"",
+    "dev": "tsup --watch --onSuccess \"tsc --declaration --emitDeclarationOnly\"",
+    "lint": "eslint -f unix \"src/**/*.{ts,tsx}\"",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "size": "size-limit",
+    "api-check": "echo \"🚧 api-checks for core are disabled!\" #TODO cleanup core api then activate api checks. api-extractor run --typescript-compiler-folder ../../node_modules/typescript",
+    "api-extractor": "api-extractor run --local --typescript-compiler-folder ../../node_modules/typescript --verbose"
+  },
+  "typings": "dist/index.d.ts",
+  "dependencies": {
+    "@floating-ui/dom": "1.6.13",
+    "loglevel": "1.9.1",
+    "rxjs": "7.8.2"
+  },
+  "peerDependencies": {
+    "livekit-client": "catalog:",
+    "tslib": "^2.6.2"
+  },
+  "devDependencies": {
+    "@livekit/components-styles": "workspace:*",
+    "@livekit/protocol": "^1.38.0",
+    "@microsoft/api-extractor": "^7.36.0",
+    "@size-limit/file": "^11.0.2",
+    "@size-limit/webpack": "^11.0.2",
+    "eslint-config-lk-custom": "workspace:*",
+    "size-limit": "^11.0.2",
+    "tsup": "^8.0.0",
+    "typescript": "5.8.2",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

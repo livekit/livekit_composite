@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+.turbo/
+.vscode/
+yarn-error.log
+.DS_Store
+generated/
+.husky/
+.env
+.env.*
+.next/
+next-env.d.ts

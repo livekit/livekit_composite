@@ -1,0 +1,98 @@
+{
+  "name": "@livekit/components-react",
+  "version": "2.9.9",
+  "license": "Apache-2.0",
+  "author": "LiveKit",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/livekit/components-js.git",
+    "directory": "/packages/react"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./hooks": {
+      "types": "./dist/hooks.d.ts",
+      "import": "./dist/hooks.mjs",
+      "require": "./dist/hooks.js"
+    },
+    "./prefabs": {
+      "types": "./dist/prefabs.d.ts",
+      "import": "./dist/prefabs.mjs",
+      "require": "./dist/prefabs.js"
+    },
+    "./krisp": {
+      "types": "./dist/krisp.d.ts",
+      "import": "./dist/krisp.mjs",
+      "require": "./dist/krisp.js"
+    }
+  },
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "pnpm gen:svg && vite build",
+    "dev": "vite build --watch",
+    "gen:icons": "rimraf -I -g ./src/assets/icons/*Icon.tsx && svgr --template ./src/assets/template.js --out-dir ./src/assets/icons --typescript ../styles/assets/icons",
+    "gen:images": "rimraf -I -g ./src/assets/images/*.tsx && svgr --template ./src/assets/template.js --out-dir ./src/assets/images --typescript --no-svgo ../styles/assets/images",
+    "gen:svg": "pnpm gen:images && pnpm gen:icons",
+    "lint": "eslint -f unix \"src/**/*.{ts,tsx}\"",
+    "test": "vitest --run",
+    "test:watch": "vitest",
+    "size": "size-limit --json",
+    "api-check": "api-extractor run --typescript-compiler-folder ../../node_modules/typescript",
+    "api-extractor": "api-extractor run --local --typescript-compiler-folder ../../node_modules/typescript --verbose"
+  },
+  "typings": "dist/index.d.ts",
+  "dependencies": {
+    "@livekit/components-core": "workspace:*",
+    "clsx": "2.1.1",
+    "usehooks-ts": "3.1.1"
+  },
+  "peerDependencies": {
+    "@livekit/krisp-noise-filter": "^0.2.12",
+    "livekit-client": "catalog:",
+    "react": ">=18",
+    "react-dom": ">=18",
+    "tslib": "^2.6.2"
+  },
+  "peerDependenciesMeta": {
+    "@livekit/krisp-noise-filter": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@livekit/protocol": "^1.23.0",
+    "@microsoft/api-extractor": "^7.35.0",
+    "@size-limit/file": "^11.0.2",
+    "@size-limit/webpack": "^11.0.2",
+    "@size-limit/webpack-why": "^11.1.6",
+    "@svgr/cli": "^8.0.0",
+    "@testing-library/react": "^16.0.0",
+    "@types/react": "^18.0.25",
+    "@types/react-dom": "^18.0.8",
+    "@vitejs/plugin-react": "^4.3.2",
+    "eslint-config-lk-custom": "workspace:*",
+    "jsdom": "^26.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "rimraf": "^6.0.0",
+    "size-limit": "^11.0.2",
+    "vite": "^6.0.0",
+    "vite-plugin-dts": "^4.2.3",
+    "vitest": "^3.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

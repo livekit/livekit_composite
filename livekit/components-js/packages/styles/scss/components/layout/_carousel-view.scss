@@ -1,0 +1,35 @@
+.carousel {
+  max-height: 100%;
+  display: flex;
+  gap: var(--grid-gap);
+
+  > * {
+    // Style the direct children of the carousel.
+    flex-shrink: 0;
+    aspect-ratio: 16 / 10;
+    scroll-snap-align: start;
+  }
+
+  &[data-orientation='vertical'] {
+    flex-direction: column;
+    scroll-snap-type: y mandatory;
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    > * {
+      --height-minus-gaps: calc(100% - calc(var(--grid-gap) * calc(var(--max-visible-tiles) - 1)));
+      height: calc(var(--height-minus-gaps) / var(--max-visible-tiles));
+    }
+  }
+
+  &[data-orientation='horizontal'] {
+    scroll-snap-type: x mandatory;
+    overflow-y: hidden;
+    overflow-x: auto;
+
+    > * {
+      --width-minus-gaps: calc(100% - var(--grid-gap) * (var(--max-visible-tiles) - 1));
+      width: calc(var(--width-minus-gaps) / var(--max-visible-tiles));
+    }
+  }
+}

@@ -1,0 +1,13 @@
+.audio-conference {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.audio-conference-stage {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}

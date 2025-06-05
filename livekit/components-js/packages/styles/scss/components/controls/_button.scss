@@ -1,0 +1,85 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  color: var(--control-fg);
+  background-image: none;
+  background-color: var(--control-bg);
+  border: 0;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  white-space: nowrap;
+
+  &:not(:disabled):hover {
+    background-color: var(--control-hover-bg);
+  }
+
+  & > svg {
+    overflow: visible;
+  }
+
+  &[aria-pressed='true'] {
+    background-color: var(--control-active-bg);
+
+    &:hover {
+      background-color: var(--control-active-hover-bg);
+    }
+  }
+
+  /* apply accent color (blue) to screen share button, when screen sharing is active */
+  &[data-source='screen_share'][data-enabled='true'] {
+    background-color: var(--accent-bg);
+    &:hover {
+      background-color: var(--accent2);
+    }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.button-group {
+  display: inline-flex;
+  align-items: stretch;
+  height: 100%;
+
+  > .button:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+.button-group-menu {
+  position: relative;
+  flex-shrink: 0;
+
+  > .button {
+    height: 100%;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+
+    &::after {
+      margin-left: 0;
+    }
+  }
+}
+
+// Give button menus (like device settings) an indicator that they toggle a menu
+.button-menu {
+  &::after {
+    display: inline-block;
+    content: '';
+    width: 0.5em;
+    height: 0.5em;
+    margin-top: -0.25rem;
+    margin-left: 0.5rem;
+    border-left: 0.125em solid;
+    border-bottom: 0.125em solid;
+    transform: rotate(-45deg);
+    transform-origin: center center;
+  }
+}

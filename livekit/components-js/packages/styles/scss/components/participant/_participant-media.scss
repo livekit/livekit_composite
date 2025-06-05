@@ -1,0 +1,29 @@
+.participant-media-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  // aspect-ratio: 16 / 10;
+  background-color: #000;
+
+  &[data-orientation='landscape'] {
+    object-fit: cover;
+  }
+
+  // Don't cut off videos in portrait mode or if it is a screen share.
+  &[data-orientation='portrait'],
+  &[data-source='screen_share'] {
+    object-fit: contain;
+    background-color: var(--bg2);
+  }
+}
+
+.participant-media-audio {
+  width: auto;
+}
+
+// Mirror the camera video of the local participants.
+[data-facing-mode='user'] // 
+  .participant-media-video[data-local-participant='true'][data-source='camera'] {
+  transform: rotateY(180deg);
+}

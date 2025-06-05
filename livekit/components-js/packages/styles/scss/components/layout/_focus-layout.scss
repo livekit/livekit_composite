@@ -1,0 +1,30 @@
+.focus-layout {
+  display: grid;
+  grid-template-columns: 1fr 5fr;
+  gap: var(--grid-gap);
+  width: 100%;
+  max-height: 100%;
+  padding: var(--grid-gap);
+}
+
+.focused-participant {
+  position: relative;
+
+  .pip-track {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 20%;
+    height: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .focus-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: 5fr 1fr;
+  }
+  .carousel {
+    order: 1;
+  }
+}

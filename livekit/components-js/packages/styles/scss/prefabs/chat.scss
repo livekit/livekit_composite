@@ -1,0 +1,125 @@
+.chat {
+  display: grid;
+  grid-template-rows: var(--chat-header-height) 1fr var(--control-bar-height);
+  width: clamp(200px, 55ch, 60ch);
+  background-color: var(--bg2);
+  border-left: 1px solid var(--border-color);
+  align-items: end;
+}
+
+.chat-header {
+  height: var(--chat-header-height);
+  padding: 0.75rem;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  .close-button {
+    position: absolute;
+    right: 0;
+    transform: translateX(-50%);
+    background-color: transparent;
+    &:hover {
+      background-color: var(--lk-control-active-hover-bg);
+    }
+  }
+}
+
+.chat-messages {
+  display: flex;
+  width: 100%;
+  max-height: 100%;
+  flex-direction: column;
+  gap: 0.25rem;
+  overflow: auto;
+}
+
+.chat-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0 0.25rem;
+
+  .meta-data {
+    font-size: 0.75rem;
+    color: var(--fg5);
+    white-space: nowrap;
+    padding: 0 0.3rem;
+    display: flex;
+
+    .participant-name {
+      margin-top: 1rem;
+    }
+
+    .timestamp {
+      margin-left: auto;
+      align-self: flex-end;
+    }
+  }
+
+  .edit-button {
+    background: none;
+    float: right;
+    margin: 0;
+    padding: 0 0.25rem;
+    border-radius: 0;
+    font-size: 12px;
+  }
+
+  .message-body {
+    display: inline-block;
+    border-radius: 15px;
+    padding: 0.25rem 0.75rem;
+    word-break: break-word;
+    width: fit-content;
+    max-width: calc(100% - 32px); // leave space for edit button
+  }
+
+  &[data-message-origin='local'] {
+    .message-body {
+      background-color: var(--bg5);
+    }
+  }
+
+  &[data-message-origin='remote'] {
+    .message-body {
+      background-color: var(--accent4);
+    }
+  }
+
+  a {
+    text-decoration: underline;
+    color: inherit;
+  }
+
+  * {
+    margin-block-start: 0.25em;
+    margin-block-end: 0.25em;
+  }
+
+  &:last-child {
+    margin-bottom: 0.25rem;
+  }
+}
+
+.chat-form {
+  display: flex;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-top: 1px solid var(--border-color);
+  max-height: var(--control-bar-height);
+}
+
+.chat-form-input {
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .chat {
+    position: fixed;
+    top: 0;
+    right: 0;
+    max-width: 100%;
+    bottom: var(--control-bar-height);
+  }
+}

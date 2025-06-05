@@ -1,0 +1,41 @@
+{
+  "$schema": "https://turborepo.org/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "storybook-static/**", "lib/**"]
+    },
+    "lint": {
+      "outputs": []
+    },
+    "start": {},
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test:watch": {
+      "outputs": []
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "deploy": {
+      "dependsOn": ["^build"]
+    },
+    "api-extractor": {
+      "dependsOn": ["@livekit/components-react#build", "@livekit/components-core#build"],
+      "outputs": ["temp/*", "etc/*"]
+    },
+    "gen:docs": {
+      "cache": false,
+      "dependsOn": ["^api-extractor", "@livekit/api-documenter#build"],
+      "outputs": ["docs/docs/**"]
+    },
+    "api-check": {
+      "cache": false,
+      "dependsOn": ["^build"]
+    },
+    "api-check:update": {}
+  }
+}

@@ -1,0 +1,8 @@
+packages:
+  - 'packages/*'
+  - 'examples/*'
+  - 'docs/*'
+  - 'tooling/*'
+
+catalog:
+  livekit-client: ^2.13.1

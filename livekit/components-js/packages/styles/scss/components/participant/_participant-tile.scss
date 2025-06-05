@@ -1,0 +1,109 @@
+.participant-tile {
+  --speaking-indicator-width: 2.5px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  overflow: hidden;
+  border-radius: var(--border-radius);
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    border-radius: var(--border-radius);
+    border: 0px solid var(--accent-bg);
+    // When the participant stops speaking, the fade away transition is longer and starts with a delay.
+    transition-property: border opacity;
+    transition-delay: 0.5s;
+    transition-duration: 0.4s;
+    pointer-events: none;
+  }
+  &[data-speaking='true']:not([data-source='screen_share'])::after {
+    // When the participant begins speaking, the transition is short and without a delay.
+    transition-delay: 0s;
+    transition-duration: 0.2s;
+    border-width: var(--speaking-indicator-width);
+  }
+
+  .focus-toggle-button {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    padding: 0.25rem;
+    background-color: rgba(0, 0, 0, 0.5);
+    border-radius: calc(var(--border-radius) / 2);
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    transition-delay: 0.2s;
+  }
+
+  &:hover .focus-toggle-button,
+  &:focus .focus-toggle-button {
+    opacity: 1;
+    transition-delay: 0;
+  }
+
+  .connection-quality {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    transition-delay: 0.2s;
+
+    &[data-quality='poor'] {
+      opacity: 1;
+      transition-delay: 0;
+    }
+  }
+
+  &:hover .connection-quality,
+  &:focus .connection-quality {
+    opacity: 1;
+    transition-delay: 0;
+  }
+
+  .participant-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg2);
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
+    border-radius: var(--border-radius);
+
+    svg {
+      height: 100%;
+      width: auto;
+      padding: 10%;
+    }
+  }
+
+  &[data-video-muted='true'][data-source='camera'] .participant-placeholder {
+    opacity: 1;
+  }
+}
+
+.participant-metadata {
+  position: absolute;
+  right: 0.25rem;
+  bottom: 0.25rem;
+  left: 0.25rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  line-height: 1;
+}
+
+.participant-metadata-item {
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: calc(var(--border-radius) / 2);
+}

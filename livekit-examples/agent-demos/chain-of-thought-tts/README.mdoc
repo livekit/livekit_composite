@@ -1,0 +1,62 @@
+---
+title: Modifying LLM output before TTS
+description: How to modify LLM output before sending the text to TTS for vocalization.
+---
+
+In this recipe, build an agent that speaks chain-of-thought reasoning aloud while avoiding the vocalization of `<think>` and `</think>` tokens. The steps focus on cleaning up the text just before it's sent to the TTS engine so the agent sounds natural.
+
+## Prerequisites
+
+To complete this guide, you need to create an agent using the [Voice Agent quickstart](https://docs.livekit.io/agents/quickstarts/voice-agent).
+
+## Modifying LLM output before TTS
+
+The following function removes the `<think>` tags from the agent's output so the TTS engine doesn't speak them.
+Here's how you can define the callback:
+
+```python
+async def _before_tts_cb(agent: VoicePipelineAgent, text: str | AsyncIterable[str]):
+    if isinstance(text, str):
+        # Handle non-streaming text
+        result = text.replace("<think>", "").replace("</think>", "")
+        return result
+    else:
+        # Handle streaming text
+        async def process_stream():
+            async for chunk in text:
+                processed = chunk.replace("<think>", "")\
+                    .replace("</think>", "Okay, I'm ready to respond.")
+                yield processed
+        
+        return process_stream()
+```
+
+The callback receives two parameters:
+
+- `agent`: The VoicePipelineAgent instance.
+- `text`: Either a string (for non-streaming) or an AsyncIterable of strings (for streaming).
+
+## Initializing the VoicePipelineAgent
+
+Use the `before_tts_cb` parameter to pass in the callback when creating an instance of `VoicePipelineAgent`. The following
+code also specifies Groq's `deepseek-r1-distill-llama-70b` LLM model.
+
+```python
+agent = VoicePipelineAgent(
+    vad=ctx.proc.userdata["vad"],
+    stt=openai.STT.(),
+    llm=openai.LLM.with_groq(model="deepseek-r1-distill-llama-70b"), # change the model here
+    tts=openai.TTS(),
+    before_tts_cb=_before_tts_cb,  # Add the tts callback here
+    chat_ctx=initial_ctx
+)
+```
+
+## How it works
+
+1. The LLM generates text, including tokens like <think>...</think>.
+1. Before the text goes to TTS, the `before_tts_cb` intercepts it.
+1. The callback strips or modifies unwanted tokens.
+1. The cleaned text is then spoken by the TTS engine.
+
+For the full example, check out the [Chain of Thought TTS Agent](https://github.com/livekit-examples/chain-of-thought-tts/blob/main/agent.py).

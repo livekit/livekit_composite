@@ -1,0 +1,3084 @@
+{
+    "nearbyTheatres": [
+        {
+            "theatreId": 7286,
+            "theatreName": "Cineplex Odeon Barrhaven Cinemas",
+            "shortTheatreName": "Barrhaven",
+            "theatreUrl": "cineplex-odeon-barrhaven-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.269531,
+                    "longitude": -75.741067
+                },
+                "distanceToOriginInMeters": 13992.2,
+                "hasDistanceToOrigin": true,
+                "address": "131 Riocan Avenue",
+                "city": "Barrhaven",
+                "provinceCode": "ON",
+                "postalCode": "K2J 5G5"
+            }
+        },
+        {
+            "theatreId": 7247,
+            "theatreName": "Cineplex Odeon South Keys Cinemas",
+            "shortTheatreName": "South Keys",
+            "theatreUrl": "cineplex-odeon-south-keys-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.357422,
+                    "longitude": -75.654245
+                },
+                "distanceToOriginInMeters": 14617.9,
+                "hasDistanceToOrigin": true,
+                "address": "2214 Bank Street",
+                "city": "Ottawa",
+                "provinceCode": "ON",
+                "postalCode": "K1V 1J6"
+            }
+        },
+        {
+            "theatreId": 7311,
+            "theatreName": "Cineplex Cinemas Lansdowne and VIP",
+            "shortTheatreName": "Lansdowne and VIP",
+            "theatreUrl": "cineplex-cinemas-lansdowne-and-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.3998248,
+                    "longitude": -75.6836293
+                },
+                "distanceToOriginInMeters": 19859.6,
+                "hasDistanceToOrigin": true,
+                "address": "325 Marche Way, Unit 107",
+                "city": "Ottawa",
+                "provinceCode": "ON",
+                "postalCode": "K1S 5J3"
+            }
+        },
+        {
+            "theatreId": 7428,
+            "theatreName": "Scotiabank Theatre Ottawa",
+            "shortTheatreName": "Scotiabank Ottawa",
+            "theatreUrl": "scotiabank-theatre-ottawa",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.432609,
+                    "longitude": -75.612752
+                },
+                "distanceToOriginInMeters": 21583.3,
+                "hasDistanceToOrigin": true,
+                "address": "2385 City Park Drive",
+                "city": "Ottawa",
+                "provinceCode": "ON",
+                "postalCode": "K1J 1G1"
+            }
+        },
+        {
+            "theatreId": 7424,
+            "theatreName": "Cineplex Cinemas Ottawa",
+            "shortTheatreName": "Ottawa",
+            "theatreUrl": "cineplex-cinemas-ottawa",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.354452,
+                    "longitude": -75.80605
+                },
+                "distanceToOriginInMeters": 22549.6,
+                "hasDistanceToOrigin": true,
+                "address": "3090 Carling Avenue",
+                "city": "Ottawa",
+                "provinceCode": "ON",
+                "postalCode": "K2B 7K2"
+            }
+        },
+        {
+            "theatreId": 9268,
+            "theatreName": "Cinéma Starcité Gatineau",
+            "shortTheatreName": "Gatineau",
+            "theatreUrl": "cinema-starcite-gatineau",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.435911,
+                    "longitude": -75.77602
+                },
+                "distanceToOriginInMeters": 27127.8,
+                "hasDistanceToOrigin": true,
+                "address": "115 boulevard Du Plateau",
+                "city": "Hull",
+                "provinceCode": "QC",
+                "postalCode": "J9A 3G1"
+            }
+        },
+        {
+            "theatreId": 7262,
+            "theatreName": "Galaxy Cinemas Cornwall",
+            "shortTheatreName": "Cornwall",
+            "theatreUrl": "galaxy-cinemas-cornwall",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.026114,
+                    "longitude": -74.704688
+                },
+                "distanceToOriginInMeters": 71738.2,
+                "hasDistanceToOrigin": true,
+                "address": "1325 Second Street East",
+                "city": "Cornwall",
+                "provinceCode": "ON",
+                "postalCode": "K6H 2B6"
+            }
+        },
+        {
+            "theatreId": 9153,
+            "theatreName": "Cinéma Cineplex Odeon Carrefour Dorion",
+            "shortTheatreName": "Carrefour Dorion",
+            "theatreUrl": "cinema-cineplex-odeon-carrefour-dorion",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.381437,
+                    "longitude": -74.018583
+                },
+                "distanceToOriginInMeters": 122073.8,
+                "hasDistanceToOrigin": true,
+                "address": "391 boulevard Harwood",
+                "city": "Dorion",
+                "provinceCode": "QC",
+                "postalCode": "J7V 7W1"
+            }
+        },
+        {
+            "theatreId": 9407,
+            "theatreName": "Cinéma Cineplex Kirkland",
+            "shortTheatreName": "Kirkland",
+            "theatreUrl": "cinema-cineplex-kirkland",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.440559,
+                    "longitude": -73.886466
+                },
+                "distanceToOriginInMeters": 133193.6,
+                "hasDistanceToOrigin": true,
+                "address": "3200 rue Jean Yves",
+                "city": "Kirkland",
+                "provinceCode": "QC",
+                "postalCode": "H9J 2R6"
+            }
+        },
+        {
+            "theatreId": 7259,
+            "theatreName": "Cineplex Odeon Gardiners Road Cinemas",
+            "shortTheatreName": "Gardiners Road",
+            "theatreUrl": "cineplex-odeon-gardiners-road-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.244361,
+                    "longitude": -76.562101
+                },
+                "distanceToOriginInMeters": 135880.5,
+                "hasDistanceToOrigin": true,
+                "address": "626 Gardiners Road",
+                "city": "Kingston",
+                "provinceCode": "ON",
+                "postalCode": "K7M 3X9"
+            }
+        },
+        {
+            "theatreId": 9408,
+            "theatreName": "Cinéma Cineplex Laval",
+            "shortTheatreName": "Laval",
+            "theatreUrl": "cinema-cineplex-laval",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.564966,
+                    "longitude": -73.745071
+                },
+                "distanceToOriginInMeters": 146714.9,
+                "hasDistanceToOrigin": true,
+                "address": "2800 avenue Du Cosmodôme",
+                "city": "Laval",
+                "provinceCode": "QC",
+                "postalCode": "H7T 2X1"
+            }
+        },
+        {
+            "theatreId": 9195,
+            "theatreName": "Cinéma Famous Players Carrefour Angrignon",
+            "shortTheatreName": "Carrefour Angrignon",
+            "theatreUrl": "cinema-famous-players-carrefour-angrignon",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.44769,
+                    "longitude": -73.611317
+                },
+                "distanceToOriginInMeters": 154544.9,
+                "hasDistanceToOrigin": true,
+                "address": "7077 boulevard Newman",
+                "city": "LaSalle",
+                "provinceCode": "QC",
+                "postalCode": "H8N 1X1"
+            }
+        },
+        {
+            "theatreId": 9109,
+            "theatreName": "Cinéma Cineplex Forum et VIP",
+            "shortTheatreName": "Forum et VIP",
+            "theatreUrl": "cinema-cineplex-forum-et-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.490122,
+                    "longitude": -73.584057
+                },
+                "distanceToOriginInMeters": 157355.3,
+                "hasDistanceToOrigin": true,
+                "address": "2313 St. Catherine St. West Suite 101",
+                "city": "Montréal",
+                "provinceCode": "QC",
+                "postalCode": "H3H 1N2"
+            }
+        },
+        {
+            "theatreId": 9406,
+            "theatreName": "Cinéma Banque Scotia Montréal",
+            "shortTheatreName": "Banque Scotia Montréal",
+            "theatreUrl": "cinema-banque-scotia-montreal",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.501098,
+                    "longitude": -73.572074
+                },
+                "distanceToOriginInMeters": 158479.9,
+                "hasDistanceToOrigin": true,
+                "address": "977 rue Sainte-Catherine Ouest",
+                "city": "Montréal",
+                "provinceCode": "QC",
+                "postalCode": "H3B 4W3"
+            }
+        },
+        {
+            "theatreId": 9172,
+            "theatreName": "Cinéma Cineplex Odeon Quartier Latin",
+            "shortTheatreName": "Quartier Latin",
+            "theatreUrl": "cinema-cineplex-odeon-quartier-latin",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.514479,
+                    "longitude": -73.563536
+                },
+                "distanceToOriginInMeters": 159394.4,
+                "hasDistanceToOrigin": true,
+                "address": "350 rue Emery",
+                "city": "Montréal",
+                "provinceCode": "QC",
+                "postalCode": "H2X 1J1"
+            }
+        },
+        {
+            "theatreId": 9401,
+            "theatreName": "Cinéma Starcité Montréal",
+            "shortTheatreName": "Montréal",
+            "theatreUrl": "cinema-starcite-montreal",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.560488,
+                    "longitude": -73.547508
+                },
+                "distanceToOriginInMeters": 161606.5,
+                "hasDistanceToOrigin": true,
+                "address": "4825 avenue Pierre De Coubertin",
+                "city": "Montréal",
+                "provinceCode": "QC",
+                "postalCode": "H1V 3V4"
+            }
+        },
+        {
+            "theatreId": 9185,
+            "theatreName": "Cinéma Cineplex Odeon Brossard et VIP",
+            "shortTheatreName": "Brossard et VIP",
+            "theatreUrl": "cinema-cineplex-odeon-brossard-et-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.444414,
+                    "longitude": -73.435757
+                },
+                "distanceToOriginInMeters": 168079.8,
+                "hasDistanceToOrigin": true,
+                "address": "6000 rue de la Lune",
+                "city": "Brossard",
+                "provinceCode": "QC",
+                "postalCode": "J4Y 0B3"
+            }
+        },
+        {
+            "theatreId": 9143,
+            "theatreName": "Cinéma Cineplex Odeon St-Bruno",
+            "shortTheatreName": "St-Bruno",
+            "theatreUrl": "cinema-cineplex-odeon-stbruno",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.507437,
+                    "longitude": -73.38172
+                },
+                "distanceToOriginInMeters": 173229.8,
+                "hasDistanceToOrigin": true,
+                "address": "1495 boulevard St-Bruno",
+                "city": "St-Bruno",
+                "provinceCode": "QC",
+                "postalCode": "J3V 6J1"
+            }
+        },
+        {
+            "theatreId": 9190,
+            "theatreName": "Cinéma Capitol St-Jean",
+            "shortTheatreName": "Capitol St-Jean",
+            "theatreUrl": "cinema-capitol-stjean",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.308302,
+                    "longitude": -73.251068
+                },
+                "distanceToOriginInMeters": 181358.2,
+                "hasDistanceToOrigin": true,
+                "address": "286 rue Richelieu",
+                "city": "St. Jean",
+                "provinceCode": "QC",
+                "postalCode": "J3B 6Y4"
+            }
+        },
+        {
+            "theatreId": 7409,
+            "theatreName": "Galaxy Cinemas Belleville",
+            "shortTheatreName": "Belleville",
+            "theatreUrl": "galaxy-cinemas-belleville",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.188759,
+                    "longitude": -77.403746
+                },
+                "distanceToOriginInMeters": 186435.0,
+                "hasDistanceToOrigin": true,
+                "address": "160 Bell Boulevard",
+                "city": "Belleville",
+                "provinceCode": "ON",
+                "postalCode": "K8P 5L2"
+            }
+        },
+        {
+            "theatreId": 7263,
+            "theatreName": "Galaxy Cinemas Peterborough",
+            "shortTheatreName": "Peterborough",
+            "theatreUrl": "galaxy-cinemas-peterborough",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.303657,
+                    "longitude": -78.318584
+                },
+                "distanceToOriginInMeters": 240917.2,
+                "hasDistanceToOrigin": true,
+                "address": "320 Water Street",
+                "city": "Peterborough",
+                "provinceCode": "ON",
+                "postalCode": "K9H 7N9"
+            }
+        },
+        {
+            "theatreId": 9188,
+            "theatreName": "Cinéma Galaxy Sherbrooke",
+            "shortTheatreName": "Sherbrooke",
+            "theatreUrl": "cinema-galaxy-sherbrooke",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.383456,
+                    "longitude": -71.962917
+                },
+                "distanceToOriginInMeters": 282240.2,
+                "hasDistanceToOrigin": true,
+                "address": "4204 Bertrand-Fabi",
+                "city": "Rock Forest",
+                "provinceCode": "QC",
+                "postalCode": "J1N 3Y2"
+            }
+        },
+        {
+            "theatreId": 7241,
+            "theatreName": "Cineplex Odeon Clarington Place Cinemas",
+            "shortTheatreName": "Clarington Place",
+            "theatreUrl": "cineplex-odeon-clarington-place-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.910707,
+                    "longitude": -78.707954
+                },
+                "distanceToOriginInMeters": 289424.0,
+                "hasDistanceToOrigin": true,
+                "address": "111 Clarington Boulevard",
+                "city": "Clarington",
+                "provinceCode": "ON",
+                "postalCode": "L1C 4Z3"
+            }
+        },
+        {
+            "theatreId": 7289,
+            "theatreName": "Cineplex Odeon Oshawa Cinemas",
+            "shortTheatreName": "Oshawa",
+            "theatreUrl": "cineplex-odeon-oshawa-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.941749,
+                    "longitude": -78.836914
+                },
+                "distanceToOriginInMeters": 296489.8,
+                "hasDistanceToOrigin": true,
+                "address": "1351 Grandview Street North",
+                "city": "Oshawa",
+                "provinceCode": "ON",
+                "postalCode": "L1K 0G1"
+            }
+        },
+        {
+            "theatreId": 9186,
+            "theatreName": "Cinéma Galaxy Victoriaville",
+            "shortTheatreName": "Victoriaville",
+            "theatreUrl": "cinema-galaxy-victoriaville",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.062622,
+                    "longitude": -71.92874
+                },
+                "distanceToOriginInMeters": 297135.6,
+                "hasDistanceToOrigin": true,
+                "address": "1121 boulevard Jutras Est",
+                "city": "Victoriaville",
+                "provinceCode": "QC",
+                "postalCode": "G6S 1J1"
+            }
+        },
+        {
+            "theatreId": 7248,
+            "theatreName": "Cineplex Odeon Ajax Cinemas",
+            "shortTheatreName": "Ajax",
+            "theatreUrl": "cineplex-odeon-ajax-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.866253,
+                    "longitude": -79.016402
+                },
+                "distanceToOriginInMeters": 313140.7,
+                "hasDistanceToOrigin": true,
+                "address": "248 Kingston Road East, Highway 2",
+                "city": "Ajax",
+                "provinceCode": "ON",
+                "postalCode": "L1S 1G1"
+            }
+        },
+        {
+            "theatreId": 7274,
+            "theatreName": "Galaxy Cinemas Orillia",
+            "shortTheatreName": "Orillia",
+            "theatreUrl": "galaxy-cinemas-orillia",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.606563,
+                    "longitude": -79.453211
+                },
+                "distanceToOriginInMeters": 313971.2,
+                "hasDistanceToOrigin": true,
+                "address": "865 West Ridge Boulevard",
+                "city": "Orillia",
+                "provinceCode": "ON",
+                "postalCode": "L3V 8B3"
+            }
+        },
+        {
+            "theatreId": 7312,
+            "theatreName": "Cineplex Cinemas Pickering and VIP",
+            "shortTheatreName": "Pickering and VIP",
+            "theatreUrl": "cineplex-cinemas-pickering-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.834935,
+                    "longitude": -79.087919
+                },
+                "distanceToOriginInMeters": 319849.4,
+                "hasDistanceToOrigin": true,
+                "address": "1355 Kingston Road, Pickering Town Centre",
+                "city": "Pickering",
+                "provinceCode": "ON",
+                "postalCode": "L1V 1B8"
+            }
+        },
+        {
+            "theatreId": 7265,
+            "theatreName": "Galaxy Cinemas North Bay",
+            "shortTheatreName": "North Bay",
+            "theatreUrl": "galaxy-cinemas-north-bay",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.282852,
+                    "longitude": -79.448782
+                },
+                "distanceToOriginInMeters": 322597.0,
+                "hasDistanceToOrigin": true,
+                "address": "300 Lakeshore Drive",
+                "city": "North Bay",
+                "provinceCode": "ON",
+                "postalCode": "P1A 3V2"
+            }
+        },
+        {
+            "theatreId": 7240,
+            "theatreName": "Cineplex Odeon Morningside Cinemas",
+            "shortTheatreName": "Morningside",
+            "theatreUrl": "cineplex-odeon-morningside-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.797755,
+                    "longitude": -79.204
+                },
+                "distanceToOriginInMeters": 329974.0,
+                "hasDistanceToOrigin": true,
+                "address": "785 Milner Avenue",
+                "city": "Scarborough",
+                "provinceCode": "ON",
+                "postalCode": "M1B 3C3"
+            }
+        },
+        {
+            "theatreId": 7404,
+            "theatreName": "Cineplex Cinemas Scarborough",
+            "shortTheatreName": "Scarborough",
+            "theatreUrl": "cineplex-cinemas-scarborough",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.776401,
+                    "longitude": -79.255285
+                },
+                "distanceToOriginInMeters": 334726.4,
+                "hasDistanceToOrigin": true,
+                "address": "Scarborough Town Centre, 300 Borough Drive",
+                "city": "Scarborough",
+                "provinceCode": "ON",
+                "postalCode": "M1P 4P5"
+            }
+        },
+        {
+            "theatreId": 7213,
+            "theatreName": "Cineplex Cinemas Markham and VIP",
+            "shortTheatreName": "Markham and VIP",
+            "theatreUrl": "cineplex-cinemas-markham-and-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.849312,
+                    "longitude": -79.323928
+                },
+                "distanceToOriginInMeters": 335513.4,
+                "hasDistanceToOrigin": true,
+                "address": "179 Enterprise Blvd., Suite 169",
+                "city": "Markham",
+                "provinceCode": "ON",
+                "postalCode": "L6G 0E7"
+            }
+        },
+        {
+            "theatreId": 7284,
+            "theatreName": "Cineplex Odeon Aurora Cinemas",
+            "shortTheatreName": "Aurora",
+            "theatreUrl": "cineplex-odeon-aurora-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.010187,
+                    "longitude": -79.444875
+                },
+                "distanceToOriginInMeters": 335992.7,
+                "hasDistanceToOrigin": true,
+                "address": "15460 Bayview Avenue",
+                "city": "Aurora",
+                "provinceCode": "ON",
+                "postalCode": "L4G 7J1"
+            }
+        },
+        {
+            "theatreId": 7407,
+            "theatreName": "SilverCity Newmarket Cinemas and XSCAPE Entertainment Centre",
+            "shortTheatreName": "Newmarket",
+            "theatreUrl": "silvercity-newmarket-cinemas-and-xscape-entertainment-centre",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.070601,
+                    "longitude": -79.484036
+                },
+                "distanceToOriginInMeters": 336019.8,
+                "hasDistanceToOrigin": true,
+                "address": "18195 Yonge Street",
+                "city": "East Gwillimbury",
+                "provinceCode": "ON",
+                "postalCode": "L9N 0H9"
+            }
+        },
+        {
+            "theatreId": 7135,
+            "theatreName": "Cineplex Cinemas North Barrie",
+            "shortTheatreName": "North Barrie",
+            "theatreUrl": "cineplex-cinemas-north-barrie",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.415242,
+                    "longitude": -79.6750162
+                },
+                "distanceToOriginInMeters": 336697.1,
+                "hasDistanceToOrigin": true,
+                "address": "507 Cundles Road East",
+                "city": "Barrie",
+                "provinceCode": "ON",
+                "postalCode": "L4M 0G9"
+            }
+        },
+        {
+            "theatreId": 7253,
+            "theatreName": "Cineplex Odeon Eglinton Town Centre Cinemas",
+            "shortTheatreName": "Eglinton Town Centre",
+            "theatreUrl": "cineplex-odeon-eglinton-town-centre-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.725244,
+                    "longitude": -79.290907
+                },
+                "distanceToOriginInMeters": 340090.9,
+                "hasDistanceToOrigin": true,
+                "address": "22 Lebovic Avenue",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M1L 4V9"
+            }
+        },
+        {
+            "theatreId": 7249,
+            "theatreName": "Galaxy Cinemas Barrie",
+            "shortTheatreName": "Barrie",
+            "theatreUrl": "galaxy-cinemas-barrie",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.325548,
+                    "longitude": -79.685753
+                },
+                "distanceToOriginInMeters": 340599.5,
+                "hasDistanceToOrigin": true,
+                "address": "72 Commerce Park Drive",
+                "city": "Barrie",
+                "provinceCode": "ON",
+                "postalCode": "L4N 8W8"
+            }
+        },
+        {
+            "theatreId": 7115,
+            "theatreName": "Cineplex Cinemas Fairview Mall",
+            "shortTheatreName": "Fairview Mall",
+            "theatreUrl": "cineplex-cinemas-fairview-mall",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.77563,
+                    "longitude": -79.345296
+                },
+                "distanceToOriginInMeters": 341020.1,
+                "hasDistanceToOrigin": true,
+                "address": "1800 Sheppard Avenue East, Unit Y007",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M2J 5A7"
+            }
+        },
+        {
+            "theatreId": 7405,
+            "theatreName": "SilverCity Richmond Hill Cinemas",
+            "shortTheatreName": "Richmond Hill",
+            "theatreUrl": "silvercity-richmond-hill-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.839611,
+                    "longitude": -79.427333
+                },
+                "distanceToOriginInMeters": 343312.9,
+                "hasDistanceToOrigin": true,
+                "address": "8725 Yonge Street",
+                "city": "Richmond Hill",
+                "provinceCode": "ON",
+                "postalCode": "L4C 6Z1"
+            }
+        },
+        {
+            "theatreId": 7139,
+            "theatreName": "Cineplex VIP Cinemas Don Mills (age restricted 19+)",
+            "shortTheatreName": "Don Mills VIP",
+            "theatreUrl": "cineplex-vip-cinemas-don-mills-age-restricted-19",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.734328,
+                    "longitude": -79.346049
+                },
+                "distanceToOriginInMeters": 343381.7,
+                "hasDistanceToOrigin": true,
+                "address": "Shops at Don Mills, 12 Marie Labatte Road, Unit B7",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M3C 0H9"
+            }
+        },
+        {
+            "theatreId": 7293,
+            "theatreName": "Cineplex Cinemas Beaches",
+            "shortTheatreName": "Beaches",
+            "theatreUrl": "cineplex-cinemas-beaches",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.66694,
+                    "longitude": -79.31424
+                },
+                "distanceToOriginInMeters": 345069.3,
+                "hasDistanceToOrigin": true,
+                "address": "1651 Queen Street East",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M4L 1G5"
+            }
+        },
+        {
+            "theatreId": 7298,
+            "theatreName": "Cineplex Cinemas Empress Walk",
+            "shortTheatreName": "Empress Walk",
+            "theatreUrl": "cineplex-cinemas-empress-walk",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.768266,
+                    "longitude": -79.412527
+                },
+                "distanceToOriginInMeters": 346114.4,
+                "hasDistanceToOrigin": true,
+                "address": "5095 Yonge St., 3rd Floor",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M2N 6Z4"
+            }
+        },
+        {
+            "theatreId": 7271,
+            "theatreName": "Galaxy Cinemas Midland",
+            "shortTheatreName": "Midland",
+            "theatreUrl": "galaxy-cinemas-midland",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.736926,
+                    "longitude": -79.911616
+                },
+                "distanceToOriginInMeters": 346201.6,
+                "hasDistanceToOrigin": true,
+                "address": "Highway 93, RR2, Box2",
+                "city": "Midland",
+                "provinceCode": "ON",
+                "postalCode": "L4R 4K4"
+            }
+        },
+        {
+            "theatreId": 7400,
+            "theatreName": "Cineplex Cinemas Yonge-Eglinton and VIP",
+            "shortTheatreName": "Yonge-Eglinton and VIP",
+            "theatreUrl": "cineplex-cinemas-yongeeglinton-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.707236,
+                    "longitude": -79.398663
+                },
+                "distanceToOriginInMeters": 348554.3,
+                "hasDistanceToOrigin": true,
+                "address": "2300 Yonge Street",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M4P 1E4"
+            }
+        },
+        {
+            "theatreId": 7199,
+            "theatreName": "Cineplex Cinemas Varsity and VIP",
+            "shortTheatreName": "Varsity and VIP",
+            "theatreUrl": "cineplex-cinemas-varsity-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.669671,
+                    "longitude": -79.388759
+                },
+                "distanceToOriginInMeters": 350019.6,
+                "hasDistanceToOrigin": true,
+                "address": "55 Bloor Street West",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M4W 1A5"
+            }
+        },
+        {
+            "theatreId": 7130,
+            "theatreName": "Cineplex Cinemas Yonge-Dundas and VIP",
+            "shortTheatreName": "Yonge-Dundas and VIP",
+            "theatreUrl": "cineplex-cinemas-yongedundas-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.656746,
+                    "longitude": -79.380484
+                },
+                "distanceToOriginInMeters": 350200.2,
+                "hasDistanceToOrigin": true,
+                "address": "10 Dundas Street East, Suite 402",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M5B 2G9"
+            }
+        },
+        {
+            "theatreId": 7402,
+            "theatreName": "Scotiabank Theatre Toronto",
+            "shortTheatreName": "Scotiabank Toronto",
+            "theatreUrl": "scotiabank-theatre-toronto",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.649039,
+                    "longitude": -79.390559
+                },
+                "distanceToOriginInMeters": 351339.4,
+                "hasDistanceToOrigin": true,
+                "address": "259 Richmond Street West",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M5V 3M6"
+            }
+        },
+        {
+            "theatreId": 7406,
+            "theatreName": "Cineplex Cinemas Yorkdale",
+            "shortTheatreName": "Yorkdale",
+            "theatreUrl": "cineplex-cinemas-yorkdale",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.724762,
+                    "longitude": -79.45703
+                },
+                "distanceToOriginInMeters": 351620.2,
+                "hasDistanceToOrigin": true,
+                "address": "Yorkdale Shopping Centre, 3401 Dufferin Street, c/o Yorkdale Shopping Centre",
+                "city": "Toronto",
+                "provinceCode": "ON",
+                "postalCode": "M6A 2T9"
+            }
+        },
+        {
+            "theatreId": 7408,
+            "theatreName": "Cineplex Cinemas Vaughan",
+            "shortTheatreName": "Vaughan",
+            "theatreUrl": "cineplex-cinemas-vaughan",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.788143,
+                    "longitude": -79.54477
+                },
+                "distanceToOriginInMeters": 354323.9,
+                "hasDistanceToOrigin": true,
+                "address": "3555 Highway 7 West",
+                "city": "Vaughan",
+                "provinceCode": "ON",
+                "postalCode": "L4L 6B1"
+            }
+        },
+        {
+            "theatreId": 7260,
+            "theatreName": "Cineplex Cinemas Queensway and VIP",
+            "shortTheatreName": "Queensway and VIP",
+            "theatreUrl": "cineplex-cinemas-queensway-and-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.621281,
+                    "longitude": -79.51546
+                },
+                "distanceToOriginInMeters": 361526.5,
+                "hasDistanceToOrigin": true,
+                "address": "1025 The Queensway",
+                "city": "Etobicoke",
+                "provinceCode": "ON",
+                "postalCode": "M8Z 6C7"
+            }
+        },
+        {
+            "theatreId": 9177,
+            "theatreName": "Cinéma Cineplex Odeon Ste-Foy",
+            "shortTheatreName": "Ste-Foy",
+            "theatreUrl": "cinema-cineplex-odeon-stefoy",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.786632,
+                    "longitude": -71.35294
+                },
+                "distanceToOriginInMeters": 367931.3,
+                "hasDistanceToOrigin": true,
+                "address": "1200 autoroute Duplessis",
+                "city": "St. Foy",
+                "provinceCode": "QC",
+                "postalCode": "G2G 2B5"
+            }
+        },
+        {
+            "theatreId": 7420,
+            "theatreName": "Cineplex Cinemas Mississauga",
+            "shortTheatreName": "Mississauga",
+            "theatreUrl": "cineplex-cinemas-mississauga",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.591364,
+                    "longitude": -79.650364
+                },
+                "distanceToOriginInMeters": 372546.5,
+                "hasDistanceToOrigin": true,
+                "address": "309 Rathburn Road West",
+                "city": "Mississauga",
+                "provinceCode": "ON",
+                "postalCode": "L5B 4C1"
+            }
+        },
+        {
+            "theatreId": 7411,
+            "theatreName": "SilverCity Brampton Cinemas",
+            "shortTheatreName": "Brampton",
+            "theatreUrl": "silvercity-brampton-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.731608,
+                    "longitude": -79.762431
+                },
+                "distanceToOriginInMeters": 372692.2,
+                "hasDistanceToOrigin": true,
+                "address": "50 Great Lakes Drive",
+                "city": "Brampton",
+                "provinceCode": "ON",
+                "postalCode": "L6R 2K7"
+            }
+        },
+        {
+            "theatreId": 7256,
+            "theatreName": "Cineplex Odeon Niagara Square Cinemas",
+            "shortTheatreName": "Niagara Square",
+            "theatreUrl": "cineplex-odeon-niagara-square-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.068949,
+                    "longitude": -79.126126
+                },
+                "distanceToOriginInMeters": 372718.6,
+                "hasDistanceToOrigin": true,
+                "address": "7555 Montrose Road",
+                "city": "Niagara Falls",
+                "provinceCode": "ON",
+                "postalCode": "L2H 2E9"
+            }
+        },
+        {
+            "theatreId": 7122,
+            "theatreName": "Cineplex Cinemas Courtney Park",
+            "shortTheatreName": "Courtney Park",
+            "theatreUrl": "cineplex-cinemas-courtney-park",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.636624,
+                    "longitude": -79.6902
+                },
+                "distanceToOriginInMeters": 372758.7,
+                "hasDistanceToOrigin": true,
+                "address": "110 Courtneypark Dr E",
+                "city": "Mississauga",
+                "provinceCode": "ON",
+                "postalCode": "L5T 2Y3"
+            }
+        },
+        {
+            "theatreId": 9196,
+            "theatreName": "Cinéma Cineplex IMAX aux Galeries de la Capitale",
+            "shortTheatreName": "IMAX aux Galeries de la Capitale",
+            "theatreUrl": "cinema-cineplex-imax-aux-galeries-de-la-capitale",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.8310776,
+                    "longitude": -71.2987181
+                },
+                "distanceToOriginInMeters": 373829.1,
+                "hasDistanceToOrigin": true,
+                "address": "5401 boulevard des Galeries",
+                "city": "Québec",
+                "provinceCode": "QC",
+                "postalCode": "G2K 1N4"
+            }
+        },
+        {
+            "theatreId": 7288,
+            "theatreName": "Galaxy Cinemas Collingwood",
+            "shortTheatreName": "Collingwood",
+            "theatreUrl": "galaxy-cinemas-collingwood",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.501495,
+                    "longitude": -80.238369
+                },
+                "distanceToOriginInMeters": 377143.4,
+                "hasDistanceToOrigin": true,
+                "address": "6 Mountain Road",
+                "city": "Collingwood",
+                "provinceCode": "ON",
+                "postalCode": "L9Y 4S8"
+            }
+        },
+        {
+            "theatreId": 7123,
+            "theatreName": "Cineplex Cinemas Winston Churchill & VIP",
+            "shortTheatreName": "Winston Churchill & VIP",
+            "theatreUrl": "cineplex-cinemas-winston-churchill-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.509563,
+                    "longitude": -79.669165
+                },
+                "distanceToOriginInMeters": 378585.2,
+                "hasDistanceToOrigin": true,
+                "address": "2081 Winston Park Dr.",
+                "city": "Oakville",
+                "provinceCode": "ON",
+                "postalCode": "L6H 6P5"
+            }
+        },
+        {
+            "theatreId": 7313,
+            "theatreName": "Cineplex Junxion Erin Mills",
+            "shortTheatreName": "Junxion Erin Mills",
+            "theatreUrl": "cineplex-junxion-erin-mills",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.557576,
+                    "longitude": -79.712437
+                },
+                "distanceToOriginInMeters": 378767.6,
+                "hasDistanceToOrigin": true,
+                "address": "5100 Erin Mills Pkwy, Unit #Y002",
+                "city": "Mississauga",
+                "provinceCode": "ON",
+                "postalCode": "L5M 4Z5"
+            }
+        },
+        {
+            "theatreId": 9181,
+            "theatreName": "Cinéma Cineplex Odeon Beauport",
+            "shortTheatreName": "Beauport",
+            "theatreUrl": "cinema-cineplex-odeon-beauport",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.868069,
+                    "longitude": -71.206448
+                },
+                "distanceToOriginInMeters": 381945.7,
+                "hasDistanceToOrigin": true,
+                "address": "825 rue Clémenceau",
+                "city": "Beauport",
+                "provinceCode": "QC",
+                "postalCode": "G1C 2K6"
+            }
+        },
+        {
+            "theatreId": 7206,
+            "theatreName": "Cineplex Odeon Seaway Mall Cinemas",
+            "shortTheatreName": "Seaway Mall",
+            "theatreUrl": "cineplex-odeon-seaway-mall-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.015427,
+                    "longitude": -79.249765
+                },
+                "distanceToOriginInMeters": 384187.8,
+                "hasDistanceToOrigin": true,
+                "address": "800 Niagara Street",
+                "city": "Welland",
+                "provinceCode": "ON",
+                "postalCode": "L3C 1M3"
+            }
+        },
+        {
+            "theatreId": 7270,
+            "theatreName": "Galaxy Cinemas Orangeville",
+            "shortTheatreName": "Orangeville",
+            "theatreUrl": "galaxy-cinemas-orangeville",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.929264,
+                    "longitude": -80.094205
+                },
+                "distanceToOriginInMeters": 387005.4,
+                "hasDistanceToOrigin": true,
+                "address": "Fairgrounds Shopping Centre, 85 Fifth Avenue, 85 Fifth Ave.",
+                "city": "Orangeville",
+                "provinceCode": "ON",
+                "postalCode": "L9W 5B7"
+            }
+        },
+        {
+            "theatreId": 7285,
+            "theatreName": "Cineplex Cinemas Milton",
+            "shortTheatreName": "Milton",
+            "theatreUrl": "cineplex-cinemas-milton",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.537856,
+                    "longitude": -79.869224
+                },
+                "distanceToOriginInMeters": 390747.1,
+                "hasDistanceToOrigin": true,
+                "address": "1175 Maple Avenue",
+                "city": "Milton",
+                "provinceCode": "ON",
+                "postalCode": "L9T 0A5"
+            }
+        },
+        {
+            "theatreId": 7273,
+            "theatreName": "Cineplex Cinemas Oakville and VIP",
+            "shortTheatreName": "Oakville and VIP",
+            "theatreUrl": "cineplex-cinemas-oakville-and-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.39358,
+                    "longitude": -79.750861
+                },
+                "distanceToOriginInMeters": 391084.7,
+                "hasDistanceToOrigin": true,
+                "address": "3531 Wyecroft Road",
+                "city": "Oakville",
+                "provinceCode": "ON",
+                "postalCode": "L6L 0B7"
+            }
+        },
+        {
+            "theatreId": 7413,
+            "theatreName": "SilverCity Burlington Cinemas",
+            "shortTheatreName": "Burlington",
+            "theatreUrl": "silvercity-burlington-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.343731,
+                    "longitude": -79.829648
+                },
+                "distanceToOriginInMeters": 399449.7,
+                "hasDistanceToOrigin": true,
+                "address": "1250 Brant Street",
+                "city": "Burlington",
+                "provinceCode": "ON",
+                "postalCode": "L7P 1X8"
+            }
+        },
+        {
+            "theatreId": 7290,
+            "theatreName": "Cineplex Cinemas Hamilton Mountain",
+            "shortTheatreName": "Hamilton Mountain",
+            "theatreUrl": "cineplex-cinemas-hamilton-mountain",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.19191,
+                    "longitude": -79.810529
+                },
+                "distanceToOriginInMeters": 407710.3,
+                "hasDistanceToOrigin": true,
+                "address": "795 Paramount Drive",
+                "city": "Stoney Creek",
+                "provinceCode": "ON",
+                "postalCode": "L8J 0B4"
+            }
+        },
+        {
+            "theatreId": 7415,
+            "theatreName": "Cineplex Cinemas Ancaster",
+            "shortTheatreName": "Ancaster",
+            "theatreUrl": "cineplex-cinemas-ancaster",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.22599,
+                    "longitude": -79.951812
+                },
+                "distanceToOriginInMeters": 414947.9,
+                "hasDistanceToOrigin": true,
+                "address": "771 Golf Links Road",
+                "city": "Ancaster",
+                "provinceCode": "ON",
+                "postalCode": "L9G 3K9"
+            }
+        },
+        {
+            "theatreId": 7272,
+            "theatreName": "Galaxy Cinemas Guelph",
+            "shortTheatreName": "Guelph",
+            "theatreUrl": "galaxy-cinemas-guelph",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.542834,
+                    "longitude": -80.308209
+                },
+                "distanceToOriginInMeters": 421317.5,
+                "hasDistanceToOrigin": true,
+                "address": "485 Woodlawn Road West",
+                "city": "Guelph",
+                "provinceCode": "ON",
+                "postalCode": "N1K 1E9"
+            }
+        },
+        {
+            "theatreId": 7269,
+            "theatreName": "Cineplex Cinemas Cambridge",
+            "shortTheatreName": "Cambridge",
+            "theatreUrl": "cineplex-cinemas-cambridge",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.391982,
+                    "longitude": -80.322762
+                },
+                "distanceToOriginInMeters": 430531.9,
+                "hasDistanceToOrigin": true,
+                "address": "355 Hespeler Road",
+                "city": "Cambridge",
+                "provinceCode": "ON",
+                "postalCode": "N1R 6B3"
+            }
+        },
+        {
+            "theatreId": 7264,
+            "theatreName": "Galaxy Cinemas Owen Sound",
+            "shortTheatreName": "Owen Sound",
+            "theatreUrl": "galaxy-cinemas-owen-sound",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.56164,
+                    "longitude": -80.966985
+                },
+                "distanceToOriginInMeters": 431893.9,
+                "hasDistanceToOrigin": true,
+                "address": "1020 10th Street West",
+                "city": "Owen Sound",
+                "provinceCode": "ON",
+                "postalCode": "N4K 5S1"
+            }
+        },
+        {
+            "theatreId": 7296,
+            "theatreName": "Cineplex Cinemas Kitchener and VIP",
+            "shortTheatreName": "Kitchener and VIP",
+            "theatreUrl": "cineplex-cinemas-kitchener-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.4205907,
+                    "longitude": -80.4386958
+                },
+                "distanceToOriginInMeters": 437088.6,
+                "hasDistanceToOrigin": true,
+                "address": "225 Fairway Road South",
+                "city": "Kitchener",
+                "provinceCode": "ON",
+                "postalCode": "N2C 1X2"
+            }
+        },
+        {
+            "theatreId": 7429,
+            "theatreName": "SilverCity Sudbury Cinemas",
+            "shortTheatreName": "Sudbury",
+            "theatreUrl": "silvercity-sudbury-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.501834,
+                    "longitude": -80.946922
+                },
+                "distanceToOriginInMeters": 439376.6,
+                "hasDistanceToOrigin": true,
+                "address": "355 Barrydowne Road",
+                "city": "Sudbury",
+                "provinceCode": "ON",
+                "postalCode": "P3B 4K4"
+            }
+        },
+        {
+            "theatreId": 7268,
+            "theatreName": "Galaxy Cinemas Waterloo",
+            "shortTheatreName": "Waterloo",
+            "theatreUrl": "galaxy-cinemas-waterloo",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.495149,
+                    "longitude": -80.529056
+                },
+                "distanceToOriginInMeters": 439523.6,
+                "hasDistanceToOrigin": true,
+                "address": "550 King Street North",
+                "city": "Waterloo",
+                "provinceCode": "ON",
+                "postalCode": "N2L 5W6"
+            }
+        },
+        {
+            "theatreId": 7291,
+            "theatreName": "Galaxy Cinemas Brantford",
+            "shortTheatreName": "Brantford",
+            "theatreUrl": "galaxy-cinemas-brantford",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.18197,
+                    "longitude": -80.281102
+                },
+                "distanceToOriginInMeters": 439890.8,
+                "hasDistanceToOrigin": true,
+                "address": "300 King George Road",
+                "city": "Brantford",
+                "provinceCode": "ON",
+                "postalCode": "N3R 5L7"
+            }
+        },
+        {
+            "theatreId": 7422,
+            "theatreName": "SilverCity London Cinemas",
+            "shortTheatreName": "London",
+            "theatreUrl": "silvercity-london-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.025272,
+                    "longitude": -81.281706
+                },
+                "distanceToOriginInMeters": 518209.4,
+                "hasDistanceToOrigin": true,
+                "address": "1680 Richmond Street",
+                "city": "London",
+                "provinceCode": "ON",
+                "postalCode": "N6G 3Y9"
+            }
+        },
+        {
+            "theatreId": 7112,
+            "theatreName": "Cineplex Odeon Westmount Cinemas and VIP",
+            "shortTheatreName": "Westmount and VIP",
+            "theatreUrl": "cineplex-odeon-westmount-cinemas-and-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 42.949178,
+                    "longitude": -81.289644
+                },
+                "distanceToOriginInMeters": 523088.7,
+                "hasDistanceToOrigin": true,
+                "address": "755 Wonderland Road South",
+                "city": "London",
+                "provinceCode": "ON",
+                "postalCode": "N6K 1M6"
+            }
+        },
+        {
+            "theatreId": 7267,
+            "theatreName": "Galaxy Cinemas St. Thomas",
+            "shortTheatreName": "St. Thomas",
+            "theatreUrl": "galaxy-cinemas-st-thomas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 42.774653,
+                    "longitude": -81.159557
+                },
+                "distanceToOriginInMeters": 524488.1,
+                "hasDistanceToOrigin": true,
+                "address": "417 Wellington Street",
+                "city": "St. Thomas",
+                "provinceCode": "ON",
+                "postalCode": "N5R 5J5"
+            }
+        },
+        {
+            "theatreId": 7138,
+            "theatreName": "Galaxy Cinemas Sarnia",
+            "shortTheatreName": "Sarnia",
+            "theatreUrl": "galaxy-cinemas-sarnia",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 42.980288,
+                    "longitude": -82.353555
+                },
+                "distanceToOriginInMeters": 597051.3,
+                "hasDistanceToOrigin": true,
+                "address": "1380 London Road",
+                "city": "Sarnia",
+                "provinceCode": "ON",
+                "postalCode": "N7S 1P7"
+            }
+        },
+        {
+            "theatreId": 7297,
+            "theatreName": "Galaxy Cinemas Chatham",
+            "shortTheatreName": "Chatham",
+            "theatreUrl": "galaxy-cinemas-chatham",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 42.428469,
+                    "longitude": -82.216592
+                },
+                "distanceToOriginInMeters": 618006.1,
+                "hasDistanceToOrigin": true,
+                "address": "760 St. Clair Street",
+                "city": "Chatham",
+                "provinceCode": "ON",
+                "postalCode": "N7L 0E8"
+            }
+        },
+        {
+            "theatreId": 7257,
+            "theatreName": "Cineplex Odeon Devonshire Mall Cinemas",
+            "shortTheatreName": "Devonshire Mall",
+            "theatreUrl": "cineplex-odeon-devonshire-mall-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 42.274161,
+                    "longitude": -82.999016
+                },
+                "distanceToOriginInMeters": 681610.3,
+                "hasDistanceToOrigin": true,
+                "address": "3100 Howard Avenue",
+                "city": "Windsor",
+                "provinceCode": "ON",
+                "postalCode": "N8X 3Y8"
+            }
+        },
+        {
+            "theatreId": 7266,
+            "theatreName": "Galaxy Cinemas Sault Ste Marie",
+            "shortTheatreName": "Sault Ste Marie",
+            "theatreUrl": "galaxy-cinemas-sault-ste-marie",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.511448,
+                    "longitude": -84.339788
+                },
+                "distanceToOriginInMeters": 693292.8,
+                "hasDistanceToOrigin": true,
+                "address": "293 Bay Street",
+                "city": "Sault Ste. Mari",
+                "provinceCode": "ON",
+                "postalCode": "P6A 1X3"
+            }
+        },
+        {
+            "theatreId": 6111,
+            "theatreName": "Cineplex Cinemas Fredericton",
+            "shortTheatreName": "Fredericton",
+            "theatreUrl": "cineplex-cinemas-fredericton",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.934473,
+                    "longitude": -66.664109
+                },
+                "distanceToOriginInMeters": 696683.2,
+                "hasDistanceToOrigin": true,
+                "address": "1381 Regent Street",
+                "city": "Fredericton",
+                "provinceCode": "NB",
+                "postalCode": "E3C 1A2"
+            }
+        },
+        {
+            "theatreId": 6107,
+            "theatreName": "Cineplex Cinemas Saint John",
+            "shortTheatreName": "Saint John",
+            "theatreUrl": "cineplex-cinemas-saint-john",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.311228,
+                    "longitude": -66.015635
+                },
+                "distanceToOriginInMeters": 746958.3,
+                "hasDistanceToOrigin": true,
+                "address": "175 McAllister Drive",
+                "city": "Saint John",
+                "provinceCode": "NB",
+                "postalCode": "E2J 2S6"
+            }
+        },
+        {
+            "theatreId": 5134,
+            "theatreName": "Cineplex Cinemas Yarmouth",
+            "shortTheatreName": "Yarmouth",
+            "theatreUrl": "cineplex-cinemas-yarmouth",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 43.845455,
+                    "longitude": -66.110852
+                },
+                "distanceToOriginInMeters": 764821.0,
+                "hasDistanceToOrigin": true,
+                "address": "136 Starrs Road",
+                "city": "Yarmouth",
+                "provinceCode": "NS",
+                "postalCode": "B5A 4E5"
+            }
+        },
+        {
+            "theatreId": 6112,
+            "theatreName": "Cineplex Cinemas Miramichi",
+            "shortTheatreName": "Miramichi",
+            "theatreUrl": "cineplex-cinemas-miramichi",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 47.029302,
+                    "longitude": -65.49124
+                },
+                "distanceToOriginInMeters": 800786.1,
+                "hasDistanceToOrigin": true,
+                "address": "2480 King George Highway",
+                "city": "Miramichi",
+                "provinceCode": "NB",
+                "postalCode": "E1V 6W4"
+            }
+        },
+        {
+            "theatreId": 6109,
+            "theatreName": "Cineplex Cinemas Trinity Drive",
+            "shortTheatreName": "Trinity Drive",
+            "theatreUrl": "cineplex-cinemas-trinity-drive",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.115625,
+                    "longitude": -64.831869
+                },
+                "distanceToOriginInMeters": 839001.1,
+                "hasDistanceToOrigin": true,
+                "address": "127 Trinity Drive",
+                "city": "Moncton",
+                "provinceCode": "NB",
+                "postalCode": "E1G 2J7"
+            }
+        },
+        {
+            "theatreId": 6110,
+            "theatreName": "Cineplex Cinemas Dieppe",
+            "shortTheatreName": "Dieppe",
+            "theatreUrl": "cineplex-cinemas-dieppe",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.0986389,
+                    "longitude": -64.7653752
+                },
+                "distanceToOriginInMeters": 844033.1,
+                "hasDistanceToOrigin": true,
+                "address": "1 Promenade Bass Pro Drive",
+                "city": "Dieppe",
+                "provinceCode": "NB",
+                "postalCode": "E1A 6S5"
+            }
+        },
+        {
+            "theatreId": 5132,
+            "theatreName": "Cineplex Cinemas New Minas",
+            "shortTheatreName": "New Minas",
+            "theatreUrl": "cineplex-cinemas-new-minas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.068146,
+                    "longitude": -64.462638
+                },
+                "distanceToOriginInMeters": 870256.5,
+                "hasDistanceToOrigin": true,
+                "address": "8944 Commercial Street",
+                "city": "New Minas",
+                "provinceCode": "NS",
+                "postalCode": "B4N 3C9"
+            }
+        },
+        {
+            "theatreId": 6160,
+            "theatreName": "Cineplex Cinemas Summerside",
+            "shortTheatreName": "Summerside",
+            "theatreUrl": "cineplex-cinemas-summerside",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.410838,
+                    "longitude": -63.778634
+                },
+                "distanceToOriginInMeters": 921739.2,
+                "hasDistanceToOrigin": true,
+                "address": "130 Ryan Street",
+                "city": "Summerside",
+                "provinceCode": "PE",
+                "postalCode": "C1N 6G2"
+            }
+        },
+        {
+            "theatreId": 5119,
+            "theatreName": "Cineplex Cinemas Lower Sackville",
+            "shortTheatreName": "Lower Sackville",
+            "theatreUrl": "cineplex-cinemas-lower-sackville",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.772839,
+                    "longitude": -63.69228
+                },
+                "distanceToOriginInMeters": 934152.9,
+                "hasDistanceToOrigin": true,
+                "address": "760 Sackville Drive",
+                "city": "Lower Sackville",
+                "provinceCode": "NS",
+                "postalCode": "B4E 1R7"
+            }
+        },
+        {
+            "theatreId": 5130,
+            "theatreName": "Scotiabank Theatre Halifax",
+            "shortTheatreName": "Scotiabank Halifax",
+            "theatreUrl": "scotiabank-theatre-halifax",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.648758,
+                    "longitude": -63.674925
+                },
+                "distanceToOriginInMeters": 937385.2,
+                "hasDistanceToOrigin": true,
+                "address": "Bayer's Lake, 190 Chain Lake Drive",
+                "city": "Halifax",
+                "provinceCode": "NS",
+                "postalCode": "B3S 1C5"
+            }
+        },
+        {
+            "theatreId": 5143,
+            "theatreName": "Cineplex Cinemas Park Lane",
+            "shortTheatreName": "Park Lane",
+            "theatreUrl": "cineplex-cinemas-park-lane",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.642611,
+                    "longitude": -63.578709
+                },
+                "distanceToOriginInMeters": 945016.3,
+                "hasDistanceToOrigin": true,
+                "address": "5657 Spring Garden Road",
+                "city": "Halifax",
+                "provinceCode": "NS",
+                "postalCode": "B3J 3R4"
+            }
+        },
+        {
+            "theatreId": 5145,
+            "theatreName": "Cineplex Cinemas Dartmouth Crossing",
+            "shortTheatreName": "Dartmouth Crossing",
+            "theatreUrl": "cineplex-cinemas-dartmouth-crossing",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 44.706888,
+                    "longitude": -63.560853
+                },
+                "distanceToOriginInMeters": 945413.4,
+                "hasDistanceToOrigin": true,
+                "address": "145 Shubie Drive",
+                "city": "Dartmouth",
+                "provinceCode": "NS",
+                "postalCode": "B3B 0C3"
+            }
+        },
+        {
+            "theatreId": 5140,
+            "theatreName": "Cineplex Cinemas Truro",
+            "shortTheatreName": "Truro",
+            "theatreUrl": "cineplex-cinemas-truro",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.33346,
+                    "longitude": -63.305152
+                },
+                "distanceToOriginInMeters": 958381.9,
+                "hasDistanceToOrigin": true,
+                "address": "20 Treaty Trail",
+                "city": "Truro",
+                "provinceCode": "NS",
+                "postalCode": "B6L 1W2"
+            }
+        },
+        {
+            "theatreId": 6161,
+            "theatreName": "Cineplex Cinemas Charlottetown",
+            "shortTheatreName": "Charlottetown",
+            "theatreUrl": "cineplex-cinemas-charlottetown",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.26507,
+                    "longitude": -63.147253
+                },
+                "distanceToOriginInMeters": 969281.8,
+                "hasDistanceToOrigin": true,
+                "address": "670 University Avenue",
+                "city": "West Royalty",
+                "provinceCode": "PE",
+                "postalCode": "C1A 7M4"
+            }
+        },
+        {
+            "theatreId": 5114,
+            "theatreName": "Cineplex Cinemas New Glasgow",
+            "shortTheatreName": "New Glasgow",
+            "theatreUrl": "cineplex-cinemas-new-glasgow",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 45.576806,
+                    "longitude": -62.641796
+                },
+                "distanceToOriginInMeters": 1008575.1,
+                "hasDistanceToOrigin": true,
+                "address": "612 East River Road",
+                "city": "New Glasgow",
+                "provinceCode": "NS",
+                "postalCode": "B2H 3S2"
+            }
+        },
+        {
+            "theatreId": 7430,
+            "theatreName": "SilverCity Thunder Bay Cinemas",
+            "shortTheatreName": "Thunder Bay",
+            "theatreUrl": "silvercity-thunder-bay-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 48.39842,
+                    "longitude": -89.245333
+                },
+                "distanceToOriginInMeters": 1096609.4,
+                "hasDistanceToOrigin": true,
+                "address": "850 North May Street",
+                "city": "Thunder Bay",
+                "provinceCode": "ON",
+                "postalCode": "P7C 6A5"
+            }
+        },
+        {
+            "theatreId": 5103,
+            "theatreName": "Cineplex Cinemas Sydney",
+            "shortTheatreName": "Sydney",
+            "theatreUrl": "cineplex-cinemas-sydney",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 46.139653,
+                    "longitude": -60.186429
+                },
+                "distanceToOriginInMeters": 1196938.9,
+                "hasDistanceToOrigin": true,
+                "address": "325 Prince Street",
+                "city": "Sydney",
+                "provinceCode": "NS",
+                "postalCode": "B1P 5K6"
+            }
+        },
+        {
+            "theatreId": 8124,
+            "theatreName": "Cineplex Cinemas Millbrook",
+            "shortTheatreName": "Millbrook",
+            "theatreUrl": "cineplex-cinemas-millbrook",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 48.952309,
+                    "longitude": -57.950603
+                },
+                "distanceToOriginInMeters": 1392196.1,
+                "hasDistanceToOrigin": true,
+                "address": "2 Main Street",
+                "city": "Corner Brook",
+                "provinceCode": "NL",
+                "postalCode": "A2H 6G7"
+            }
+        },
+        {
+            "theatreId": 2114,
+            "theatreName": "Cineplex Junxion Kildonan Place",
+            "shortTheatreName": "Junxion Kildonan Place",
+            "theatreUrl": "cineplex-junxion-kildonan-place",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.89822,
+                    "longitude": -97.06059
+                },
+                "distanceToOriginInMeters": 1686742.8,
+                "hasDistanceToOrigin": true,
+                "address": "1555 Regent Ave W, CRU Major #4",
+                "city": "Winnipeg",
+                "provinceCode": "MB",
+                "postalCode": "R2C 4J2"
+            }
+        },
+        {
+            "theatreId": 2402,
+            "theatreName": "SilverCity St. Vital Cinemas",
+            "shortTheatreName": "St. Vital",
+            "theatreUrl": "silvercity-st-vital-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.828994,
+                    "longitude": -97.114537
+                },
+                "distanceToOriginInMeters": 1689291.2,
+                "hasDistanceToOrigin": true,
+                "address": "160-1225 St. Mary's Road",
+                "city": "Winnipeg",
+                "provinceCode": "MB",
+                "postalCode": "R2M 5E5"
+            }
+        },
+        {
+            "theatreId": 2112,
+            "theatreName": "Cinema City Northgate",
+            "shortTheatreName": "City Northgate",
+            "theatreUrl": "cinema-city-northgate",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.941641,
+                    "longitude": -97.157569
+                },
+                "distanceToOriginInMeters": 1694396.7,
+                "hasDistanceToOrigin": true,
+                "address": "1399 McPhillips Street",
+                "city": "Winnipeg",
+                "provinceCode": "MB",
+                "postalCode": "R2V 3C4"
+            }
+        },
+        {
+            "theatreId": 2111,
+            "theatreName": "Cineplex Odeon McGillivray Cinemas and VIP",
+            "shortTheatreName": "McGillivray and VIP",
+            "theatreUrl": "cineplex-odeon-mcgillivray-cinemas-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.820128,
+                    "longitude": -97.203906
+                },
+                "distanceToOriginInMeters": 1695460.6,
+                "hasDistanceToOrigin": true,
+                "address": "2190 McGillivray Boulevard",
+                "city": "Winnipeg",
+                "provinceCode": "MB",
+                "postalCode": "R3Y 1S6"
+            }
+        },
+        {
+            "theatreId": 2401,
+            "theatreName": "Scotiabank Theatre Winnipeg",
+            "shortTheatreName": "Scotiabank Winnipeg",
+            "theatreUrl": "scotiabank-theatre-winnipeg",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.887586,
+                    "longitude": -97.200921
+                },
+                "distanceToOriginInMeters": 1696461.2,
+                "hasDistanceToOrigin": true,
+                "address": "817 St. James Street",
+                "city": "Winnipeg",
+                "provinceCode": "MB",
+                "postalCode": "R3G 3L3"
+            }
+        },
+        {
+            "theatreId": 8126,
+            "theatreName": "Scotiabank Theatre St. John's",
+            "shortTheatreName": "Scotiabank St. John's",
+            "theatreUrl": "scotiabank-theatre-st-johns",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 47.56109,
+                    "longitude": -52.754355
+                },
+                "distanceToOriginInMeters": 1761653.3,
+                "hasDistanceToOrigin": true,
+                "address": "Avalon Mall, 48 Kenmount Road",
+                "city": "St. John's",
+                "provinceCode": "NL",
+                "postalCode": "A1B 1W3"
+            }
+        },
+        {
+            "theatreId": 4108,
+            "theatreName": "Cineplex Cinemas Southland",
+            "shortTheatreName": "Southland",
+            "theatreUrl": "cineplex-cinemas-southland",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 50.404798,
+                    "longitude": -104.624895
+                },
+                "distanceToOriginInMeters": 2228354.3,
+                "hasDistanceToOrigin": true,
+                "address": "3025 Gordon Road",
+                "city": "Regina",
+                "provinceCode": "SK",
+                "postalCode": "S4S 6H7"
+            }
+        },
+        {
+            "theatreId": 4114,
+            "theatreName": "Cineplex Cinemas Normanview",
+            "shortTheatreName": "Normanview",
+            "theatreUrl": "cineplex-cinemas-normanview",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 50.483053,
+                    "longitude": -104.666147
+                },
+                "distanceToOriginInMeters": 2231833.9,
+                "hasDistanceToOrigin": true,
+                "address": "420 McCarthy Boulevard North, Unit 26",
+                "city": "Regina",
+                "provinceCode": "SK",
+                "postalCode": "S4R 7M2"
+            }
+        },
+        {
+            "theatreId": 4113,
+            "theatreName": "Galaxy Cinemas Moose Jaw",
+            "shortTheatreName": "Moose Jaw",
+            "theatreUrl": "galaxy-cinemas-moose-jaw",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 50.410241,
+                    "longitude": -105.533895
+                },
+                "distanceToOriginInMeters": 2292703.1,
+                "hasDistanceToOrigin": true,
+                "address": "1235 Main Street North",
+                "city": "Moose Jaw",
+                "provinceCode": "SK",
+                "postalCode": "S6H 6M4"
+            }
+        },
+        {
+            "theatreId": 4112,
+            "theatreName": "Galaxy Cinemas Prince Albert",
+            "shortTheatreName": "Prince Albert",
+            "theatreUrl": "galaxy-cinemas-prince-albert",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 53.185984,
+                    "longitude": -105.760445
+                },
+                "distanceToOriginInMeters": 2342559.4,
+                "hasDistanceToOrigin": true,
+                "address": "2995 2nd Avenue West, Unit 1C",
+                "city": "Prince Albert",
+                "provinceCode": "SK",
+                "postalCode": "S6V 5V5"
+            }
+        },
+        {
+            "theatreId": 4115,
+            "theatreName": "Cineplex Cinemas at The Centre",
+            "shortTheatreName": "at The Centre",
+            "theatreUrl": "cineplex-cinemas-at-the-centre",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 52.114637,
+                    "longitude": -106.593908
+                },
+                "distanceToOriginInMeters": 2381447.0,
+                "hasDistanceToOrigin": true,
+                "address": "3510-8th Street",
+                "city": "Saskatoon",
+                "provinceCode": "SK",
+                "postalCode": "S7H 0W6"
+            }
+        },
+        {
+            "theatreId": 4403,
+            "theatreName": "Scotiabank Theatre Saskatoon and VIP",
+            "shortTheatreName": "Scotiabank Saskatoon and VIP",
+            "theatreUrl": "scotiabank-theatre-saskatoon-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 52.124937,
+                    "longitude": -106.665885
+                },
+                "distanceToOriginInMeters": 2386457.1,
+                "hasDistanceToOrigin": true,
+                "address": "347-2nd Avenue South",
+                "city": "Saskatoon",
+                "provinceCode": "SK",
+                "postalCode": "S7K 1L1"
+            }
+        },
+        {
+            "theatreId": 3140,
+            "theatreName": "Galaxy Cinemas Medicine Hat",
+            "shortTheatreName": "Medicine Hat",
+            "theatreUrl": "galaxy-cinemas-medicine-hat",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 50.00336,
+                    "longitude": -110.642892
+                },
+                "distanceToOriginInMeters": 2655940.1,
+                "hasDistanceToOrigin": true,
+                "address": "3292 Dunmore Road SE",
+                "city": "Medicine Hat",
+                "provinceCode": "AB",
+                "postalCode": "T1B 2R4"
+            }
+        },
+        {
+            "theatreId": 3101,
+            "theatreName": "Galaxy Cinemas Lethbridge",
+            "shortTheatreName": "Lethbridge",
+            "theatreUrl": "galaxy-cinemas-lethbridge",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.698069,
+                    "longitude": -112.840199
+                },
+                "distanceToOriginInMeters": 2815125.0,
+                "hasDistanceToOrigin": true,
+                "address": "501-1st Avenue South West",
+                "city": "Lethbridge",
+                "provinceCode": "AB",
+                "postalCode": "T1J 0A1"
+            }
+        },
+        {
+            "theatreId": 3146,
+            "theatreName": "Cineplex Cinemas Sherwood Park",
+            "shortTheatreName": "Sherwood Park",
+            "theatreUrl": "cineplex-cinemas-sherwood-park",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 53.531687,
+                    "longitude": -113.294106
+                },
+                "distanceToOriginInMeters": 2843353.3,
+                "hasDistanceToOrigin": true,
+                "address": "2020 Sherwood Drive",
+                "city": "Sherwood Park",
+                "provinceCode": "AB",
+                "postalCode": "T8A 3H9"
+            }
+        },
+        {
+            "theatreId": 3151,
+            "theatreName": "Cineplex Cinemas Manning Town Centre",
+            "shortTheatreName": "Manning Town Centre",
+            "theatreUrl": "cineplex-cinemas-manning-town-centre",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 53.61596,
+                    "longitude": -113.39065
+                },
+                "distanceToOriginInMeters": 2850283.7,
+                "hasDistanceToOrigin": true,
+                "address": "15531 37 ST NW",
+                "city": "Edmonton",
+                "provinceCode": "AB",
+                "postalCode": "T5Y 0S5 "
+            }
+        },
+        {
+            "theatreId": 3144,
+            "theatreName": "Cineplex Odeon South Edmonton Cinemas",
+            "shortTheatreName": "South Edmonton",
+            "theatreUrl": "cineplex-odeon-south-edmonton-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 53.445599,
+                    "longitude": -113.481882
+                },
+                "distanceToOriginInMeters": 2855212.6,
+                "hasDistanceToOrigin": true,
+                "address": "1525-99th Street NW",
+                "city": "Edmonton",
+                "provinceCode": "AB",
+                "postalCode": "T6N 1K5"
+            }
+        },
+        {
+            "theatreId": 3143,
+            "theatreName": "Cineplex Cinemas North Edmonton and VIP",
+            "shortTheatreName": "North Edmonton and VIP",
+            "theatreUrl": "cineplex-cinemas-north-edmonton-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 53.599254,
+                    "longitude": -113.569199
+                },
+                "distanceToOriginInMeters": 2861931.3,
+                "hasDistanceToOrigin": true,
+                "address": "14231-137th Avenue",
+                "city": "Edmonton",
+                "provinceCode": "AB",
+                "postalCode": "T5L 5E8"
+            }
+        },
+        {
+            "theatreId": 3149,
+            "theatreName": "Cineplex Odeon Windermere Cinemas and VIP",
+            "shortTheatreName": "Windermere and VIP",
+            "theatreUrl": "cineplex-odeon-windermere-cinemas-and-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 53.43592,
+                    "longitude": -113.599148
+                },
+                "distanceToOriginInMeters": 2862912.0,
+                "hasDistanceToOrigin": true,
+                "address": "6151 Currents Drive NW",
+                "city": "Edmonton",
+                "provinceCode": "AB",
+                "postalCode": "T6W 0L9"
+            }
+        },
+        {
+            "theatreId": 3403,
+            "theatreName": "Scotiabank Theatre Edmonton",
+            "shortTheatreName": "Scotiabank Edmonton",
+            "theatreUrl": "scotiabank-theatre-edmonton",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 53.52358,
+                    "longitude": -113.615713
+                },
+                "distanceToOriginInMeters": 2864524.6,
+                "hasDistanceToOrigin": true,
+                "address": "#3030, 8882-170 Street",
+                "city": "Edmonton",
+                "provinceCode": "AB",
+                "postalCode": "T5T 4M2"
+            }
+        },
+        {
+            "theatreId": 3132,
+            "theatreName": "Galaxy Cinemas Red Deer",
+            "shortTheatreName": "Red Deer",
+            "theatreUrl": "galaxy-cinemas-red-deer",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 52.211433,
+                    "longitude": -113.818381
+                },
+                "distanceToOriginInMeters": 2873826.3,
+                "hasDistanceToOrigin": true,
+                "address": "357 Liberty Avenue, Red Deer County",
+                "city": "Red Deer",
+                "provinceCode": "AB",
+                "postalCode": "T4E 0A5"
+            }
+        },
+        {
+            "theatreId": 3152,
+            "theatreName": "Cineplex Cinemas East Hills",
+            "shortTheatreName": "East Hills",
+            "theatreUrl": "cineplex-cinemas-east-hills",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 51.040122,
+                    "longitude": -113.910731
+                },
+                "distanceToOriginInMeters": 2882463.1,
+                "hasDistanceToOrigin": true,
+                "address": "205 East Hills Boulevard SE",
+                "city": "Calgary",
+                "provinceCode": "AB",
+                "postalCode": "T2A 7A6"
+            }
+        },
+        {
+            "theatreId": 3103,
+            "theatreName": "Cineplex Cinemas Seton and VIP",
+            "shortTheatreName": "Seton and VIP",
+            "theatreUrl": "cineplex-cinemas-seton-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 50.8796352,
+                    "longitude": -113.9582786
+                },
+                "distanceToOriginInMeters": 2886543.4,
+                "hasDistanceToOrigin": true,
+                "address": "19683 Seton Cres, SE",
+                "city": "Calgary",
+                "provinceCode": "AB",
+                "postalCode": "T3M 2N9"
+            }
+        },
+        {
+            "theatreId": 3150,
+            "theatreName": "SilverCity CrossIron Mills Cinemas and XSCAPE Entertainment Centre",
+            "shortTheatreName": "CrossIron Mills and XSCAPE Entertainment Centre",
+            "theatreUrl": "silvercity-crossiron-mills-cinemas-and-xscape-entertainment-centre",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 51.205163,
+                    "longitude": -113.988476
+                },
+                "distanceToOriginInMeters": 2887214.5,
+                "hasDistanceToOrigin": true,
+                "address": "261055 CrossIron Boulevard",
+                "city": "Rocky View",
+                "provinceCode": "AB",
+                "postalCode": "T4A 0G3"
+            }
+        },
+        {
+            "theatreId": 3142,
+            "theatreName": "Cineplex Odeon Sunridge Spectrum Cinemas",
+            "shortTheatreName": "Sunridge Spectrum",
+            "theatreUrl": "cineplex-odeon-sunridge-spectrum-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 51.074385,
+                    "longitude": -113.98893
+                },
+                "distanceToOriginInMeters": 2887776.1,
+                "hasDistanceToOrigin": true,
+                "address": "#400, 2555-32nd Street NE",
+                "city": "Calgary",
+                "provinceCode": "AB",
+                "postalCode": "T1Y 7J6"
+            }
+        },
+        {
+            "theatreId": 3401,
+            "theatreName": "Scotiabank Theatre Chinook",
+            "shortTheatreName": "Scotiabank Chinook",
+            "theatreUrl": "scotiabank-theatre-chinook",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 50.996067,
+                    "longitude": -114.073148
+                },
+                "distanceToOriginInMeters": 2894014.8,
+                "hasDistanceToOrigin": true,
+                "address": "6455 Macleod Trail SW",
+                "city": "Calgary",
+                "provinceCode": "AB",
+                "postalCode": "T2H 0K4"
+            }
+        },
+        {
+            "theatreId": 3157,
+            "theatreName": "Cineplex VIP Cinemas University District (age restricted 18+)",
+            "shortTheatreName": "VIP University District (age restricted 18+)",
+            "theatreUrl": "cineplex-vip-cinemas-university-district-age-restricted-18",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 51.07905,
+                    "longitude": -114.14674
+                },
+                "distanceToOriginInMeters": 2898771.7,
+                "hasDistanceToOrigin": true,
+                "address": "250 3953 University Ave NW",
+                "city": "Calgary",
+                "provinceCode": "AB",
+                "postalCode": "T3B 6K3"
+            }
+        },
+        {
+            "theatreId": 3409,
+            "theatreName": "Cineplex Odeon Westhills Cinemas",
+            "shortTheatreName": "Westhills",
+            "theatreUrl": "cineplex-odeon-westhills-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 51.016248,
+                    "longitude": -114.169586
+                },
+                "distanceToOriginInMeters": 2900659.9,
+                "hasDistanceToOrigin": true,
+                "address": "165 Stewart Green SW",
+                "city": "Calgary",
+                "provinceCode": "AB",
+                "postalCode": "T3H 3C8"
+            }
+        },
+        {
+            "theatreId": 3138,
+            "theatreName": "Cineplex Odeon Crowfoot Crossing Cinemas",
+            "shortTheatreName": "Crowfoot Crossing",
+            "theatreUrl": "cineplex-odeon-crowfoot-crossing-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 51.127189,
+                    "longitude": -114.201192
+                },
+                "distanceToOriginInMeters": 2902355.8,
+                "hasDistanceToOrigin": true,
+                "address": "91 Crowfoot Terrace NW",
+                "city": "Calgary",
+                "provinceCode": "AB",
+                "postalCode": "T3G 2L5"
+            }
+        },
+        {
+            "theatreId": 3141,
+            "theatreName": "Cineplex Odeon Grande Prairie Cinemas",
+            "shortTheatreName": "Grande Prairie",
+            "theatreUrl": "cineplex-odeon-grande-prairie-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 55.173087,
+                    "longitude": -118.823451
+                },
+                "distanceToOriginInMeters": 3209724.7,
+                "hasDistanceToOrigin": true,
+                "address": "10330 109th Street",
+                "city": "Grande Prairie",
+                "provinceCode": "AB",
+                "postalCode": "T8V 7X3"
+            }
+        },
+        {
+            "theatreId": 1413,
+            "theatreName": "Galaxy Cinemas Vernon",
+            "shortTheatreName": "Vernon",
+            "theatreUrl": "galaxy-cinemas-vernon",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 50.257029,
+                    "longitude": -119.263866
+                },
+                "distanceToOriginInMeters": 3265765.3,
+                "hasDistanceToOrigin": true,
+                "address": "275-2306 Highway 6",
+                "city": "Vernon",
+                "provinceCode": "BC",
+                "postalCode": "V1T 7E3"
+            }
+        },
+        {
+            "theatreId": 1410,
+            "theatreName": "Cineplex Cinemas Orchard Plaza",
+            "shortTheatreName": "Orchard Plaza",
+            "theatreUrl": "cineplex-cinemas-orchard-plaza",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.88046,
+                    "longitude": -119.443384
+                },
+                "distanceToOriginInMeters": 3284081.2,
+                "hasDistanceToOrigin": true,
+                "address": "160-1876 Cooper Road",
+                "city": "Kelowna",
+                "provinceCode": "BC",
+                "postalCode": "V1Y 9N6"
+            }
+        },
+        {
+            "theatreId": 1137,
+            "theatreName": "Cineplex Cinemas Aberdeen Mall",
+            "shortTheatreName": "Aberdeen Mall",
+            "theatreUrl": "cineplex-cinemas-aberdeen-mall",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 50.653271,
+                    "longitude": -120.37182
+                },
+                "distanceToOriginInMeters": 3337943.8,
+                "hasDistanceToOrigin": true,
+                "address": "700-1320 West Trans Canada Highway",
+                "city": "Kamloops",
+                "provinceCode": "BC",
+                "postalCode": "V1S 1J2"
+            }
+        },
+        {
+            "theatreId": 1415,
+            "theatreName": "Famous Players 6 Cinemas",
+            "shortTheatreName": "6",
+            "theatreUrl": "famous-players-6-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 53.909948,
+                    "longitude": -122.758201
+                },
+                "distanceToOriginInMeters": 3465583.3,
+                "hasDistanceToOrigin": true,
+                "address": "172-1600 15th Avenue",
+                "city": "Prince George",
+                "provinceCode": "BC",
+                "postalCode": "V2L 3X3"
+            }
+        },
+        {
+            "theatreId": 1144,
+            "theatreName": "Galaxy Cinemas Chilliwack",
+            "shortTheatreName": "Chilliwack",
+            "theatreUrl": "galaxy-cinemas-chilliwack",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.154822,
+                    "longitude": -121.977897
+                },
+                "distanceToOriginInMeters": 3477798.1,
+                "hasDistanceToOrigin": true,
+                "address": "8249 Eagle Landing Parkway",
+                "city": "Chilliwack",
+                "provinceCode": "BC",
+                "postalCode": "V2R 0P9"
+            }
+        },
+        {
+            "theatreId": 1407,
+            "theatreName": "SilverCity Mission Cinemas",
+            "shortTheatreName": "Mission",
+            "theatreUrl": "silvercity-mission-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.130636,
+                    "longitude": -122.323194
+                },
+                "distanceToOriginInMeters": 3502970.7,
+                "hasDistanceToOrigin": true,
+                "address": "The Junction Plaza, 32555 London Avenue",
+                "city": "Mission",
+                "provinceCode": "BC",
+                "postalCode": "V2V 6M7"
+            }
+        },
+        {
+            "theatreId": 1148,
+            "theatreName": "Cineplex Cinemas Abbotsford and VIP",
+            "shortTheatreName": "Abbotsford and VIP",
+            "theatreUrl": "cineplex-cinemas-abbotsford-and-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.058985,
+                    "longitude": -122.381462
+                },
+                "distanceToOriginInMeters": 3508666.4,
+                "hasDistanceToOrigin": true,
+                "address": "3122 Mt. Lehman Rd., Unit J200",
+                "city": "Abbotsford",
+                "provinceCode": "BC",
+                "postalCode": "V4X 2K9"
+            }
+        },
+        {
+            "theatreId": 1142,
+            "theatreName": "Cineplex Odeon Meadowtown Cinemas",
+            "shortTheatreName": "Meadowtown",
+            "theatreUrl": "cineplex-odeon-meadowtown-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.223819,
+                    "longitude": -122.671298
+                },
+                "distanceToOriginInMeters": 3525823.0,
+                "hasDistanceToOrigin": true,
+                "address": "#410, 19800 Lougheed Highway",
+                "city": "Pitt Meadows",
+                "provinceCode": "BC",
+                "postalCode": "V3Y 2W1"
+            }
+        },
+        {
+            "theatreId": 1405,
+            "theatreName": "Cineplex Cinemas Langley",
+            "shortTheatreName": "Langley",
+            "theatreUrl": "cineplex-cinemas-langley",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.16908,
+                    "longitude": -122.665639
+                },
+                "distanceToOriginInMeters": 3526591.4,
+                "hasDistanceToOrigin": true,
+                "address": "#20090, 91A Avenue",
+                "city": "Langley",
+                "provinceCode": "BC",
+                "postalCode": "V1M 3Y9"
+            }
+        },
+        {
+            "theatreId": 1412,
+            "theatreName": "Cineplex Cinemas Coquitlam and VIP",
+            "shortTheatreName": "Coquitlam and VIP",
+            "theatreUrl": "cineplex-cinemas-coquitlam-and-vip",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.235224,
+                    "longitude": -122.852635
+                },
+                "distanceToOriginInMeters": 3538500.1,
+                "hasDistanceToOrigin": true,
+                "address": "170 Schoolhouse Street",
+                "city": "Coquitlam",
+                "provinceCode": "BC",
+                "postalCode": "V3K 4X9"
+            }
+        },
+        {
+            "theatreId": 1136,
+            "theatreName": "Cineplex Cinemas Strawberry Hill",
+            "shortTheatreName": "Strawberry Hill",
+            "theatreUrl": "cineplex-cinemas-strawberry-hill",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.134161,
+                    "longitude": -122.885909
+                },
+                "distanceToOriginInMeters": 3543060.7,
+                "hasDistanceToOrigin": true,
+                "address": "12161-72nd Avenue",
+                "city": "Surrey",
+                "provinceCode": "BC",
+                "postalCode": "V3W 2M1"
+            }
+        },
+        {
+            "theatreId": 1158,
+            "theatreName": "Cineplex VIP Cinemas Brentwood (age restricted 19+)",
+            "shortTheatreName": "VIP Brentwood (age restricted 19+)",
+            "theatreUrl": "cineplex-vip-cinemas-brentwood-age-restricted-19",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.26726,
+                    "longitude": -123.00303
+                },
+                "distanceToOriginInMeters": 3548520.4,
+                "hasDistanceToOrigin": true,
+                "address": "3106 1920 Willingdon Ave",
+                "city": "Burnaby",
+                "provinceCode": "BC",
+                "postalCode": "V5C 0K3"
+            }
+        },
+        {
+            "theatreId": 1408,
+            "theatreName": "Cineplex Cinemas Metropolis",
+            "shortTheatreName": "Metropolis",
+            "theatreUrl": "cineplex-cinemas-metropolis",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.228325,
+                    "longitude": -122.999439
+                },
+                "distanceToOriginInMeters": 3549105.9,
+                "hasDistanceToOrigin": true,
+                "address": "4700 Kingsway",
+                "city": "Burnaby",
+                "provinceCode": "BC",
+                "postalCode": "V5H 4M1"
+            }
+        },
+        {
+            "theatreId": 1147,
+            "theatreName": "Cineplex Odeon International Village Cinemas",
+            "shortTheatreName": "International Village",
+            "theatreUrl": "cineplex-odeon-international-village-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.281069,
+                    "longitude": -123.107409
+                },
+                "distanceToOriginInMeters": 3555650.8,
+                "hasDistanceToOrigin": true,
+                "address": "88 West Pender, 3rd Floor",
+                "city": "Vancouver",
+                "provinceCode": "BC",
+                "postalCode": "V6B 6N9"
+            }
+        },
+        {
+            "theatreId": 1409,
+            "theatreName": "SilverCity Riverport Cinemas",
+            "shortTheatreName": "Riverport",
+            "theatreUrl": "silvercity-riverport-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.134057,
+                    "longitude": -123.066132
+                },
+                "distanceToOriginInMeters": 3555917.6,
+                "hasDistanceToOrigin": true,
+                "address": "14211 Entertainment Way",
+                "city": "Richmond",
+                "provinceCode": "BC",
+                "postalCode": "V6W 1K4"
+            }
+        },
+        {
+            "theatreId": 1150,
+            "theatreName": "The Park Theatre",
+            "shortTheatreName": "The Park",
+            "theatreUrl": "the-park-theatre",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.254442,
+                    "longitude": -123.11481
+                },
+                "distanceToOriginInMeters": 3556754.3,
+                "hasDistanceToOrigin": true,
+                "address": "3440 Cambie St.",
+                "city": "Vancouver",
+                "provinceCode": "BC",
+                "postalCode": "V5Z 2W8"
+            }
+        },
+        {
+            "theatreId": 1422,
+            "theatreName": "Scotiabank Theatre Vancouver",
+            "shortTheatreName": "Scotiabank Vancouver",
+            "theatreUrl": "scotiabank-theatre-vancouver",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.282176,
+                    "longitude": -123.124341
+                },
+                "distanceToOriginInMeters": 3556831.6,
+                "hasDistanceToOrigin": true,
+                "address": "900 Burrard Street",
+                "city": "Vancouver",
+                "provinceCode": "BC",
+                "postalCode": "V6Z 3G5"
+            }
+        },
+        {
+            "theatreId": 1151,
+            "theatreName": "Cineplex Cinemas Park Royal and VIP",
+            "shortTheatreName": "Park Royal and VIP",
+            "theatreUrl": "cineplex-cinemas-park-royal-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.32635,
+                    "longitude": -123.140428
+                },
+                "distanceToOriginInMeters": 3557022.8,
+                "hasDistanceToOrigin": true,
+                "address": "3000 Park Royal South",
+                "city": "West Vancouver",
+                "provinceCode": "BC",
+                "postalCode": "V7T 2W4"
+            }
+        },
+        {
+            "theatreId": 1145,
+            "theatreName": "Cineplex Cinemas Marine Gateway and VIP",
+            "shortTheatreName": "Marine Gateway and VIP",
+            "theatreUrl": "cineplex-cinemas-marine-gateway-and-vip",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.21006,
+                    "longitude": -123.115693
+                },
+                "distanceToOriginInMeters": 3557783.4,
+                "hasDistanceToOrigin": true,
+                "address": "452 South West Marine Drive",
+                "city": "Vancouver",
+                "provinceCode": "BC",
+                "postalCode": "V5X 0C3"
+            }
+        },
+        {
+            "theatreId": 1149,
+            "theatreName": "Fifth Avenue Cinemas (age restricted 19+)",
+            "shortTheatreName": "Fifth Avenue (age restricted 19+)",
+            "theatreUrl": "fifth-avenue-cinemas-age-restricted-19",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.266742,
+                    "longitude": -123.145481
+                },
+                "distanceToOriginInMeters": 3558670.3,
+                "hasDistanceToOrigin": true,
+                "address": "2110 Burrard Street",
+                "city": "Vancouver",
+                "provinceCode": "BC",
+                "postalCode": "V6J 3H6"
+            }
+        },
+        {
+            "theatreId": 1129,
+            "theatreName": "Cineplex Odeon Victoria Cinemas",
+            "shortTheatreName": "Victoria",
+            "theatreUrl": "cineplex-odeon-victoria-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 48.426186,
+                    "longitude": -123.362758
+                },
+                "distanceToOriginInMeters": 3593605.2,
+                "hasDistanceToOrigin": true,
+                "address": "780 Yates Street",
+                "city": "Victoria",
+                "provinceCode": "BC",
+                "postalCode": "V8W 1L4"
+            }
+        },
+        {
+            "theatreId": 1417,
+            "theatreName": "SilverCity Victoria Cinemas",
+            "shortTheatreName": "SilverCity Victoria",
+            "theatreUrl": "silvercity-victoria-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 48.45271,
+                    "longitude": -123.395009
+                },
+                "distanceToOriginInMeters": 3595279.7,
+                "hasDistanceToOrigin": true,
+                "address": "3130 Tillicum Road",
+                "city": "Victoria",
+                "provinceCode": "BC",
+                "postalCode": "V9A 6T2"
+            }
+        },
+        {
+            "theatreId": 1146,
+            "theatreName": "Cineplex Odeon Westshore Cinemas",
+            "shortTheatreName": "Westshore",
+            "theatreUrl": "cineplex-odeon-westshore-cinemas",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 48.4406984,
+                    "longitude": -123.5083973
+                },
+                "distanceToOriginInMeters": 3603732.0,
+                "hasDistanceToOrigin": true,
+                "address": "900 2945 Jacklin Rd",
+                "city": "Langford",
+                "provinceCode": "BC",
+                "postalCode": "V9B 5E3"
+            }
+        },
+        {
+            "theatreId": 1141,
+            "theatreName": "Galaxy Cinemas Nanaimo",
+            "shortTheatreName": "Nanaimo",
+            "theatreUrl": "galaxy-cinemas-nanaimo",
+            "hasFreeParking": true,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 49.217948,
+                    "longitude": -124.029518
+                },
+                "distanceToOriginInMeters": 3622635.1,
+                "hasDistanceToOrigin": true,
+                "address": "213-4750 Rutherford Road",
+                "city": "Nanaimo",
+                "provinceCode": "BC",
+                "postalCode": "V9T 4K6"
+            }
+        },
+        {
+            "theatreId": 1414,
+            "theatreName": "Famous Players Prince Rupert Cinemas",
+            "shortTheatreName": "Prince Rupert",
+            "theatreUrl": "famous-players-prince-rupert-cinemas",
+            "hasFreeParking": false,
+            "alertMessages": null,
+            "location": {
+                "geoLocation": {
+                    "latitude": 54.312475,
+                    "longitude": -130.326846
+                },
+                "distanceToOriginInMeters": 3951509.6,
+                "hasDistanceToOrigin": true,
+                "address": "525 West 2nd Avenue",
+                "city": "Prince Rupert",
+                "provinceCode": "BC",
+                "postalCode": "V8J 1G9"
+            }
+        }
+    ]
+}

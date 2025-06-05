@@ -1,0 +1,122 @@
+---
+title: Building a Moviefone-style Theater Assistant
+description: Create a voice agent that helps users find movie showtimes across Canada.
+---
+
+In this recipe, build a voice agent that helps users find movie showtimes in theaters across Canada. This recipe focuses on
+how to parse user questions, fetch data via an API, and present showtime info in a clear format.
+
+## Prerequisites
+
+To complete this guide, you need to create an agent using the [Multimodal agent quickstart](https://docs.livekit.io/agents/quickstarts/s2s).
+
+## Implementing the movie search function
+
+This example uses a custom API client (MovieAPI) to fetch movie information. You can see an example in the [MovieAPI Class](https://github.com/ShayneP/Moviefone/blob/main/movie_api.py). After importing it, define a function to get and format movie listings:
+
+```python
+from movie_api import MovieAPI
+```
+
+Next, create a function to fetch and format movie information using the imported `MovieAPI` client:
+
+```python
+@fnc_ctx.ai_callable()
+async def get_movies(
+    location: Annotated[
+        str, llm.TypeInfo(description="The city to get movie showtimes for")
+    ],
+    province: Annotated[
+        str, llm.TypeInfo(description="The province/state code (e.g. 'qc' for Quebec, 'on' for Ontario)")
+    ],
+    show_date: Annotated[
+        str, llm.TypeInfo(description="The date to get showtimes for in YYYY-MM-DD format. If not provided, defaults to today.")
+    ] = None,
+):
+    """Called when the user asks about movies showing in theaters."""
+    try:
+        target_date = datetime.strptime(show_date, "%Y-%m-%d") if show_date else datetime.now()
+        theatre_movies = await movie_api.get_movies(location, province, target_date)
+        
+        output = []
+        for theatre in theatre_movies.theatres:
+            output.append(f"\n{theatre['theatre_name']}")
+            output.append("-------------------")
+            
+            for movie in theatre["movies"]:
+                showtimes = ", ".join([
+                    f"{showtime.start_time.strftime('%I:%M %p').lstrip('0')}" + 
+                    (" (Sold Out)" if showtime.is_sold_out else f" ({showtime.seats_remaining} seats)")
+                    for showtime in movie.showtimes
+                ])
+                
+                output.append(f"• {movie.title}")
+                output.append(f"  Genre: {movie.genre}")
+                output.append(f"  Rating: {movie.rating}")
+                output.append(f"  Runtime: {movie.runtime} mins")
+                output.append(f"  Showtimes: {showtimes}")
+                output.append("")
+            
+            output.append("-------------------\n")
+
+        return "\n".join(output)
+    except Exception as e:
+        logger.error(f"Error in get_movies: {e}")
+        return f"Sorry, I couldn't get the movie listings for {location}."
+```
+
+This example fetches movie information from an API, but this is the same pattern you use for any function call.
+
+## Configuring the agent
+
+Here's a simplified `run_multimodal_agent` method that sets up our agent with the right instructions to handle city, province, and date queries:
+
+```python
+def run_multimodal_agent(ctx: JobContext, participant: rtc.Participant, fnc_ctx: llm.FunctionContext):
+    today = datetime.now()
+    
+    model = openai.realtime.RealtimeModel(
+        instructions=(
+            "You are an assistant who helps users find movies showing in Canada. "
+            f"Today's date is {today.strftime('%Y-%m-%d')}. "
+            "You can help users find movies for specific dates - if they use relative terms like 'tomorrow' or "
+            "'next Friday', convert those to YYYY-MM-DD format based on today's date. Don't check anything "
+            "unless the user asks. Only give the minimum information needed to answer the question the user asks."
+        ),
+        modalities=["audio", "text"],
+    )
+
+    # create a chat context with chat history, these will be synchronized with the server
+    # upon session establishment
+    chat_ctx = llm.ChatContext()
+    chat_ctx.append(
+        text="Greet the user, and ask them which movie they'd like to see, and which city and province they're in.",
+        role="assistant",
+    )
+
+    agent = MultimodalAgent(
+        model=model,
+        chat_ctx=chat_ctx,
+    )
+    agent.start(ctx.room, participant)
+
+    # to enable the agent to speak first
+    agent.generate_reply()
+```
+
+## Example interactions
+
+Users might say things like:
+
+- "What movies are playing in Toronto?"
+- "Show me showtimes in Montreal for tomorrow."
+- "Are there any action movies in Vancouver this weekend?"
+
+The agent:
+
+1. Parses the user's request.
+1. Figures out what info might be missing (city, province, or date).
+1. Fetches and formats the showtimes.
+1. Speaks the result.
+
+For the full example, see the [Moviefone repository](https://github.com/ShayneP/Moviefone).

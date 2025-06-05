@@ -1,0 +1,203 @@
+Resources:
+  # Create a Virtual Private Cloud (VPC) for your ECS cluster
+  AgentVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  # Create an Internet Gateway for internet access
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+
+  # Attach the Internet Gateway to the VPC
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref AgentVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  # Create a public subnet within the VPC
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AgentVPC
+      CidrBlock: 10.0.0.0/24
+      AvailabilityZone: "us-east-1a"
+      MapPublicIpOnLaunch: true
+
+  # Create a private subnet within the VPC
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AgentVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: "us-east-1a"
+      MapPublicIpOnLaunch: false
+
+  # Allocate an Elastic IP address for the NAT Gateway
+  NATIPAddress:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # Create a NAT Gateway for internet access from the private subnet
+  NATGateway:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATIPAddress.AllocationId
+      SubnetId: !Ref PublicSubnet  # NAT Gateway in public subnet
+
+  # Create a route table for the public subnet
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AgentVPC
+
+  # Add a default route to the Internet Gateway in the public route table
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # Associate the public subnet with the public route table
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicRouteTable
+
+  # Create a route table for the private subnet
+  PrivateRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AgentVPC
+
+  # Add a default route to the NAT Gateway in the private route table
+  PrivateRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+
+  # Associate the private subnet with the private route table
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateRouteTable
+
+  # Define a security group for ECS tasks
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for ECS tasks
+      VpcId: !Ref AgentVPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: '0.0.0.0/0'
+
+  # Create an ECS cluster to run your tasks and services
+  AgentCluster:
+    Type: AWS::ECS::Cluster
+
+  # Create an Amazon ECR repository to store Docker images
+  DockerRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: agent-example
+
+  # Define an IAM role for ECS task execution
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: ecsTaskExecutionRole  # You can name this role, or let CloudFormation name it
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: ECSTaskExecutionAndSecretsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  # Permissions for AWS Secrets Manager and Systems Manager Parameter Store
+                  - secretsmanager:GetSecretValue
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                  - ssm:DescribeParameters
+                  - kms:Decrypt  # Needed if secrets are encrypted with KMS
+
+                  # Permissions for pulling container images from Amazon ECR
+                  - ecr:GetAuthorizationToken
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+
+                  # Permissions for CloudWatch Logs
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+
+                  # Permissions for accessing S3 (if needed)
+                  - s3:GetObject
+                Resource: "*"
+
+  # Create a CloudWatch Logs log group for your ECS tasks
+  AgentExampleLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: "/ecs/agent-example"
+      RetentionInDays: 14  # Adjust retention as needed
+
+  # Define an ECS task definition for your application
+  AgentExampleTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: "2048"
+      Memory: "4096"
+      NetworkMode: awsvpc
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      ContainerDefinitions:
+        - Name: agent-example 
+          Image: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepository}:<version>"
+          Essential: true
+          Secrets:
+            - Name: LIVEKIT_URL
+              ValueFrom: arn:aws:secretsmanager:us-east-1:203125320322:secret:ecs/agent-example/livekit-url-<unique-id>
+            - Name: LIVEKIT_API_KEY
+              ValueFrom: arn:aws:secretsmanager:us-east-1:203125320322:secret:ecs/agent-example/livekit-api-key-<unique-id>
+            - Name: LIVEKIT_API_SECRET
+              ValueFrom: arn:aws:secretsmanager:us-east-1:203125320322:secret:ecs/agent-example/livekit-api-secret-<unique-id>
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref AgentExampleLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: agent-example
+
+  # Create an ECS service to run and maintain your tasks
+  AgentExampleService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref AgentCluster 
+      DesiredCount: 0 # Initially set to 0 because the image doesn't exist yet
+      TaskDefinition: !Ref AgentExampleTaskDefinition 
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PrivateSubnet 
+          SecurityGroups:
+            - !Ref SecurityGroup 

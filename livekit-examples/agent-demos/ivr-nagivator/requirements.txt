@@ -1,0 +1,9 @@
+python-dotenv
+flask
+flask-cors
+livekit
+livekit-agents
+livekit-plugins-silero
+livekit-plugins-deepgram
+livekit-plugins-openai
+livekit-plugins-cartesia

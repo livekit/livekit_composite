@@ -1,0 +1,107 @@
+
+---
+title: Handling RAG Delays in Voice Agents
+description: Different approaches to maintain user engagement during Retrieval-Augmented Generation (RAG) lookups in voice-enabled AI assistants.
+---
+
+Sometimes there’s a noticeable delay while your voice agent does a RAG lookup. This recipe shows you four approaches for keeping users engaged during those pauses.
+
+## Prerequisites
+
+To complete this guide, you need to create an agent using the [Voice Agent quickstart](/agents/quickstarts/voice-agent).
+
+## Overview of delay handling pptions
+
+Here are four ways you can handle RAG lookup delays:
+
+1. System prompt instructions.
+1. Static text messages.
+1. Dynamic LLM responses.
+1. Audio file playback.
+
+### System prompt instructions
+
+Include instructions in your system prompt so the agent announces when it's looking up information:
+
+```python
+agent = VoicePipelineAgent(
+    chat_ctx=llm.ChatContext().append(
+        role="system",
+        text=(
+            "You are a voice assistant created by LiveKit. Your interface with users will be voice. "
+            "Keep responses short and concise. Avoid unpronounceable punctuation. "
+            "Use any provided context to answer the user's question if needed. "
+            "If you need to perform a function call, always tell the user that you are looking up the answer."
+        ),
+    ),
+    vad=silero.VAD.load(),
+    stt=deepgram.STT(),
+    llm=openai.LLM(),
+    tts=openai.TTS(),
+    fnc_ctx=fnc_ctx,
+)
+```
+
+This approach is the easiest to implement, but may be inconsistent depending on the LLM model's adherence to instructions.
+
+### Static text messages
+
+Use a predefined list of short "thinking" responses:
+
+```python
+thinking_messages = [
+    "Let me look that up...",
+    "One moment while I check...",
+    "I'll find that information for you...",
+    "Just a second while I search...",
+    "Looking into that now..."
+]
+async def enrich_with_rag(
+    code: Annotated[
+        int, llm.TypeInfo(description="Enrich with RAG for questions about LiveKit.")
+    ]
+):
+    await agent.say(random.choice(thinking_messages))
+    # Perform RAG lookup...
+```
+
+### Dynamic LLM responses
+
+Ask the LLM to generate a one-off "thinking" message, then say it:
+
+```python
+async def enrich_with_rag(
+    code: Annotated[
+        int, llm.TypeInfo(description="Enrich with RAG for questions about LiveKit.")
+    ]
+):
+    async with _chat_ctx_lock:
+        thinking_ctx = llm.ChatContext().append(
+            role="system",
+            text="Generate a very short message to indicate that we're looking up the answer in the docs"
+        )
+        thinking_stream = agent._llm.chat(chat_ctx=thinking_ctx)
+        await agent.say(thinking_stream, add_to_chat_ctx=False)
+    
+    # Perform RAG lookup...
+```
+
+### Audio file playback
+
+Play a short audio clip while the system is retrieving data:
+
+```python
+async def enrich_with_rag(
+    code: Annotated[
+        int, llm.TypeInfo(description="Enrich with RAG for questions about LiveKit.")
+    ]
+):
+    await play_wav_once("let_me_check_that.wav", ctx.room)
+    # Perform RAG lookup...
+```
+
+This can be any audio file: Music, a sound effect, or a pre-recorded message.
+
+## Next steps
+
+To see all these approaches in one place (along with a complete RAG implementation), visit our [RAG Voice Assistant Demo](https://github.com/ShayneP/livekit-rag-thinking/tree/main). You’ll find examples of vector database setup, knowledge base ingestion, and other details that aren't covered here.

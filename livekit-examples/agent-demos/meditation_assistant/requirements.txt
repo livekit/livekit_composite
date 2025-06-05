@@ -1,0 +1,8 @@
+livekit
+livekit-agents
+livekit-plugins-openai
+livekit-plugins-silero
+livekit-plugins-deepgram
+livekit-plugins-cartesia
+python-dotenv
+cerebras_cloud_sdk

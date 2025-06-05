@@ -1,0 +1,5 @@
+livekit-agents
+livekit
+python-dotenv
+livekit-plugins-silero
+livekit-plugins-openai

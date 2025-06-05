@@ -1,0 +1,5 @@
+numpy
+sounddevice
+livekit
+livekit-api
+python-dotenv

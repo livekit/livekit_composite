@@ -1,0 +1,17 @@
+node_modules
+xcuserdata
+project.xcworkspace
+.DS_Store
+.idea
+android/build
+Podfile.lock
+WebRTC.xcframework
+WebRTC.dSYMs
+examples/GumTestApp/package-lock.json
+examples/GumTestApp_macOS/package-lock.json
+*.jar
+*.tgz
+*.zip
+lib/
+src/*.js
+

@@ -1,0 +1,43 @@
+{
+  "name": "agents-examples-node-basics",
+  "version": "0.0.0",
+  "description": "Basic LiveKit Agent examples for Listen and Respond and Uninterruptible agents",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "type": "module",
+  "license": "Apache-2.0",
+  "author": "Michael Solati <michael.solati@livekit.io>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/livekit-examples/agents-examples-node.git"
+  },
+  "bugs": {
+    "url": "https://github.com/livekit-examples/agents-examples-node/issues"
+  },
+  "homepage": "https://github.com/livekit-examples/agents-examples-node/basics#readme",
+  "scripts": {
+    "start:listen-and-respond": "dotenvx run -f .env.local -- tsx src/listen-and-respond.ts dev",
+    "start:uninterruptable": "dotenvx run -f .env.local -- tsx src/uninterruptable.ts dev",
+    "lint": "npm-run-all -s lint:*",
+    "lint:typescript": "tsc --noEmit",
+    "lint:gts": "gts lint",
+    "fix": "gts fix"
+  },
+  "dependencies": {
+    "@livekit/agents": "^0.7.1",
+    "@livekit/agents-plugin-deepgram": "^0.5.4",
+    "@livekit/agents-plugin-openai": "^0.9.0",
+    "@livekit/agents-plugin-silero": "^0.5.5",
+    "livekit-server-sdk": "^2.11.0"
+  },
+  "devDependencies": {
+    "@dotenvx/dotenvx": "^1.39.0",
+    "@types/node": "^22.13.17",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "gts": "^6.0.2",
+    "npm-run-all": "^4.1.5",
+    "tsx": "^4.19.3",
+    "typescript": "^5.6.3"
+  }
+}

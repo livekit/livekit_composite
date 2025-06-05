@@ -1,0 +1,28 @@
+PODS:
+  - LiveKitClient (2.0.5):
+    - LiveKitWebRTC (~> 114.5735.14)
+    - Logging
+    - SwiftProtobuf
+  - LiveKitWebRTC (114.5735.14)
+  - Logging (1.4.0)
+  - SwiftProtobuf (1.26.0)
+
+DEPENDENCIES:
+  - LiveKitClient (= 2.0.5)
+
+SPEC REPOS:
+  trunk:
+    - LiveKitClient
+    - LiveKitWebRTC
+    - Logging
+    - SwiftProtobuf
+
+SPEC CHECKSUMS:
+  LiveKitClient: a2f2683012821c77beb368476f26b69f44e81921
+  LiveKitWebRTC: 72ff71af984fd441b5bb26736c080fa66a11ebc6
+  Logging: beeb016c9c80cf77042d62e83495816847ef108b
+  SwiftProtobuf: 5e8349171e7c2f88f5b9e683cb3cb79d1dc780b3
+
+PODFILE CHECKSUM: 023953d991394a2fa9ec34dea0dce840c8536383
+
+COCOAPODS: 1.15.2

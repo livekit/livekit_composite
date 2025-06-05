@@ -1,0 +1,6 @@
+.env
+.env.local
+rag/data
+__pycache__
+/venv
+.DS_Store

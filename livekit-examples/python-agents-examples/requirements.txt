@@ -1,0 +1,12 @@
+livekit-agents[openai,silero,turn-detector,deepgram,google,anthropic,cartesia,elevenlabs,rime,playai,groq,tavus]~=1.0
+livekit-plugins-noise-cancellation~=0.0
+python-dotenv
+requests>=2.32.0
+annoy
+pydantic
+flask
+pandas
+websockets>=11.0.3
+rich
+mcp
+librosa

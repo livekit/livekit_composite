@@ -1,0 +1,43 @@
+{
+  "name": "livekit-sip-agent-example",
+  "version": "0.0.0",
+  "description": "A simple example to have a LiveKit Agent answer a SIP call",
+  "main": "dist/src/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "lint": "gts lint",
+    "clean": "gts clean",
+    "build": "tsc",
+    "fix": "gts fix",
+    "agent": "dotenvx run -f .env.local -- tsx src/agent.ts dev",
+    "setup:twilio": "dotenvx run -f .env.local -- tsx src/setup-twilio.ts",
+    "setup:livekit": "dotenvx run -f .env.local -- tsx src/setup-livekit.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/livekit-examples/livekit-sip-agent-example.git"
+  },
+  "author": "Michael Solati <michael.solati@livekit.io>",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/livekit-examples/livekit-sip-agent-example/issues"
+  },
+  "homepage": "https://github.com/livekit-examples/livekit-sip-agent-example#readme",
+  "dependencies": {
+    "@livekit/agents": "^0.7.1",
+    "@livekit/agents-plugin-openai": "^0.9.0",
+    "@livekit/rtc-node": "^0.13.8",
+    "livekit-server-sdk": "^2.10.2",
+    "twilio": "^5.5.1"
+  },
+  "devDependencies": {
+    "@dotenvx/dotenvx": "^1.39.0",
+    "@types/node": "^22.7.5",
+    "gts": "^6.0.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.6.3"
+  }
+}

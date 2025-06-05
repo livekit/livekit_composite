@@ -1,0 +1,29 @@
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+}
+
+footer {
+  box-shadow: inset 1px 1px #dfdfdf, inset 2px 2px #fff;
+  background-color: silver;
+  font-family: "Pixelated MS Sans Serif", Arial;
+  -webkit-font-smoothing: none;
+}
+
+.bsod {
+  font-family: "Pixelated MS Sans Serif", Arial;
+  -webkit-font-smoothing: none;
+  background-color: #0000FF;
+  color: white;
+}
+
+canvas.drawing {
+  background: #fff;
+  box-shadow: inset -1px -1px #fff, inset 1px 1px grey,
+    inset -2px -2px #dfdfdf, inset 2px 2px #0a0a0a;
+  display: block;
+  margin: 0;
+  padding: 6px;
+}

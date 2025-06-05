@@ -1,0 +1,86 @@
+html {
+  height: 100%;
+}
+
+body {
+  height: 100%;
+}
+
+div.container-fluid {
+  height: 100%;
+}
+
+div#participants {
+  overflow-y: auto;
+}
+
+div.participant {
+  background: center no-repeat url("data:image/svg+xml;utf8,<svg class='bi bi-person-fill' width='80' height='45' viewBox='0 0 16 16' fill='currentColor' xmlns='http://www.w3.org/2000/svg'><path fill-rule='evenodd' d='M3 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3zm5-6a3 3 0 100-6 3 3 0 000 6z' clip-rule='evenodd'/></svg>");
+  border: 1px solid gray;
+  display: inline-flex;
+  height: 90px;
+  margin: 10px 5px;
+  max-width: 160px;
+  overflow: hidden;
+}
+
+div.participant > video {
+  width: 100%;
+}
+
+div.participant.main {
+  height: inherit;
+  margin: 10px 0;
+  max-width: 100%;
+  width: 100%;
+}
+
+div.participant.main > video {
+  height: 720px;
+}
+
+div.participant.active {
+  border: 1px solid crimson;
+  box-shadow: 0 0 5px crimson;
+}
+
+div.participant.active.pinned {
+  border: 1px solid limegreen;
+  box-shadow: 0 0 5px limegreen;
+}
+
+div.participant:hover {
+  cursor: pointer;
+}
+
+div.participant::before {
+  background-color: black;
+  color: white !important;
+  content: attr(data-identity);
+  font-size: 10px;
+  padding: 0 5px;
+  position: absolute;
+  z-index: 1000;
+}
+
+div.participant.main::before {
+  font-size: 14px;
+  padding: 0 10px;
+}
+
+@media (max-width: 576px) {
+  div#participants {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  div.participant.main > video {
+    height: 180px;
+  }
+}
+
+@media (max-width: 768px) {
+  div.participant.main > video {
+    height: 270px;
+  }
+}

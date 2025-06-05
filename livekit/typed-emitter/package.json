@@ -1,0 +1,17 @@
+{
+  "name": "@livekit/typed-emitter",
+  "version": "3.0.0",
+  "license": "MIT",
+  "description": "Strictly typed event emitter interface for TypeScript 3. Original Implementation by Andy Wermke (https://github.com/andywer)",
+  "author": "Andy Wermke (https://github.com/andywer)",
+  "contributors": ["LiveKit (https://livekit.io)"],
+  "repository": "github:livekit/typed-emitter",
+  "keywords": [
+    "event",
+    "emitter",
+    "typescript",
+    "interface"
+  ],
+  "main": "./types.js",
+  "types": "./index.d.ts"
+}

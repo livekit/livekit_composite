@@ -12,6 +12,27 @@ BASE_DIR = os.getcwd()
 TOKEN = os.getenv("GITHUB_TOKEN")
 HEADERS = {"Authorization": f"token {TOKEN}"} if TOKEN else {}
 
+def download_llm_doc():
+    """Download the LiveKit LLM documentation"""
+    doc_url = "https://docs.livekit.io/llms-full.txt"
+    doc_dir = os.path.join(BASE_DIR, "doc")
+    doc_path = os.path.join(doc_dir, "full-llm.txt")
+    
+    # Create doc directory if it doesn't exist
+    os.makedirs(doc_dir, exist_ok=True)
+    
+    try:
+        print("Downloading LiveKit LLM documentation...")
+        response = requests.get(doc_url)
+        response.raise_for_status()
+        
+        with open(doc_path, 'w', encoding='utf-8') as f:
+            f.write(response.text)
+        
+        print(f"Successfully downloaded LLM documentation to {doc_path}")
+    except requests.RequestException as e:
+        print(f"Failed to download LLM documentation: {e}")
+
 def fetch_public_repos(org):
     repos = []
     page = 1
@@ -72,6 +93,9 @@ def clone_repo_without_git(repo_url, dest_dir):
             shutil.rmtree(temp_dir)
 
 def main():
+    # Download LLM documentation first
+    download_llm_doc()
+    
     for org in ORG_LIST:
         target_base = os.path.join(BASE_DIR, org)
         clean_and_prepare_dir(target_base)

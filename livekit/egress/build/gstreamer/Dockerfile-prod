@@ -1,0 +1,120 @@
+ARG GSTREAMER_VERSION
+
+FROM livekit/gstreamer:${GSTREAMER_VERSION}-base-${TARGETARCH}
+
+ENV DEBUG=false
+ENV OPTIMIZATIONS=true
+
+COPY compile /
+
+RUN /compile
+
+FROM ubuntu:24.04
+
+RUN apt-get update && \
+    apt-get dist-upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        bubblewrap \
+        ca-certificates \
+        iso-codes \
+        ladspa-sdk \
+        liba52-0.7.4 \
+        libaa1 \
+        libaom3 \
+        libass9 \
+        libavcodec60 \
+        libavfilter9 \
+        libavformat60 \
+        libavutil58 \
+        libbs2b0 \
+        libbz2-1.0 \
+        libcaca0 \
+        libcap2 \
+        libchromaprint1 \
+        libcurl3-gnutls \
+        libdca0 \
+        libde265-0 \
+        libdv4 \
+        libdvdnav4 \
+        libdvdread8 \
+        libdw1 \
+        libegl1 \
+        libepoxy0 \
+        libfaac0 \
+        libfaad2 \
+        libfdk-aac2 \
+        libflite1 \
+        libgbm1 \
+        libgcrypt20 \
+        libgl1 \
+        libgles1 \
+        libgles2 \
+        libglib2.0-0 \
+        libgme0 \
+        libgmp10 \
+        libgsl27 \
+        libgsm1 \
+        libgudev-1.0-0 \
+        libharfbuzz-icu0 \
+        libjpeg8 \
+        libkate1 \
+        liblcms2-2 \
+        liblilv-0-0 \
+        libmjpegutils-2.1-0 \
+        libmodplug1 \
+        libmp3lame0 \
+        libmpcdec6 \
+        libmpeg2-4 \
+        libmpg123-0 \
+        libofa0 \
+        libogg0 \
+        libopencore-amrnb0 \
+        libopencore-amrwb0 \
+        libopenexr-3-1-30 \
+        libopenjp2-7 \
+        libopus0 \
+        liborc-0.4-0 \
+        libpango-1.0-0 \
+        libpng16-16 \
+        librsvg2-2 \
+        librtmp1 \
+        libsbc1 \
+        libseccomp2 \
+        libshout3 \
+        libsndfile1 \
+        libsoundtouch1 \
+        libsoup2.4-1 \
+        libspandsp2 \
+        libspeex1 \
+        libsrt1.5-openssl \
+        libsrtp2-1 \
+        libssl3 \
+        libtag1v5 \
+        libtheora0 \
+        libtwolame0 \
+        libunwind8 \
+        libvisual-0.4-0 \
+        libvo-aacenc0 \
+        libvo-amrwbenc0 \
+        libvorbis0a \
+        libvpx9 \
+        libvulkan1 \
+        libwavpack1 \
+        libwebp7 \
+        libwebpdemux2 \
+        libwebpmux3 \
+        libwebrtc-audio-processing1 \
+        libwildmidi2 \
+        libwoff1 \
+        libx264-164 \
+        libx265-199 \
+        libxkbcommon0 \
+        libxslt1.1 \
+        libzbar0 \
+        libzvbi0 \
+        mjpegtools \
+        xdg-dbus-proxy && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=0 /compiled-binaries /

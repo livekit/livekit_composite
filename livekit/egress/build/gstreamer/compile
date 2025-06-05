@@ -1,0 +1,44 @@
+#!/bin/bash
+set -euxo pipefail
+
+for repo in gstreamer libnice gst-plugins-base gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav; do
+  pushd $repo
+
+  opts="-D prefix=/usr"
+
+  if [[ $repo != "libnice" ]]; then
+    opts="$opts -D tests=disabled -D doc=disabled"
+  fi
+
+  if [[ $repo == "gstreamer" ]]; then
+    opts="$opts -D examples=disabled -D introspection=disabled"
+  elif [[ $repo == "gst-plugins-base" ]]; then
+    opts="$opts -D examples=disabled -D introspection=disabled -D qt5=disabled"
+  elif [[ $repo == "gst-plugins-good" ]]; then
+    opts="$opts -D examples=disabled -D pulse=enabled -D qt5=disabled"
+  elif [[ $repo == "gst-plugins-bad" ]]; then
+    opts="$opts -D gpl=enabled -D examples=disabled -D introspection=disabled"
+  elif [[ $repo == "gst-plugins-ugly" ]]; then
+    opts="$opts -D gpl=enabled"
+  fi
+
+  if [[ $DEBUG == 'true' ]]; then
+    if [[ $OPTIMIZATIONS == 'true' ]]; then
+      opts="$opts -D buildtype=debugoptimized"
+    else
+      opts="$opts -D buildtype=debug"
+    fi
+  else
+    opts="$opts -D buildtype=release -D b_lto=true"
+  fi
+
+  meson build $opts
+
+  # This is needed for other plugins to be built properly
+  ninja -C build install
+  # This is where we'll grab build artifacts from
+  DESTDIR=/compiled-binaries ninja -C build install
+  popd
+done
+
+gst-inspect-1.0

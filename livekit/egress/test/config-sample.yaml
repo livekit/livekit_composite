@@ -1,0 +1,20 @@
+log_level: error
+redis:
+  address: 192.168.65.2:6379
+api_key: '****'
+api_secret: '****'
+ws_url: 'wss://your.livekit.url'
+file_prefix: /out/output
+s3:
+  access_key: '****'
+  secret: '****'
+  region: us-east-1
+  bucket: mybucket
+room_name: egress-test
+room_only: false
+track_composite_only: false
+track_only: false
+file_only: false
+stream_only: false
+segments_only: false
+muting: false

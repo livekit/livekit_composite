@@ -1,0 +1,57 @@
+{
+  "name": "livekit-egress-web",
+  "homepage": "https://livekit.io",
+  "description": "Default templates for RoomComposite egress",
+  "version": "0.2.1",
+  "private": true,
+  "dependencies": {
+    "@babel/runtime": "^7.27.1",
+    "@livekit/components-core": "^0.11.11",
+    "@livekit/components-react": "^2.9.4",
+    "@livekit/components-styles": "^1.1.5",
+    "@livekit/egress-sdk": "^0.2.1",
+    "livekit-client": "^2.13.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-scripts": "5.0.1"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "resolutions": {
+    "nth-check": "^2.1.1"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^14.3.1",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^29.5.14",
+    "@types/node": "^18.19.100",
+    "@types/react": "^18.3.21",
+    "@types/react-dom": "^18.3.7",
+    "@types/react-router-dom": "^5.3.3",
+    "gh-pages": "^5.0.0",
+    "typescript": "^5.8.3"
+  }
+}

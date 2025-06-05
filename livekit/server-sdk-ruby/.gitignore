@@ -1,0 +1,17 @@
+/.idea/
+/.bundle/
+/.yardoc
+/_yardoc/
+/coverage/
+/doc/
+/pkg/
+/spec/reports/
+/tmp/
+/vendor/bundle
+
+#dev
+test/
+livekit-server-sdk-*.gem
+
+# rspec failure tracking
+.rspec_status

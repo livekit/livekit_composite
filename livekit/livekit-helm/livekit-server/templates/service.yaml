@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "livekit-server.fullname" . }}
+  labels:
+    {{- include "livekit-server.labels" . | nindent 4 }}
+  annotations:
+  {{- if eq .Values.loadBalancer.type "aws" }}
+    service.beta.kubernetes.io/aws-load-balancer-backend-protocol: http
+    service.beta.kubernetes.io/aws-load-balancer-type: nlb
+  {{- else if or (eq .Values.loadBalancer.type "gke") (eq .Values.loadBalancer.type "gke-managed-cert") (eq .Values.loadBalancer.type "gke-vpc-native") }}
+    cloud.google.com/backend-config: '{"ports": {"{{ .Values.loadBalancer.servicePort }}":"{{ include "livekit-server.fullname" . }}"}}'
+  {{- else if eq .Values.loadBalancer.type "gclb" }}
+    cloud.google.com/backend-config: '{"ports": {"{{ .Values.loadBalancer.servicePort }}":"{{ include "livekit-server.fullname" . }}"}}'
+    cloud.google.com/neg: '{"exposed_ports": {"{{ .Values.loadBalancer.servicePort }}":{}}}'
+  {{- end }}
+  {{- if eq .Values.loadBalancer.type "gke-vpc-native" }}
+    cloud.google.com/neg: '{"ingress": true}'
+  {{- end }}
+spec:
+  {{- if or (eq .Values.loadBalancer.type "alb") (eq .Values.loadBalancer.type "gke") (eq .Values.loadBalancer.type "gke-managed-cert") (eq .Values.loadBalancer.type "do") (eq .Values.loadBalancer.type "gclb")}}
+  type: NodePort
+  {{- else if eq .Values.loadBalancer.type "aws" }}
+  type: LoadBalancer
+  {{- end }}
+  ports:
+    - port: {{ .Values.loadBalancer.servicePort }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    {{- if and (or (eq .Values.loadBalancer.type "disable") (eq .Values.loadBalancer.type "gclb")) .Values.livekit.rtc.tcp_port }}
+    - name: rtc-tcp
+      port: {{ .Values.livekit.rtc.tcp_port }}
+      protocol: TCP
+      targetPort: rtc-tcp
+    {{- end }}
+    {{- if and (or (eq .Values.loadBalancer.type "disable") (eq .Values.loadBalancer.type "gclb")) .Values.livekit.rtc.udp_port }}
+    - name: rtc-udp
+      port: {{ .Values.livekit.rtc.udp_port }}
+      protocol: UDP
+      targetPort: rtc-udp
+    {{- end }}
+    {{- if .Values.livekit.prometheus_port }}
+    - port: {{ .Values.livekit.prometheus_port }}
+      targetPort: metrics
+      protocol: TCP
+      name: metrics
+    {{- end }}
+  selector:
+    {{- include "livekit-server.selectorLabels" . | nindent 4 }}

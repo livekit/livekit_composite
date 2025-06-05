@@ -1,0 +1,20 @@
+{{- if and (and .Values.livekit.turn.enabled .Values.livekit.turn.tls_port) .Values.turnLoadbalancer.enable }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: '{{ include "livekit-server.fullname" . }}-turn'
+  labels:
+    {{- include "livekit-server.labels" . | nindent 4 }}
+  {{- with .Values.livekit.turn.loadBalancerAnnotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ default "LoadBalancer" .Values.livekit.turn.serviceType }}
+  ports:
+    - port: 443
+      targetPort: {{ .Values.livekit.turn.tls_port }}
+      protocol: TCP
+  selector:
+    {{- include "livekit-server.selectorLabels" . | nindent 4 }}
+{{- end }}

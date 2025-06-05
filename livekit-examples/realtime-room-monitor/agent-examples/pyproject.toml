@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agent-examples"
+version = "0.1.0"
+description = ""
+authors = [{ name = "Your Name", email = "you@example.com" }]
+requires-python = "~=3.12"
+readme = "README.md"
+license = "MIT"
+dependencies = [
+    "livekit-agents>=0.12.12,<0.13",
+    "langgraph>=0.2.71,<0.3",
+    "langchain-core>=0.3.34,<0.4",
+    "python-dotenv>=1.0.1,<2",
+    "livekit-plugins-deepgram>=0.6.19,<0.7",
+    "livekit-plugins-openai>=0.10.19,<0.11",
+    "livekit-plugins-silero>=0.7.4,<0.8",
+    "livekit-plugins-turn-detector>=0.4.1,<0.5",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = [
+    "agent_examples",
+]

@@ -1,0 +1,64 @@
+PODS:
+  - connectivity_plus (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - device_info_plus (0.0.1):
+    - FlutterMacOS
+  - flutter_webrtc (0.12.2):
+    - FlutterMacOS
+    - WebRTC-SDK (= 125.6422.06)
+  - FlutterMacOS (1.0.0)
+  - livekit_client (2.3.2):
+    - flutter_webrtc
+    - FlutterMacOS
+    - WebRTC-SDK (= 125.6422.06)
+  - livekit_filter_plugin_example (0.0.1):
+    - flutter_webrtc
+    - FlutterMacOS
+  - path_provider_foundation (0.0.1):
+    - Flutter
+    - FlutterMacOS
+  - WebRTC-SDK (125.6422.06)
+
+DEPENDENCIES:
+  - connectivity_plus (from `Flutter/ephemeral/.symlinks/plugins/connectivity_plus/darwin`)
+  - device_info_plus (from `Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos`)
+  - flutter_webrtc (from `Flutter/ephemeral/.symlinks/plugins/flutter_webrtc/macos`)
+  - FlutterMacOS (from `Flutter/ephemeral`)
+  - livekit_client (from `Flutter/ephemeral/.symlinks/plugins/livekit_client/macos`)
+  - livekit_filter_plugin_example (from `Flutter/ephemeral/.symlinks/plugins/livekit_filter_plugin_example/macos`)
+  - path_provider_foundation (from `Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin`)
+
+SPEC REPOS:
+  trunk:
+    - WebRTC-SDK
+
+EXTERNAL SOURCES:
+  connectivity_plus:
+    :path: Flutter/ephemeral/.symlinks/plugins/connectivity_plus/darwin
+  device_info_plus:
+    :path: Flutter/ephemeral/.symlinks/plugins/device_info_plus/macos
+  flutter_webrtc:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_webrtc/macos
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+  livekit_client:
+    :path: Flutter/ephemeral/.symlinks/plugins/livekit_client/macos
+  livekit_filter_plugin_example:
+    :path: Flutter/ephemeral/.symlinks/plugins/livekit_filter_plugin_example/macos
+  path_provider_foundation:
+    :path: Flutter/ephemeral/.symlinks/plugins/path_provider_foundation/darwin
+
+SPEC CHECKSUMS:
+  connectivity_plus: 18382e7311ba19efcaee94442b23b32507b20695
+  device_info_plus: 1b14eed9bf95428983aed283a8d51cce3d8c4215
+  flutter_webrtc: 53c9e1285ab32dfb58afb1e1471416a877e23d7a
+  FlutterMacOS: 8f6f14fa908a6fb3fba0cd85dbd81ec4b251fb24
+  livekit_client: 9fdcb22df3de55e6d4b24bdc3b5eb1c0269d774a
+  livekit_filter_plugin_example: 3128e64cf5d6bde65b4a44ab6ee87635283463ed
+  path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
+  WebRTC-SDK: 79942c006ea64f6fb48d7da8a4786dfc820bc1db
+
+PODFILE CHECKSUM: 236401fc2c932af29a9fcf0e97baeeb2d750d367
+
+COCOAPODS: 1.16.2

@@ -1,0 +1,6 @@
+venv/
+.env
+.ruff_cache/
+
+*.pyc
+*.pyo

@@ -1,0 +1,26 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+/.idea/deploymentTargetDropDown.xml
+/.idea/misc.xml
+/.idea/gradle.xml
+/.idea/runConfigurations.xml
+/.idea/deploymentTargetSelector.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+/livekit-lint/bin
+
+### Changesets
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log

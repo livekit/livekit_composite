@@ -1,0 +1,80 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-parcelize'
+}
+
+android {
+    namespace 'io.livekit.android.composesample'
+    compileSdkVersion androidSdk.compileVersion
+
+    defaultConfig {
+        applicationId "io.livekit.android.composesample"
+        minSdkVersion androidSdk.minVersion
+        targetSdkVersion androidSdk.targetVersion
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary true
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+    compileOptions {
+        sourceCompatibility java_version
+        targetCompatibility java_version
+    }
+    kotlinOptions {
+        jvmTarget = java_version
+        freeCompilerArgs += '-opt-in=kotlin.RequiresOptIn'
+    }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion compose_compiler_version
+    }
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
+    }
+}
+
+dependencies {
+
+    // Sample-app-common contains the livekit-android-sdk dependency and others
+    // as well as classes common to both sample apps.
+    implementation project(":sample-app-common")
+
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation libs.coroutines.lib
+    implementation libs.androidx.core
+    implementation libs.appcompat
+    implementation libs.material
+    implementation "androidx.compose.ui:ui:$compose_version"
+    implementation "androidx.compose.material:material:$compose_version"
+    implementation "androidx.compose.ui:ui-tooling-preview:$compose_version"
+    implementation "androidx.compose.runtime:runtime-livedata:$compose_version"
+    implementation "androidx.constraintlayout:constraintlayout-compose:1.0.0-rc01"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:${libs.versions.androidx.lifecycle.get()}"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:${libs.versions.androidx.lifecycle.get()}"
+    implementation "androidx.lifecycle:lifecycle-common-java8:${libs.versions.androidx.lifecycle.get()}"
+    implementation libs.androidx.activity.compose
+    implementation 'com.google.accompanist:accompanist-pager:0.19.0'
+    implementation 'com.google.accompanist:accompanist-pager-indicators:0.19.0'
+    implementation libs.timber
+    testImplementation 'junit:junit:4.+'
+    androidTestImplementation libs.androidx.test.junit
+    androidTestImplementation libs.espresso
+    androidTestImplementation "androidx.compose.ui:ui-test-junit4:$compose_version"
+    debugImplementation "androidx.compose.ui:ui-tooling:$compose_version"
+}

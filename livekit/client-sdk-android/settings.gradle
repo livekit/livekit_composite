@@ -1,0 +1,33 @@
+pluginManagement {
+    repositories {
+        google {
+            content {
+                includeGroupByRegex("com\\.android.*")
+                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("androidx.*")
+            }
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url 'https://jitpack.io' }
+    }
+}
+include ':sample-app', ':sample-app-compose', ':livekit-android-sdk'
+rootProject.name = 'livekit-android'
+include ':sample-app-common'
+include ':livekit-lint'
+include ':video-encode-decode-test'
+include ':sample-app-basic'
+include ':sample-app-record-local'
+include ':examples:virtual-background'
+include ':livekit-android-test'
+include ':livekit-android-camerax'
+include ':examples:screenshare-audio'
+include ':livekit-android-track-processors'

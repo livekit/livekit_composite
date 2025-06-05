@@ -1,0 +1,79 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-android'
+    id 'kotlin-parcelize'
+}
+
+def getDefaultUrl() {
+    return hasProperty('livekitSampleUrl') ? livekitSampleUrl : "ws://www.example.com"
+}
+
+def getDefaultToken() {
+    return hasProperty('livekitSampleToken') ? livekitSampleToken : ""
+}
+
+final url = getDefaultUrl()
+final token = getDefaultToken()
+
+android {
+    namespace "io.livekit.android.sample.common"
+    compileSdk androidSdk.compileVersion
+
+    defaultConfig {
+        minSdk androidSdk.minVersion
+        targetSdk androidSdk.targetVersion
+        consumerProguardFiles 'consumer-rules.pro'
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            buildConfigField "String", "DEFAULT_URL", "\"$url\""
+            buildConfigField "String", "DEFAULT_TOKEN", "\"$token\""
+        }
+
+        debug {
+            buildConfigField "String", "DEFAULT_URL", "\"$url\""
+            buildConfigField "String", "DEFAULT_TOKEN", "\"$token\""
+        }
+    }
+    buildFeatures {
+        buildConfig = true
+    }
+    compileOptions {
+        sourceCompatibility java_version
+        targetCompatibility java_version
+    }
+    kotlinOptions {
+        jvmTarget = java_version
+    }
+}
+
+dependencies {
+
+    // If building the sample app outside the context of this repo, replace the following with:
+    // api "io.livekit:livekit-android:<version>"
+    api project(":livekit-android-sdk")
+    api project(":livekit-android-camerax")
+
+    api libs.androidx.core.ktx
+    api libs.appcompat
+    api libs.material
+    api libs.coroutines.lib
+    api libs.timber
+    api libs.androidx.lifecycle.runtime.ktx
+    api libs.androidx.lifecycle.viewmodel.ktx
+    api libs.androidx.lifecycle.common.java8
+    api libs.androidx.lifecycle.process
+    api libs.protobuf.javalite
+    api libs.androidx.preference.ktx
+    // debugImplementation because LeakCanary should only run in debug builds.
+    debugImplementation libs.leakcanary.android
+
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.test.core
+}

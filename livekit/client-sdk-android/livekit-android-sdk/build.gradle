@@ -1,0 +1,195 @@
+plugins {
+    id "org.jetbrains.dokka"
+    id 'com.android.library'
+    id 'kotlin-android'
+    id 'kotlin-kapt'
+    id 'kotlinx-serialization'
+    id 'com.google.protobuf'
+    id 'jacoco'
+    id("com.mxalbert.gradle.jacoco-android") version "0.2.1"
+}
+
+android {
+    namespace 'io.livekit.android'
+    compileSdkVersion androidSdk.compileVersion
+
+    defaultConfig {
+        minSdkVersion androidSdk.minVersion
+        targetSdkVersion androidSdk.targetVersion
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        consumerProguardFiles 'consumer-rules.pro'
+
+        buildConfigField "String", "VERSION_NAME", "\"$VERSION_NAME\""
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    sourceSets {
+        main {
+            proto {
+                srcDir generated.protoSrc
+                exclude '*/*.proto' // only use top-level protos.
+            }
+            java {
+                srcDir "${protobuf.generatedFilesBaseDir}/main/javalite"
+            }
+        }
+    }
+
+    testOptions {
+        unitTests {
+            includeAndroidResources = true
+        }
+    }
+    compileOptions {
+        sourceCompatibility java_version
+        targetCompatibility java_version
+    }
+    packagingOptions {
+        resources {
+            excludes += ['**/*.proto']
+        }
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+    kotlinOptions {
+        freeCompilerArgs = ["-Xinline-classes", "-opt-in=kotlin.RequiresOptIn", "-opt-in=io.livekit.android.annotations.Beta"]
+        jvmTarget = java_version
+    }
+
+    publishing {
+        singleVariant("release") {
+            withJavadocJar()
+            withSourcesJar()
+        }
+    }
+
+}
+
+protobuf {
+    protoc {
+        // for apple m1, please add protoc_platform=osx-x86_64 in $HOME/.gradle/gradle.properties
+        if (project.hasProperty('protoc_platform')) {
+            artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}:${protoc_platform}"
+        } else {
+            artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}"
+        }
+    }
+
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java {
+                    option "lite"
+                }
+            }
+        }
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.10"
+}
+
+tasks.withType(Test) {
+    jacoco.includeNoLocationClasses = true
+    jacoco.excludes = ['jdk.internal.*']
+}
+
+jacocoAndroidUnitTestReport {
+    excludes.add('livekit/**')
+}
+
+dokkaHtml {
+    moduleName.set("livekit-android-sdk")
+    dokkaSourceSets {
+        configureEach {
+            skipEmptyPackages.set(true)
+            includeNonPublic.set(false)
+            includes.from("module.md")
+            displayName.set("SDK")
+            sourceLink {
+                localDirectory.set(file("src/main/java"))
+
+                // URL showing where the source code can be accessed through the web browser
+                remoteUrl.set(new URL(
+                    "https://github.com/livekit/client-sdk-android/tree/master/livekit-android-sdk/src/main/java"))
+                // Suffix which is used to append the line number to the URL. Use #L for GitHub
+                remoteLineSuffix.set("#L")
+            }
+
+            perPackageOption {
+                matchingRegex.set(".*\\.dagger.*")
+                suppress.set(true)
+            }
+
+            perPackageOption {
+                matchingRegex.set(".*\\.util.*")
+                suppress.set(true)
+            }
+        }
+    }
+}
+
+dependencies {
+    //api fileTree(dir: 'libs', include: ['*.jar'])
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation libs.coroutines.lib
+    implementation libs.kotlinx.serialization.json
+    api libs.webrtc
+    api libs.okhttp.lib
+    implementation libs.okhttp.coroutines
+    api libs.audioswitch
+    implementation libs.androidx.annotation
+    implementation libs.androidx.core
+    implementation libs.protobuf.javalite
+
+    implementation libs.android.jain.sip.ri
+
+    implementation libs.dagger.lib
+    kapt libs.dagger.compiler
+
+    implementation libs.timber
+    implementation libs.semver4j
+
+    lintChecks project(':livekit-lint')
+    lintPublish project(':livekit-lint')
+
+    testImplementation libs.junit
+    testImplementation libs.robolectric
+    testImplementation libs.mockito.core
+    testImplementation libs.mockito.kotlin
+    testImplementation libs.androidx.test.core
+    testImplementation libs.coroutines.test
+    kaptTest libs.dagger.compiler
+    androidTestImplementation libs.androidx.test.junit
+    androidTestImplementation libs.espresso
+}
+
+apply from: rootProject.file('gradle/gradle-mvn-push.gradle')
+apply from: rootProject.file('gradle/dokka-kotlin-dep-fix.gradle')
+
+afterEvaluate {
+    publishing {
+        publications {
+            // Creates a Maven publication called "release".
+            release(MavenPublication) {
+                // Applies the component for the release build variant.
+                from components.release
+
+                // You can then customize attributes of the publication as shown below.
+                groupId = GROUP
+                artifactId = POM_ARTIFACT_ID
+                version = VERSION_NAME
+            }
+        }
+    }
+}

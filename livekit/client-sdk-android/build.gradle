@@ -1,0 +1,106 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+buildscript {
+    apply from: 'deps.gradle'
+    repositories {
+        google()
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:$android_build_tools_version"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:$dokka_version"
+        classpath 'com.google.protobuf:protobuf-gradle-plugin:0.9.5'
+        classpath "io.codearte.gradle.nexus:gradle-nexus-staging-plugin:0.30.0"
+        classpath 'com.dicedmelon.gradle:jacoco-android:0.1.5'
+        classpath "com.diffplug.spotless:spotless-plugin-gradle:6.23.3"
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+apply plugin: 'io.codearte.nexus-staging'
+
+subprojects {
+    // Ignore examples folder, it's not a module itself.
+    if (project.name == "examples") {
+        return
+    }
+
+    apply plugin: "com.diffplug.spotless"
+    spotless {
+        // optional: limit format enforcement to just the files changed by this feature branch
+        ratchetFrom 'origin/main'
+
+        format 'misc', {
+            // define the files to apply `misc` to
+            target '*.gradle', '*.md', '.gitignore'
+
+            // define the steps to apply to those files
+            trimTrailingWhitespace()
+            indentWithSpaces()
+            endWithNewline()
+        }
+        java {
+            // apply a specific flavor of google-java-format
+            googleJavaFormat('1.17.0').aosp().reflowLongStrings()
+            // fix formatting of type annotations
+            formatAnnotations()
+            // make sure every file has the following copyright header.
+            // optionally, Spotless can set copyright years by digging
+            // through git history (see "license" section below)
+            licenseHeaderFile rootProject.file("LicenseHeaderFile.txt")
+            removeUnusedImports()
+            toggleOffOn()
+        }
+        kotlin {
+            target("src/*/java/**/*.kt")
+            targetExclude(
+                "src/*/java/**/ReentrantMutex.kt", // Different license
+                "src/*/java/**/TextureViewRenderer.kt", // Different license
+                "src/*/java/**/FlowDelegate.kt", // Different license
+            )
+            ktlint("0.50.0")
+                .setEditorConfigPath("$rootDir/.editorconfig")
+            licenseHeaderFile(rootProject.file("LicenseHeaderFile.txt"))
+                .named('license')
+            endWithNewline()
+            toggleOffOn()
+        }
+    }
+
+    // From Gradle 8 onwards, Kapt no longer automatically picks up jvmTarget
+    // from normal KotlinOptions. Must be manually set.
+    // JvmToolchain should not be used since it changes the actual JDK used.
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KaptGenerateStubs).configureEach {
+        kotlinOptions {
+            jvmTarget = java_version
+        }
+    }
+
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+nexusStaging {
+    serverUrl = "https://s01.oss.sonatype.org/service/local/"
+    packageGroup = GROUP
+    stagingProfileId = STAGING_PROFILE_ID
+}
+
+afterEvaluate {
+    // These aren't supported for snapshots. From nexus staging plugin.
+    if (VERSION_NAME.contains("SNAPSHOT")) {
+        ["closeAndReleaseRepository",
+         "closeRepository",
+         "createRepository",
+         "getStagingProfile",
+         "releaseRepository"]
+            .forEach { taskName ->
+                getTasksByName(taskName, false).forEach { task -> task.enabled = false }
+            }
+    }
+}

@@ -1,0 +1,9 @@
+.github
+bin
+docs
+protocol
+examples
+node_modules
+tsconfig.json
+test
+.prettierrc

@@ -1,0 +1,305 @@
+- name: "meet"
+  display_name: "Video conference"
+  desc: "An open source video conferencing app built on LiveKit Components, LiveKit Cloud, and Next.js"
+  url: "https://github.com/livekit-examples/meet"
+  image: "https://raw.githubusercontent.com/livekit-examples/meet/main/.github/assets/template-graphic.svg"
+  created_at: "2024-09-01T00:00:00Z"
+  is_enabled: true
+  is_sandbox: true
+  category: "voice-and-video"
+  tags:
+    - "nextjs"
+    - "typescript"
+  attrs:
+    Application: "Telepresence"
+    Type: "Frontend"
+    Tools: "Next.js, TypeScript"
+    License: "Apache-2.0"
+
+
+- name: "voice-assistant-frontend"
+  display_name: "Voice assistant"
+  desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
+  url: "https://github.com/livekit-examples/voice-assistant-frontend"
+  image: "https://raw.githubusercontent.com/livekit-examples/voice-assistant-frontend/refs/heads/main/.github/assets/template-graphic.svg"
+  created_at: "2024-09-11T00:00:00Z"
+  updated_at: "2024-09-19T00:00:00Z"
+  is_enabled: true
+  is_sandbox: true
+  category: "voice-assistant"
+  tags:
+    - "agents"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Frontend"
+    Tools: "Next.js, TypeScript"
+    License: "Apache-2.0"
+  inputs:
+    companyName:
+      type: string
+      description: "The name of your company or project"
+      default: "LiveKit"
+    pageTitle:
+      type: string
+      description: "The title of the page"
+      default: "Voice Assistant"
+    pageDescription:
+      type: string
+      description: "A short description of the page for SEO"
+      default: "A voice assistant built with LiveKit"
+    suportsChatInput:
+      type: boolean
+      description: "Enable chat input for the voice assistant"
+      default: false
+    suportsVideoInput:
+      type: boolean
+      description: "Enable video input for the voice assistant"
+      default: false
+    suportsScreenShare:
+      type: boolean
+      description: "Enable screen sharing for the voice assistant"
+      default: false
+    logo:
+      type: string
+      description: "An optional URL or data URI for the logo image"
+    accent:
+      type: string
+      description: "A CSS color to use as the accent color of the app in light mode"
+      default: "#002cf2"
+    logoDark:
+      type: string
+      description: "An optional URL or data URI for the logo image"
+    accentDark:
+      type: string
+      description: "A CSS color to use as the accent color of the app in dark mode"
+      default: "#1fd5f9"
+    startButtonText:
+      type: string
+      description: "Text to display on the start button for the voice assistant"
+      default: "Start call"
+
+
+- name: "transcription-frontend"
+  display_name: "Voice transcription"
+  desc: "An application demonstrating realtime speech-to-text"
+  url: "https://github.com/livekit-examples/transcription-frontend"
+  created_at: "2024-12-20T00:00:00Z"
+  updated_at: "2024-12-20T00:00:00Z"
+  is_enabled: true
+  is_sandbox: false
+  is_hidden: true
+  category: "voice-assistant"
+  tags:
+    - "agents"
+    - "voice"
+  attrs:
+    application: "Transcription, Agents"
+    type: "Frontend"
+    tools: "Next.js, TypeScript"
+    license: "Apache-2.0"
+
+
+- name: "token-server"
+  display_name: "Token server"
+  desc: "A hosted token server to help you prototype your mobile applications faster"
+  url: "https://github.com/livekit-examples/token-server-node"
+  image: "https://raw.githubusercontent.com/livekit-examples/token-server-node/main/.github/assets/template-graphic.svg"
+  created_at: "2024-09-18T00:00:00Z"
+  is_enabled: true
+  is_sandbox: true
+  category: "server"
+  tags:
+    - "mobile"
+    - "token-server"
+  attrs:
+    Application: "Mobile apps, General purpose"
+    Type: "Backend"
+    Tools: "Go"
+    License: "Apache-2.0"
+
+
+- name: "multi-agent-python"
+  display_name: "Python multi-agent workflow"
+  desc: "A team of writing coach agents demonstrating multi-agent workflows"
+  url: "https://github.com/livekit-examples/multi-agent-python"
+  created_at: "2025-04-10T00:00:00Z"
+  requires: ["voice-assistant-frontend"]
+  is_enabled: true
+  is_sandbox: false
+  category: "voice-assistant"
+  tags:
+    - "python"
+    - "agents"
+    - "multi-agent"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Python >=3.9"
+    License: "Apache-2.0"
+
+
+- name: "multimodal-agent-python"
+  display_name: "Python multimodal agent"
+  desc: "A voice assistant using S2S and multimodal capabilities"
+  url: "https://github.com/livekit-examples/multimodal-agent-python"
+  created_at: "2024-09-30T00:00:00Z"
+  requires: ["voice-assistant-frontend"]
+  is_enabled: true
+  is_sandbox: false
+  is_hidden: true
+  category: "voice-assistant"
+  tags:
+    - "python"
+    - "agents"
+    - "voice"
+    - "s2s"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Python >=3.9"
+    License: "Apache-2.0"
+
+
+- name: "multimodal-agent-node"
+  display_name: "Node multimodal agent"
+  desc: "A voice assistant using S2S and multimodal capabilities"
+  url: "https://github.com/livekit-examples/multimodal-agent-node"
+  created_at: "2024-09-30T00:00:00Z"
+  requires: ["voice-assistant-frontend"]
+  is_enabled: true
+  is_sandbox: false
+  is_hidden: true
+  category: "voice-assistant"
+  tags:
+    - "node.js"
+    - "agents"
+    - "voice"
+    - "s2s"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Node.js"
+    License: "Apache-2.0"
+
+
+- name: "voice-pipeline-agent-python"
+  display_name: "Python voice pipeline agent"
+  desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
+  url: "https://github.com/livekit-examples/voice-pipeline-agent-python"
+  created_at: "2024-09-18T00:00:00Z"
+  requires: ["voice-assistant-frontend"]
+  is_enabled: true
+  is_sandbox: false
+  is_hidden: true
+  category: "voice-assistant"
+  tags:
+    - "python"
+    - "agents"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Python >=3.9"
+    License: "Apache-2.0"
+
+
+- name: "voice-pipeline-agent-node"
+  display_name: "Node voice pipeline agent"
+  desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
+  url: "https://github.com/livekit-examples/voice-pipeline-agent-node"
+  created_at: "2024-11-11T00:00:00Z"
+  requires: ["voice-assistant-frontend"]
+  is_enabled: true
+  is_sandbox: false
+  is_hidden: true
+  category: "voice-assistant"
+  tags:
+    - "node.js"
+    - "agents"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Node.js"
+    License: "Apache-2.0"
+
+
+- name: "android-voice-assistant"
+  display_name: "Android voice assistant"
+  desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
+  url: "https://github.com/livekit-examples/android-voice-assistant"
+  created_at: "2024-09-12T00:00:00Z"
+  requires: ["token-server"]
+  is_enabled: true
+  is_sandbox: false
+  category: "voice-assistant"
+  tags:
+    - "android"
+    - "kotlin"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Mobile app"
+    Tools: "Android, Kotlin, Jetpack Compose"
+    License: "Apache-2.0"
+
+
+- name: "voice-assistant-swift"
+  display_name: "Swift voice assistant"
+  desc: "A native voice assistant frontend for iOS, iPadOS, macOS, and visionOS."
+  url: "https://github.com/livekit-examples/voice-assistant-swift"
+  created_at: "2024-12-20T00:00:00Z"
+  requires: ["token-server"]
+  is_enabled: true
+  is_sandbox: false
+  category: "voice-assistant"
+  tags:
+    - "swift"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Mobile app"
+    Tools: "Xcode, Swift, SwiftUI"
+    License: "Apache-2.0"
+
+- name: "voice-assistant-flutter"
+  display_name: "Flutter voice assistant"
+  desc: "A native voice assistant frontend using Flutter"
+  url: "https://github.com/livekit-examples/voice-assistant-flutter"
+  created_at: "2025-02-08T00:00:00Z"
+  requires: ["token-server"]
+  is_enabled: true
+  is_sandbox: false
+  category: "voice-assistant"
+  tags:
+    - "flutter"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Mobile app"
+    Tools: "Flutter"
+    License: "Apache-2.0"
+
+
+- name: "outbound-caller-python"
+  display_name: "Python outbound caller agent"
+  desc: "An agent that makes outbound calls using LiveKit SIP"
+  url: "https://github.com/livekit-examples/outbound-caller-python"
+  created_at: "2024-12-08T00:00:00Z"
+  requires: []
+  is_enabled: true
+  is_sandbox: false
+  category: "voice-assistant"
+  tags:
+    - "python"
+    - "agents"
+    - "voice"
+    - telephony
+    - sip
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Python >=3.9"
+    License: "Apache-2.0"

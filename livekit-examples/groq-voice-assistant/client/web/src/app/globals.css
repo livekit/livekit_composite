@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  height: 100%;
+}
+
+:root {
+  --lk-va-bar-width: 72px;
+  --lk-control-bar-height: unset;
+  --radius: 8px;
+  @apply bg-groq-accent-bg;
+}
+
+[data-lk-theme="default"] {
+  --lk-accent-bg: #F55036;
+}
+
+.lk-agent-control-bar {
+  @apply border-t-0 p-0 h-min mr-4;
+}
+
+.lk-button-group {
+  @apply h-[36px] bg-transparent text-white border border-white/20 hover:bg-white/10 transition-all duration-300 ease-out rounded-lg -mr-2;
+}
+
+.lk-button-group button[data-lk-source="microphone"], .lk-button-group .lk-button-menu {
+  @apply bg-transparent pl-3 pr-4 !important;
+}
+
+.lk-disconnect-button {
+  @apply h-[36px] bg-white/10 text-white border-0 transition-all duration-300 ease-out rounded-lg;
+}
+
+

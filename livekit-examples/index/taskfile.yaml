@@ -1,0 +1,45 @@
+version: "3"
+
+vars:
+  INDENT: 2
+  REL_PATH: "{{ relPath .USER_WORKING_DIR .ROOT_DIR }}"
+  VENV_DIR: "venv"
+  PYTHON_MAIN: "main.py"
+
+tasks:
+  hello_world:
+    cmds:
+      - 'echo "Hello, World!"'
+
+  post_create_node:
+    cmds:
+      - echo -e 'To setup and run:\r\n'
+      - echo -e '{{ quote .REL_PATH | cat "cd" | indent .INDENT }}\r'
+      - echo -e '{{ indent .INDENT "pnpm install" }}\r'
+      - echo -e '{{ indent .INDENT "pnpm build" }}\r'
+      - echo -e '{{ indent .INDENT "pnpm start" }}\r\n'
+
+  install_node:
+    cmds:
+      - pnpm install
+
+  post_create_python:
+    cmds:
+      - echo -e 'To setup and run:\r\n'
+      - echo -e '{{ quote .REL_PATH | cat "cd" | indent .INDENT }}\r'
+      - echo -e '{{ indent .INDENT "python3 -m venv venv" }}\r'
+      - platforms: [darwin, linux]
+        cmd: echo -e '{{ indent .INDENT "source" }} {{ .VENV_DIR }}/bin/activate\r'
+      - platforms: [windows]
+        cmd: echo -e '{{ indent .INDENT "powershell" }} {{ .VENV_DIR }}/Scripts/Activate.ps1\r'
+      - echo -e '{{ indent .INDENT "pip install -r requirements.txt" }}\r'
+      - echo -e '{{ indent .INDENT "python3" }} {{ .PYTHON_MAIN }} dev\r\n'
+
+  install_python:
+    cmds:
+      - python3 -m venv venv
+      - platforms: [darwin, linux]
+        cmd: "source {{ .VENV_DIR }}/bin/activate"
+      - platforms: [windows]
+        cmd: "powershell {{ .VENV_DIR }}/scripts/activate.ps1"
+      - "pip install -r requirements.txt"

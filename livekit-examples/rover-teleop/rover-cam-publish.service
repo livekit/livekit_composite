@@ -1,0 +1,13 @@
+[Unit]
+Description=Rover Camera LiveKit Publisher
+After=network.target rover-cam-gstreamer.service
+Requires=rover-cam-gstreamer.service
+
+[Service]
+ExecStart=/bin/bash /home/pi/rover-teleop/rover/cam_publish.sh
+Restart=on-failure
+User=
+WorkingDirectory=/home/pi/rover-teleop/rover
+
+[Install]
+WantedBy=multi-user.target

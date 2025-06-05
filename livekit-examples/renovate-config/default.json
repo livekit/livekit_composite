@@ -1,0 +1,24 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "packageRules": [
+    {
+      "groupName": "LiveKit dependencies (non-major)",
+      "matchSourceUrlPrefixes": ["https://github.com/livekit/"],
+      "matchUpdateTypes": ["patch", "minor"],
+      "automerge": true
+    },
+    {
+      "groupName": "dependencies (non-major)",
+      "schedule": "before 6am on the first day of the week",
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["patch", "minor"]
+    },
+    {
+      "groupName": "devDependencies (non-major)",
+      "schedule": "before 6am on the first day of the month",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["patch", "minor"]
+    }
+  ]
+}

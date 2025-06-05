@@ -1,0 +1,14 @@
+[Unit]
+Description=Rover Control System
+After=network.target
+
+[Service]
+ExecStart=/home/pi/rover-teleop/rover/rover.py
+Restart=on-failure
+User=pi
+WorkingDirectory=/home/pi/rover-teleop
+EnvironmentFile=/home/pi/rover-teleop/rover/.env
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/home/pi/.local/bin"
+
+[Install]
+WantedBy=multi-user.target 

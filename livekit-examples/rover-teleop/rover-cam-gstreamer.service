@@ -1,0 +1,12 @@
+[Unit]
+Description=Rover Camera GStreamer Pipeline
+After=network.target
+
+[Service]
+ExecStart=/bin/bash /home/pi/rover-teleop/rover/cam_gstreamer.sh
+Restart=on-failure
+User=pi
+WorkingDirectory=/home/pi/rover-teleop
+
+[Install]
+WantedBy=multi-user.target 

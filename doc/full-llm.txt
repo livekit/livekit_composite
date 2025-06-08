@@ -1579,11 +1579,11 @@ async def entrypoint(ctx: agents.JobContext):
 
 For audio examples using the LiveKit SDK, see the following in the GitHub repository:
 
-- **[Manipulate TTS audio](https://github.com/livekit/agents/blob/main/examples/voice_agents/speedup_output_audio.py)**: Use the [TTS node](https://docs.livekit.io/agents/build/nodes.md#tts-node) to speed up audio output.
+- **[Speedup Output Audio](https://github.com/livekit/agents/blob/main/examples/voice_agents/speedup_output_audio.py)**: Use the [TTS node](https://docs.livekit.io/agents/build/nodes.md#tts-node) to speed up audio output.
 
-- **[Echo agent](https://github.com/livekit/agents/blob/main/examples/primitives/echo-agent/echo-agent.py)**: Echo user audio back to them.
+- **[Echo Agent](https://github.com/livekit/agents/blob/main/examples/primitives/echo-agent.py)**: Echo user audio back to them.
 
-- **[Sync TTS transcription](https://github.com/livekit/agents/blob/main/examples/other/text-to-speech/sync_tts_transcription.py)**: Uses manual subscription, transcription forwarding, and manually publishes audio output.
+- **[Sync TTS Transcription](https://github.com/livekit/agents/blob/main/examples/other/text-to-speech/sync_tts_transcription.py)**: Uses manual subscription, transcription forwarding, and manually publishes audio output.
 
 ### Publishing video tracks
 
@@ -13709,8 +13709,6 @@ autoscaling:
 
 To use `custom`, you'll need to install the prometheus adapter. You can then create a kubernetes custom metric based off the `livekit_egress_available` prometheus metric.
 
-You can find an example on how to do this [here](https://towardsdatascience.com/kubernetes-hpa-with-custom-metrics-from-prometheus-9ffc201991e).
-
 ## Chrome sandboxing
 
 By default, Room Composite and Web egresses run with Chrome sandboxing disabled. This is because the default docker security settings prevent Chrome from switching to a different kernel namespace, which is needed by Chrome to setup its sandbox.
@@ -14299,7 +14297,7 @@ async def entrypoint(ctx: agents.JobContext):
     session = AgentSession(
         stt=deepgram.STT(model="nova-3", language="multi"),
         llm=openai.LLM(model="gpt-4o-mini"),
-        tts=cartesia.TTS(),
+        tts=cartesia.TTS(model="sonic-2", voice="f786b574-daa5-4673-aa0c-cbe3e8534c02"),
         vad=silero.VAD.load(),
         turn_detection=MultilingualModel(),
     )
@@ -23000,7 +22998,7 @@ The following links provide more information about the Telnyx LLM integration.
 
 - **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-openai)**: View the source or contribute to the LiveKit OpenAI LLM plugin.
 
-- **[Telnyx docs](https://developers.telnyx.com/docs/inference/overview)**: Telnyx API documentation.
+- **[Telnyx docs](https://developers.telnyx.com/docs/inference/getting-started)**: Telnyx API documentation.
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Telnyx.
 
@@ -24744,10 +24742,8 @@ from livekit.plugins import cartesia
 
 session = AgentSession(
    tts=cartesia.TTS(
-      model="sonic-english",
-      voice="c2ac25f9-ecc4-4f56-9095-651354df60c0",
-      speed=0.8,
-      emotion=["curiosity:highest", "positivity:high"],
+      model="sonic-2",
+      voice="f786b574-daa5-4673-aa0c-cbe3e8534c02",
    )
    # ... llm, stt, etc.
 )
@@ -24758,15 +24754,11 @@ session = AgentSession(
 
 This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/cartesia/index.html.md#livekit.plugins.cartesia.TTS) for a complete list of all available parameters.
 
-- **`model`** _(string)_ (optional) - Default: `sonic`: ID of the model to use for generation. See [supported models](https://docs.cartesia.ai/build-with-sonic/models).
+- **`model`** _(string)_ (optional) - Default: `sonic-2`: ID of the model to use for generation. See [supported models](https://docs.cartesia.ai/build-with-cartesia/models).
 
-- **`voice`** _(string | list[float])_ (optional) - Default: `c2ac25f9-ecc4-4f56-9095-651354df60c0`: ID of the voice to use for generation, or an embedding array. See [official documentation](https://docs.cartesia.ai/api-reference/tts/tts#send.Generation%20Request.voice).
+- **`voice`** _(string | list[float])_ (optional) - Default: `794f9389-aac1-45b6-b726-9d9369183238`: ID of the voice to use for generation, or an embedding array. See [official documentation](https://docs.cartesia.ai/api-reference/tts/tts#send.Generation%20Request.voice).
 
-- **`speed`** _(string | float)_ (optional) - Default: `1.0`: Speed of generated speech. Either a float in range [-1.0, 1.0], or one of `"fastest"`, `"fast"`, `"normal"`, `"slow"`, `"slowest"`. See [speed options](https://docs.cartesia.ai/build-with-sonic/capability-guides/control-speed-and-emotion#speed-options).
-
-- **`emotion`** _(list[string])_ (optional) - Default: `neutral`: Emotion of generated speech. See [emotion options](https://docs.cartesia.ai/build-with-sonic/capability-guides/control-speed-and-emotion/#emotion-options).
-
-- **`language`** _(string)_ (optional) - Default: `en`: Language of input text in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes) format. For a list of languages support by model, see [supported models](https://docs.cartesia.ai/build-with-sonic/models).
+- **`language`** _(string)_ (optional) - Default: `en`: Language of input text in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes) format. For a list of languages support by model, see [supported models](https://docs.cartesia.ai/build-with-cartesia/models).
 
 ## Customizing pronunciation
 
@@ -24882,7 +24874,7 @@ pip install "livekit-agents[elevenlabs]~=1.0"
 
 ### Authentication
 
-The ElevenLabs plugin requires an [ElevenLabs API key](https://elevenlabs.io/api-keys).
+The ElevenLabs plugin requires an [ElevenLabs API key](https://elevenlabs.io/app/settings/api-keys).
 
 Set `ELEVEN_API_KEY` in your `.env` file.
 
@@ -30000,6 +29992,7 @@ All SIP participants have the following attributes:
 
 | Attribute | Description |
 | `sip.callID` | LiveKit's SIP call ID. A unique ID used as a SIP call tag to identify a conversation (i.e. match requests and responses). |
+| `sip.callIDFull` | Trunk provider SIP call ID. A globally unique ID to identify a specific SIP call. |
 | `sip.callStatus` | Current call status for the SIP call associated with this participant. Valid values are:- `active`: Participant is connected and the call is active.
 - `automation`: For outbound calls using Dual-Tone Multi-Frequency (DTMF), this status indicates the call has successfully connected, but is still dialing DTMF numbers. After all the numbers are dialed, the status changes to `active`.
 - `dialing`: Call is dialing and waiting to be picked up.
@@ -30674,5 +30667,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-06-05T23:37:45.120Z.
+This document was rendered at 2025-06-07T00:51:56.797Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

@@ -1,0 +1,3 @@
+[submodule "/Users/jacobgelman/Developer/Repos/Embedded/esp-webrtc-solution/solutions/livekit_demo/components/nanopb/nanopb"]
+	path = /Users/jacobgelman/Developer/Repos/Embedded/esp-webrtc-solution/solutions/livekit_demo/components/nanopb/nanopb
+	url = https://github.com/nanopb/nanopb

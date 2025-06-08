@@ -12,6 +12,30 @@ BASE_DIR = os.getcwd()
 TOKEN = os.getenv("GITHUB_TOKEN")
 HEADERS = {"Authorization": f"token {TOKEN}"} if TOKEN else {}
 
+def load_repo_config():
+    """Load repository branch overrides from repo.conf"""
+    config = {}
+    config_path = os.path.join(BASE_DIR, "repo.conf")
+    
+    if not os.path.exists(config_path):
+        return config
+    
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                # Skip empty lines and comments
+                if not line or line.startswith('#'):
+                    continue
+                
+                if '=' in line:
+                    repo_key, branch = line.split('=', 1)
+                    config[repo_key.strip()] = branch.strip()
+    except Exception as e:
+        print(f"Warning: Failed to load repo.conf: {e}")
+    
+    return config
+
 def download_llm_doc():
     """Download the LiveKit LLM documentation"""
     doc_url = "https://docs.livekit.io/llms-full.txt"
@@ -79,10 +103,20 @@ def clean_and_prepare_dir(path):
         shutil.rmtree(path)
     os.makedirs(path, exist_ok=True)
 
-def clone_repo_without_git(repo_url, dest_dir):
+def clone_repo_without_git(repo_url, dest_dir, branch="main"):
+    """Clone repository without git history, optionally specifying branch"""
     temp_dir = dest_dir + "_tmp"
     try:
-        run(["git", "clone", "--depth", "1", repo_url, temp_dir], check=True)
+        # Try the specified branch first, fall back to default if it fails
+        cmd = ["git", "clone", "--depth", "1", "--branch", branch, repo_url, temp_dir]
+        try:
+            run(cmd, check=True)
+        except CalledProcessError:
+            # If custom branch fails, try without specifying branch (uses default)
+            print(f"Branch '{branch}' not found for {repo_url}, using default branch")
+            cmd = ["git", "clone", "--depth", "1", repo_url, temp_dir]
+            run(cmd, check=True)
+        
         git_dir = os.path.join(temp_dir, ".git")
         if os.path.exists(git_dir):
             shutil.rmtree(git_dir)
@@ -93,6 +127,9 @@ def clone_repo_without_git(repo_url, dest_dir):
             shutil.rmtree(temp_dir)
 
 def main():
+    # Load repository configuration
+    repo_config = load_repo_config()
+    
     # Download LLM documentation first
     download_llm_doc()
     
@@ -104,7 +141,15 @@ def main():
         for repo_url in tqdm(repos):
             repo_name = repo_url.split("/")[-1].replace(".git", "")
             dest_path = os.path.join(target_base, repo_name)
-            clone_repo_without_git(repo_url, dest_path)
+            
+            # Check if this repo has a custom branch configured
+            repo_key = f"{org}/{repo_name}"
+            branch = repo_config.get(repo_key, "main")
+            
+            if repo_key in repo_config:
+                print(f"Using custom branch '{branch}' for {repo_key}")
+            
+            clone_repo_without_git(repo_url, dest_path, branch)
 
 if __name__ == "__main__":
     main()

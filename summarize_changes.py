@@ -91,20 +91,52 @@ def get_changed_files(source: Optional[str] = None, dest: Optional[str] = None) 
 
 
 def categorize_files_by_repo(changed_files: list) -> dict:
-    """Categorize changed files by repository."""
+    """Categorize changed files by logical LiveKit component structure."""
     categories = {
-        'livekit': [],
-        'livekit-examples': [],
-        'other': []
+        'Server/Core': [],
+        'Client': [],
+        'SDK': [],
+        'Agents': [],
+        'Embedded': [],
+        'Examples': [],
+        'Other': []
     }
     
     for file in changed_files:
-        if file.startswith('livekit-examples/'):
-            categories['livekit-examples'].append(file)
-        elif file.startswith('livekit/'):
-            categories['livekit'].append(file)
+        # Skip root directory files (tool files)
+        if '/' not in file:
+            continue
+            
+        # Server or Core
+        if (file.startswith('livekit/livekit/') or 
+            file.startswith('livekit/sip/')):
+            categories['Server/Core'].append(file)
+        
+        # Client
+        elif (file.startswith('livekit/client') or 
+              file.startswith('livekit/component')):
+            categories['Client'].append(file)
+        
+        # SDK
+        elif 'livekit/' in file and '-sdk-' in file:
+            categories['SDK'].append(file)
+        
+        # Agents
+        elif file.startswith('livekit/agents'):
+            categories['Agents'].append(file)
+        
+        # Embedded
+        elif file.startswith('livekit-examples/esp'):
+            categories['Embedded'].append(file)
+        
+        # Examples (catch-all for examples)
+        elif (file.startswith('livekit-examples/') or 
+              '/examples/' in file):
+            categories['Examples'].append(file)
+        
+        # Other
         else:
-            categories['other'].append(file)
+            categories['Other'].append(file)
     
     return categories
 
@@ -137,28 +169,28 @@ def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: l
     
     # Build categorized file list
     categorized_files = []
-    for repo, files in file_categories.items():
+    for category, files in file_categories.items():
         if files:
-            categorized_files.append(f"\n**{repo.upper()} Repository:**")
+            categorized_files.append(f"\n**{category}:**")
             categorized_files.extend([f"- {file}" for file in files])
     
     files_list = '\n'.join(categorized_files) if categorized_files else '\n'.join([f"- {file}" for file in changed_files])
     
-    # Count changes per repository
-    repo_counts = {repo: len(files) for repo, files in file_categories.items() if files}
-    repo_summary = ', '.join([f"{count} in {repo}" for repo, count in repo_counts.items()])
+    # Count changes per category
+    category_counts = {category: len(files) for category, files in file_categories.items() if files}
+    category_summary = ', '.join([f"{count} in {category}" for category, count in category_counts.items()])
     
     prompt = f"""
-Please summarize the following git changes in a concise, professional format suitable for a Slack message.
+Please provide a detailed technical summary of the following git changes suitable for a development team Slack channel.
 
-This repository contains snapshots of multiple LiveKit repositories. The changes span: {repo_summary}.
+This repository contains snapshots of multiple LiveKit repositories. The changes span: {category_summary}.
 
 **Commit Information:**
 - Hash: {commit_info['hash']}
 - Date: {commit_info['date']}
 - Message: {commit_info['message']}
 
-**Changed Files by Repository:**
+**Changed Files by Component:**
 {files_list}
 
 **Statistics:**
@@ -166,15 +198,26 @@ This repository contains snapshots of multiple LiveKit repositories. The changes
 
 **Diff Content:**
 ```
-{diff_content[:4000]}  # Limit diff content to avoid token limits
+{diff_content[:6000]}  # More content for detailed analysis
 ```
 
-Please provide:
-1. A brief summary of what changed, organized by repository when relevant
-2. The impact/purpose of these changes
-3. Any notable technical details
+Please provide a comprehensive analysis including:
 
-Format the response to be clear and informative for team members who need to understand what was changed across the LiveKit ecosystem.
+1. **Summary by Component**: Organize changes by the affected components (Server/Core, Client, SDK, etc.)
+
+2. **Detailed Code Changes**: 
+   - Specific functions, methods, or classes that were added/modified/removed
+   - New or changed function signatures and parameters
+   - Data structures, interfaces, or type definitions that changed
+   - Algorithm or logic changes within existing functions
+   - New imports, dependencies, or external library usage
+   - Configuration file changes, environment variables, or constants
+   - Database schema modifications, queries, or data model changes
+   - UI components, styling, or frontend logic modifications
+   - Error handling improvements or new exception types
+   - Documentation or comment updates that indicate significant changes
+
+Focus on describing the actual code modifications in detail, including line-level changes where relevant. Explain what the code was doing before vs. after the changes.
 """
 
     try:
@@ -183,12 +226,12 @@ Format the response to be clear and informative for team members who need to und
             messages=[
                 {
                     "role": "system", 
-                    "content": "You are a helpful assistant that summarizes git changes for development teams. Provide concise, technical summaries that help team members understand what changed and why."
+                    "content": "You are a senior software engineer who specializes in analyzing code changes for development teams. Provide detailed, technical analysis that helps team members understand what changed, why it matters, and what they need to know for testing, deployment, and integration. Focus on actionable insights and technical specifics."
                 },
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=500,
-            temperature=0.3
+            max_tokens=1500,
+            temperature=0.2
         )
         
         return response.choices[0].message.content.strip()
@@ -268,20 +311,20 @@ Examples:
     total_files = len(changed_files)
     
     print(f"📊 Found changes in {total_files} files:")
-    for repo, files in file_categories.items():
+    for category, files in file_categories.items():
         if files:
-            print(f"   • {len(files)} in {repo}")
+            print(f"   • {len(files)} in {category}")
     
     print("🤖 Generating summary with OpenAI...")
     
     # Generate summary
     summary = summarize_with_openai(diff_content, commit_info, changed_files, diff_stats)
     
-    print("\n" + "="*60)
+    print("\n" + "-"*3)
     print("📝 CHANGE SUMMARY")
-    print("="*60)
+    print("-"*3)
     print(summary)
-    print("="*60)
+    print("-"*3)
 
 
 if __name__ == '__main__':

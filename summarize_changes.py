@@ -153,7 +153,51 @@ def get_diff_stats(source: Optional[str] = None, dest: Optional[str] = None) -> 
     return run_git_command(command)
 
 
-def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: list, stats: str) -> str:
+def get_github_repo_url() -> str:
+    """Automatically detect GitHub repository URL from git remote."""
+    try:
+        # Try to get remote URL from git
+        remote_url = run_git_command(['git', 'remote', 'get-url', 'origin'])
+        
+        # Parse different URL formats
+        if remote_url.startswith('https://github.com/'):
+            # HTTPS format: https://github.com/org/repo.git
+            repo_path = remote_url.replace('https://github.com/', '').replace('.git', '')
+            return f"https://github.com/{repo_path}"
+        elif remote_url.startswith('git@github.com:'):
+            # SSH format: git@github.com:org/repo.git
+            repo_path = remote_url.replace('git@github.com:', '').replace('.git', '')
+            return f"https://github.com/{repo_path}"
+        else:
+            # Fallback for other formats or non-GitHub remotes
+            return os.getenv('GITHUB_REPO_URL', 'https://github.com/unknown/repository')
+    except:
+        # If git command fails, try environment variable or use fallback
+        return os.getenv('GITHUB_REPO_URL', 'https://github.com/unknown/repository')
+
+
+def get_github_url(commit_info: dict, source: Optional[str] = None, dest: Optional[str] = None) -> str:
+    """Generate GitHub URL for the changes."""
+    github_repo = get_github_repo_url()
+    
+    if source and dest:
+        # Compare view between two commits
+        return f"{github_repo}/compare/{source}..{dest}"
+    elif source:
+        # Compare from source to HEAD
+        return f"{github_repo}/compare/{source}..HEAD"
+    else:
+        # Single commit view
+        commit_hash = commit_info['hash']
+        # Try to get full hash for the URL
+        try:
+            full_hash = run_git_command(['git', 'rev-parse', 'HEAD'])
+            return f"{github_repo}/commit/{full_hash}"
+        except:
+            return f"{github_repo}/commit/{commit_hash}"
+
+
+def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: list, stats: str, source: Optional[str] = None, dest: Optional[str] = None) -> str:
     """Use OpenAI to summarize the changes."""
     
     # Check for API key
@@ -180,10 +224,15 @@ def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: l
     category_counts = {category: len(files) for category, files in file_categories.items() if files}
     category_summary = ', '.join([f"{count} in {category}" for category, count in category_counts.items()])
     
+    # Generate GitHub URL
+    github_url = get_github_url(commit_info, source, dest)
+    
     prompt = f"""
 Please provide a detailed technical summary of the following git changes suitable for a development team Slack channel.
 
 This repository contains snapshots of multiple LiveKit repositories. The changes span: {category_summary}.
+
+**GitHub Link:** {github_url}
 
 **Commit Information:**
 - Hash: {commit_info['hash']}
@@ -218,6 +267,10 @@ Please provide a comprehensive analysis including:
    - Documentation or comment updates that indicate significant changes
 
 Focus on describing the actual code modifications in detail, including line-level changes where relevant. Explain what the code was doing before vs. after the changes.
+
+Make sure to include the GitHub link at the very top of your response for easy access.
+
+Do not include generic advice about testing, deployment, or development practices. Stick to factual descriptions of what changed in the code.
 """
 
     try:
@@ -295,7 +348,7 @@ Examples:
         # Default: last commit
         commit_info = get_commit_info(get_last_commit_hash())
     
-    print("🚀 Analyzing git changes...")
+    print("🚀 Analyzing git changes...  ")
     
     # Get the changes
     diff_content = get_git_diff(args.source, args.dest)
@@ -310,15 +363,15 @@ Examples:
     file_categories = categorize_files_by_repo(changed_files)
     total_files = len(changed_files)
     
-    print(f"📊 Found changes in {total_files} files:")
+    print(f"📊 Found changes in {total_files} files:  ")
     for category, files in file_categories.items():
         if files:
-            print(f"   • {len(files)} in {category}")
+            print(f"   • {len(files)} in {category}  ")
     
-    print("🤖 Generating summary with OpenAI...")
+    print("🤖 Generating summary with OpenAI...  ")
     
     # Generate summary
-    summary = summarize_with_openai(diff_content, commit_info, changed_files, diff_stats)
+    summary = summarize_with_openai(diff_content, commit_info, changed_files, diff_stats, args.source, args.dest)
     
     print("\n" + "-"*3)
     print("📝 CHANGE SUMMARY")

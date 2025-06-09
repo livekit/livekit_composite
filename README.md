@@ -26,6 +26,13 @@ A Python script that uses OpenAI to summarize git changes for posting to Slack c
    export OPENAI_API_KEY="your-api-key-here"
    ```
 
+3. **GitHub repository URL** (automatic):
+   The script automatically detects your GitHub repository from the git remote origin.
+   Supports both HTTPS and SSH remote URLs. You can override with:
+   ```bash
+   export GITHUB_REPO_URL="https://github.com/your-org/your-repo"
+   ```
+
 ## Usage
 
 ### Basic Usage (Last Commit)
@@ -63,11 +70,11 @@ python summarize_changes.py abc123f
 ## Output
 
 The script provides:
-- A brief summary of what changed
-- The impact/purpose of the changes
-- Notable technical details
-- Commit information (hash, author, date, message)
-- File change statistics
+- **GitHub link** at the top for easy access to view changes online
+- Detailed summary of what changed organized by component
+- Specific code modifications and technical details
+- Commit information (hash, date, message)
+- File change statistics organized by LiveKit component
 
 ## Requirements
 
@@ -88,21 +95,37 @@ The script includes robust error handling for:
 
 ```
 🚀 Analyzing git changes...
-📊 Found changes in 3 files
+📊 Found changes in 8 files:
+   • 3 in Server/Core
+   • 2 in SDK
+   • 3 in Examples
 🤖 Generating summary with OpenAI...
 
-============================================================
+---
 📝 CHANGE SUMMARY
-============================================================
-**Summary**: Added user authentication middleware and updated API endpoints
+---
+🔗 **GitHub Link**: https://github.com/livekit/livekit_composite/commit/abc123def456
 
-**Impact**: Enhanced security by implementing JWT-based authentication across all API routes. This change ensures that only authenticated users can access protected resources.
+**Summary by Component:**
 
-**Technical Details**:
-- Added JWT middleware in `auth/middleware.py`
-- Updated 5 API endpoints to require authentication
-- Modified user model to include token expiration
-- Added error handling for invalid tokens
+**Server/Core:**
+- Updated participant management and SIP gateway configuration
 
-**Files Changed**: 3 files, +127 lines, -23 lines
-============================================================
+**SDK:**
+- Enhanced JavaScript SDK with new room events
+- Python SDK connection handling improvements
+
+**Detailed Code Changes:**
+
+**livekit/livekit/pkg/room/manager.go (lines 45-78):**
+- **Before**: `func AddParticipant(p *Participant)` accepted unlimited participants
+- **After**: `func AddParticipant(p *Participant, maxCount int)` now enforces limits
+- **New validation logic**: Added participant count check with `ErrRoomFull` error
+- **Struct modification**: Added `MaxParticipants int` field to `RoomConfig`
+
+**livekit/node-sdk-js/src/room.ts (lines 120-145):**
+- **New event**: Added `participantLimitReached` event emission
+- **Modified method**: `connect()` now accepts optional `maxParticipants` parameter
+- **Error handling**: Enhanced with specific error types for room capacity
+
+---

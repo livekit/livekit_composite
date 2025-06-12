@@ -140,6 +140,11 @@ def main():
         print(f"Cloning {len(repos)} repos for {org}...")
         for repo_url in tqdm(repos):
             repo_name = repo_url.split("/")[-1].replace(".git", "")
+            
+            # Skip livekit_composite repository
+            if org == "livekit" and repo_name == "livekit_composite":
+                continue
+            
             dest_path = os.path.join(target_base, repo_name)
             
             # Check if this repo has a custom branch configured

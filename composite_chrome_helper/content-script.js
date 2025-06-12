@@ -1,0 +1,1 @@
+// content-script.js intentionally left empty after removing WebRTC tracking functionality. 

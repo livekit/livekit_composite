@@ -60,6 +60,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 Go To Source
                 <span class="tool-description">Convert composite repo URL to source repo</span>
             </button>
+            <button class="tool-button" id="ask-deepwiki-btn" style="margin-bottom: 12px;">
+                Ask DeepWiki
+                <span class="tool-description">Open DeepWiki for this composite repo</span>
+            </button>
             <h3>Debugging Tools</h3>
             <button class="tool-button" id="cloud-dashboard">
                 Cloud Dashboard
@@ -112,6 +116,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         alert('This is not a livekit_composite file URL or could not parse the path.');
+    });
+
+    information.querySelector('#ask-deepwiki-btn').addEventListener('click', () => {
+        browser.tabs.create({ url: 'https://deepwiki.com/livekit/livekit_composite' });
     });
 
     information.querySelector('#livekit-status').addEventListener('click', () => {

@@ -20,6 +20,7 @@ import argparse
 import subprocess
 import sys
 import os
+import shutil
 from typing import Optional, Tuple
 import openai
 from openai import OpenAI
@@ -153,8 +154,38 @@ def get_diff_stats(source: Optional[str] = None, dest: Optional[str] = None) -> 
     return run_git_command(command)
 
 
-def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: list, stats: str) -> str:
-    """Use OpenAI to summarize the changes."""
+def get_category_diff(source: Optional[str], dest: Optional[str], files: list) -> str:
+    """Get git diff for specific files."""
+    if not files:
+        return ""
+    
+    try:
+        if source and dest:
+            command = ['git', 'diff', source, dest, '--']
+        elif source:
+            command = ['git', 'diff', source, 'HEAD', '--']
+        else:
+            command = ['git', 'show', '--format=', 'HEAD', '--']
+        
+        # Add the files to the command
+        command.extend(files)
+        
+        # Run git command
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            check=True,
+            cwd=os.getcwd()
+        )
+        return result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        print(f"Warning: Could not get diff for files: {str(e)}")
+        return ""
+
+
+def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: list, stats: str) -> Tuple[str, str]:
+    """Use OpenAI to summarize the changes and return both brief and detailed summaries."""
     
     # Check for API key
     api_key = os.getenv('OPENAI_API_KEY')
@@ -167,74 +198,99 @@ def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: l
     # Categorize files by repository
     file_categories = categorize_files_by_repo(changed_files)
     
-    # Build categorized file list
-    categorized_files = []
-    for category, files in file_categories.items():
-        if files:
-            categorized_files.append(f"\n**{category}:**")
-            categorized_files.extend([f"- {file}" for file in files])
-    
-    files_list = '\n'.join(categorized_files) if categorized_files else '\n'.join([f"- {file}" for file in changed_files])
-    
     # Count changes per category
     category_counts = {category: len(files) for category, files in file_categories.items() if files}
     category_summary = ', '.join([f"{count} in {category}" for category, count in category_counts.items()])
     
-    prompt = f"""
-Please provide a detailed technical summary of the following git changes suitable for a development team Slack channel.
+    # Brief summary prompt - Markdown bullets
+    brief_prompt = f"""
+Summarize these git changes in 100 words or less, using Markdown bullet points for each major change (each bullet should be 1-2 sentences):
 
-This repository contains snapshots of multiple LiveKit repositories. The changes span: {category_summary}.
+Commit: {commit_info['hash']} ({commit_info['date']})
+Message: {commit_info['message']}
+Changes: {category_summary}
+Stats: {stats}
 
-**Commit Information:**
-- Hash: {commit_info['hash']}
-- Date: {commit_info['date']}
-- Message: {commit_info['message']}
-
-**Changed Files by Component:**
-{files_list}
-
-**Statistics:**
-{stats}
-
-**Diff Content:**
-```
-{diff_content[:6000]}  # More content for detailed analysis
-```
-
-Please provide a comprehensive analysis including:
-
-1. **Summary by Component**: Organize changes by the affected components (Server/Core, Client, SDK, etc.)
-
-2. **Detailed Code Changes**: 
-   - Specific functions, methods, or classes that were added/modified/removed
-   - New or changed function signatures and parameters
-   - Data structures, interfaces, or type definitions that changed
-   - Algorithm or logic changes within existing functions
-   - New imports, dependencies, or external library usage
-   - Configuration file changes, environment variables, or constants
-   - Database schema modifications, queries, or data model changes
-   - UI components, styling, or frontend logic modifications
-   - Error handling improvements or new exception types
-   - Documentation or comment updates that indicate significant changes
-
-Focus on describing the actual code modifications in detail, including line-level changes where relevant. Explain what the code was doing before vs. after the changes.
+Focus on the most significant changes and their impact.
 """
 
     try:
-        response = client.chat.completions.create(
+        # Get brief summary
+        brief_response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
                     "role": "system", 
-                    "content": "You are a senior software engineer who specializes in analyzing code changes for development teams. Provide detailed, technical analysis that helps team members understand what changed, why it matters, and what they need to know for testing, deployment, and integration. Focus on actionable insights and technical specifics."
+                    "content": "You are a senior software engineer who specializes in providing concise summaries of code changes. Use Markdown bullet points for each major change. Keep your response under 100 words while highlighting the most important changes."
                 },
-                {"role": "user", "content": prompt}
+                {"role": "user", "content": brief_prompt}
             ],
-            max_tokens=1500,
+            max_tokens=200,
             temperature=0.2
         )
         
-        return response.choices[0].message.content.strip()
+        # Process each category separately for detailed summary
+        detailed_summaries = []
+        for category, files in file_categories.items():
+            if not files:
+                continue
+                
+            print(f"Processing {category} changes...")
+            
+            # Get diff for this category
+            category_diff = get_category_diff(None, None, files)
+            if not category_diff:
+                continue
+                
+            # Truncate diff content if too large
+            category_diff = category_diff[:3000]  # Reduced to 3000 chars per category
+            
+            # Simplify the file list to just show count and a few examples
+            file_examples = files[:3]  # Show only first 3 files
+            file_list = f"Changed {len(files)} files, including:\n" + "\n".join([f"- {file}" for file in file_examples])
+            if len(files) > 3:
+                file_list += f"\n... and {len(files) - 3} more files"
+            
+            category_prompt = f"""
+Analyze the changes in the {category} component. Use Markdown formatting and bullet points for all lists:
+
+{file_list}
+
+Diff:
+```
+{category_diff}
+```
+
+Provide a technical summary with the following sections, each as a Markdown bullet list (use a bullet for each item, even if a section is empty):
+- **Key functional changes**
+- **Important code modifications**
+- **New features or fixes**
+- **Breaking changes or API updates**
+"""
+            
+            try:
+                category_response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {
+                            "role": "system", 
+                            "content": "You are a senior software engineer who specializes in analyzing code changes. Use Markdown bullet points for all lists and sections. Provide clear, technical analysis focusing on the most important changes."
+                        },
+                        {"role": "user", "content": category_prompt}
+                    ],
+                    max_tokens=800,  # Reduced token count
+                    temperature=0.2
+                )
+                
+                detailed_summaries.append(f"## {category}\n\n{category_response.choices[0].message.content.strip()}\n")
+            except Exception as e:
+                print(f"Warning: Could not process {category} changes: {str(e)}")
+                detailed_summaries.append(f"## {category}\n\n*Error processing changes in this category*\n")
+        
+        # Combine all detailed summaries
+        detailed_summary = "\n".join(detailed_summaries)
+        
+        return brief_response.choices[0].message.content.strip(), detailed_summary
     
     except Exception as e:
         print(f"OpenAI API error: {e}")
@@ -315,15 +371,33 @@ Examples:
         if files:
             print(f"   • {len(files)} in {category}")
     
-    print("🤖 Generating summary with OpenAI...")
+    print("🤖 Generating summaries with OpenAI...")
     
-    # Generate summary
-    summary = summarize_with_openai(diff_content, commit_info, changed_files, diff_stats)
+    # Generate summaries
+    brief_summary, detailed_summary = summarize_with_openai(diff_content, commit_info, changed_files, diff_stats)
+    
+    # Create output directory if it doesn't exist
+    os.makedirs('output', exist_ok=True)
+    
+    # Remove existing files if they exist
+    for file in ['output/summary.md', 'output/details.md']:
+        if os.path.exists(file):
+            os.remove(file)
+    
+    # Write summaries to files
+    with open('output/summary.md', 'w') as f:
+        f.write("# Brief Summary\n\n")
+        f.write(brief_summary)
+    
+    with open('output/details.md', 'w') as f:
+        f.write("# Detailed Summary\n\n")
+        f.write(detailed_summary)
     
     print("\n" + "-"*3)
-    print("📝 CHANGE SUMMARY")
+    print("📝 SUMMARIES GENERATED")
     print("-"*3)
-    print(summary)
+    print("Brief summary saved to: output/summary.md")
+    print("Detailed summary saved to: output/details.md")
     print("-"*3)
 
 

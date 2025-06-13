@@ -1,0 +1,12 @@
+{
+  "extends": "./node_modules/gts/",
+  "root": true,
+  "rules": {
+    "simple-import-sort/imports": "error",
+    "simple-import-sort/exports": "error",
+    "n/no-extraneous-import": "off"
+  },
+  "plugins": [
+    "simple-import-sort"
+  ]
+}

@@ -6,6 +6,7 @@
 #include "esp_capture.h"
 #include "av_render.h"
 
+#include "livekit_common.h"
 #include "livekit_protocol.h"
 
 #ifdef __cplusplus
@@ -34,11 +35,11 @@ typedef struct {
 
 typedef struct {
     // This is an alternative to RtcEngine's async connect method
-    livekit_join_response_t join_response;
+    livekit_pb_join_response_t join_response;
 } livekit_eng_event_connected_t;
 
 typedef struct {
-    livekit_disconnect_reason_t reason;
+    livekit_pb_disconnect_reason_t reason;
 } livekit_eng_event_disconnected_t;
 
 typedef struct {
@@ -48,7 +49,7 @@ typedef struct {
 } livekit_eng_event_error_t;
 
 typedef struct {
-    livekit_room_t *updated_room;
+    livekit_pb_room_t *updated_room;
 } livekit_eng_event_room_update_t;
 
 typedef struct {
@@ -69,7 +70,7 @@ typedef struct {
 typedef struct {
     char* request_id;
     char* payload;
-    livekit_rpc_error_t* error;
+    livekit_pb_rpc_error_t* error;
 } livekit_eng_event_rpc_response_t;
 
 typedef struct {
@@ -77,17 +78,17 @@ typedef struct {
 } livekit_eng_event_rpc_ack_t;
 
 typedef struct {
-    livekit_data_stream_header_t header;
+    livekit_pb_data_stream_header_t header;
     char* participant_identity;
 } livekit_eng_event_stream_header_t;
 
 typedef struct {
-    livekit_data_stream_chunk_t chunk;
+    livekit_pb_data_stream_chunk_t chunk;
     char* participant_identity;
 } livekit_eng_event_stream_chunk_t;
 
 typedef struct {
-    livekit_data_stream_trailer_t trailer;
+    livekit_pb_data_stream_trailer_t trailer;
     char* participant_identity;
 } livekit_eng_event_stream_trailer_t;
 
@@ -107,31 +108,25 @@ typedef struct {
     void (*on_stream_chunk)(livekit_eng_event_stream_chunk_t detail, void *ctx);
     void (*on_stream_trailer)(livekit_eng_event_stream_trailer_t detail, void *ctx);
 
+    livekit_eng_media_options_t media;
 } livekit_eng_options_t;
 
 /// @brief Creates a new instance.
 /// @param[out] handle The handle to the new instance.
-int livekit_eng_create(livekit_eng_options_t *options, livekit_eng_handle_t *handle);
+livekit_eng_err_t livekit_eng_create(livekit_eng_handle_t *handle, livekit_eng_options_t *options);
 
 /// @brief Destroys an instance.
 /// @param[in] handle The handle to the instance to destroy.
-int livekit_eng_destroy(livekit_eng_handle_t handle);
+livekit_eng_err_t livekit_eng_destroy(livekit_eng_handle_t handle);
 
 /// @brief Connect the engine.
-int livekit_eng_connect(const char* server_url, const char* token, livekit_eng_handle_t handle);
+livekit_eng_err_t livekit_eng_connect(livekit_eng_handle_t handle, const char* server_url, const char* token);
 
 /// @brief Close the engine.
-/// @param reason Reason for why the engine is being closed.
-int livekit_eng_close(livekit_disconnect_reason_t reason, livekit_eng_handle_t handle);
+livekit_eng_err_t livekit_eng_close(livekit_eng_handle_t handle);
 
 /// @brief Publishes a data packet over the data channel.
-int livekit_eng_publish_data(livekit_data_packet_t packet, livekit_data_packet_kind_t kind, livekit_eng_handle_t handle);
-
-/// @brief Sends a signaling request.
-int livekit_eng_send_request(livekit_signal_request_t request, livekit_eng_handle_t handle);
-
-/// @brief Sets the media provider.
-int livekit_eng_set_media_provider(livekit_eng_media_provider_t* provider, livekit_eng_handle_t handle);
+livekit_eng_err_t livekit_eng_publish_data(livekit_eng_handle_t handle, livekit_pb_data_packet_t packet, livekit_pb_data_packet_kind_t kind);
 
 #ifdef __cplusplus
 }

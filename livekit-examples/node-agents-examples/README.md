@@ -4,26 +4,26 @@ This repository contains examples demonstrating how to use the LiveKit Agents li
 
 ## Projects
 
-### [Basics](./basics)
+### [Basics](./packages/basics)
 
 Basic examples demonstrating core functionality of LiveKit Agents:
 
 - Listen and Respond Agent: A simple conversational agent that listens to user speech and responds conversationally
 - Uninterruptable Agent: Demonstrates non-interruptable behavior by telling a long story when a user starts speaking
 
-See the [Basics README](./basics/README.md) for setup and running instructions.
+See the [Basics README](./packages/basics/README.md) for setup and running instructions.
 
-### [SIP Make a Call](./sip/make-a-call)
+### [SIP - Make a Call](./packages/sip--make-a-call)
 
 This project demonstrates how to have a LiveKit agent make an outbound phone call using LiveKit's telephony capabilities. It creates a room, connects an agent, and initiates a SIP call to a specified phone number.
 
-See the [SIP Make a Call README](./sip/make-a-call/README.md) for setup and running instructions.
+See the [SIP Make a Call README](./packages/sip--make-a-call/README.md) for setup and running instructions.
 
-### [SIP Um, Actually](./sip/um-actually)
+### [SIP - Um, Actually](./packages/sip--um-actually)
 
 A LiveKit Agent that hosts a game of "Um, Actually" with contestants that call in, using OpenAI's capabilities to process and respond to voice calls.
 
-See the [SIP Um, Actually README](./sip/um-actually/README.md) for setup and running instructions.
+See the [SIP Um, Actually README](./packages/sip--um-actually/README.md) for setup and running instructions.
 
 ## Getting Started
 

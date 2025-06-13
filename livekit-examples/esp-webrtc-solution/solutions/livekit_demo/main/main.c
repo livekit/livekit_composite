@@ -7,24 +7,14 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
-#include <esp_wifi.h>
-#include <esp_event.h>
 #include <esp_log.h>
-#include <esp_system.h>
-#include <nvs_flash.h>
-#include <sys/param.h>
-#include "argtable3/argtable3.h"
 #include "esp_console.h"
-#include "esp_webrtc.h"
 #include "media_lib_adapter.h"
 #include "media_lib_os.h"
-#include "esp_timer.h"
-#include "webrtc_utils_time.h"
-#include "esp_cpu.h"
-#include "settings.h"
-#include "media_sys.h"
 #include "network.h"
-#include "sys_state.h"
+
+#include "settings.h"
+#include "media_setup.h"
 #include "board.h"
 #include "livekit_demo.h"
 
@@ -120,7 +110,11 @@ static void thread_scheduler(const char *thread_name, media_lib_thread_cfg_t *th
 static int network_event_handler(bool connected)
 {
     // Auto-join when network is connected
-    if (connected) join_room();
+    if (connected) {
+        RUN_ASYNC(join, {
+            join_room();
+        });
+    }
     return 0;
 }
 
@@ -130,7 +124,7 @@ void app_main(void)
     media_lib_add_default_adapter();
     media_lib_thread_set_schedule_cb(thread_scheduler);
     init_board();
-    media_sys_buildup();
+    media_setup_init();
     init_console();
     network_init(WIFI_SSID, WIFI_PASSWORD, network_event_handler);
     while (1)

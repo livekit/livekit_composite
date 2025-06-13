@@ -247,6 +247,8 @@ message VideoLayer {
   // target bitrate in bit per second (bps), server will measure actual
   uint32 bitrate = 4;
   uint32 ssrc = 5;
+  int32 spatial_layer = 6;
+  string rid = 7;
 }
 
 // new DataPacket API
@@ -274,7 +276,12 @@ message DataPacket {
     DataStream.Chunk stream_chunk = 14;
     DataStream.Trailer stream_trailer = 15;
   }
-  // NEXT_ID: 16
+  // sequence number of reliable packet
+  uint32 sequence = 16;
+  // sid of the user that sent the message
+  string participant_sid = 17;
+
+  // NEXT_ID: 18
 }
 
 message ActiveSpeakerUpdate {

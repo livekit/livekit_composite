@@ -31,6 +31,8 @@ import (
 	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
+	"github.com/livekit/protocol/observability"
+	"github.com/livekit/protocol/observability/roomobs"
 	"github.com/livekit/protocol/rpc"
 	"github.com/livekit/protocol/utils"
 	"github.com/livekit/protocol/utils/guid"
@@ -73,6 +75,7 @@ type RoomManager struct {
 	rtcRestServer     rpc.RTCRestServer[livekit.NodeID]
 	roomStore         ObjectStore
 	telemetry         telemetry.TelemetryService
+	recorder          observability.Reporter
 	clientConfManager clientconfiguration.ClientConfigurationManager
 	agentClient       agent.Client
 	agentStore        AgentStore
@@ -100,7 +103,6 @@ func NewLocalRoomManager(
 	router routing.Router,
 	roomAllocator RoomAllocator,
 	telemetry telemetry.TelemetryService,
-	clientConfManager clientconfiguration.ClientConfigurationManager,
 	agentClient agent.Client,
 	agentStore AgentStore,
 	egressLauncher rtc.EgressLauncher,
@@ -122,7 +124,7 @@ func NewLocalRoomManager(
 		roomAllocator:     roomAllocator,
 		roomStore:         roomStore,
 		telemetry:         telemetry,
-		clientConfManager: clientConfManager,
+		clientConfManager: clientconfiguration.NewStaticClientConfigurationManager(clientconfiguration.StaticConfigurations),
 		egressLauncher:    egressLauncher,
 		agentClient:       agentClient,
 		agentStore:        agentStore,
@@ -450,6 +452,7 @@ func (r *RoomManager) StartSession(
 		Grants:                  pi.Grants,
 		Reconnect:               pi.Reconnect,
 		Logger:                  pLogger,
+		Reporter:                roomobs.NewNoopParticipantSessionReporter(),
 		ClientConf:              clientConf,
 		ClientInfo:              rtc.ClientInfo{ClientInfo: pi.Client},
 		Region:                  pi.Region,
@@ -1064,4 +1067,8 @@ func (h *roomManagerParticipantHelper) ResolveMediaTrack(lp types.LocalParticipa
 
 func (h *roomManagerParticipantHelper) ShouldRegressCodec() bool {
 	return h.codecRegressionThreshold == 0 || h.room.GetParticipantCount() < h.codecRegressionThreshold
+}
+
+func (h *roomManagerParticipantHelper) GetCachedReliableDataMessage(seqs map[livekit.ParticipantID]uint32) []*types.DataMessageCache {
+	return h.room.GetCachedReliableDataMessage(seqs)
 }

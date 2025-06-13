@@ -2,13 +2,66 @@
 #include <esp_log.h>
 #include <livekit_engine.h>
 #include "livekit.h"
+#include "esp_peer.h"
 
 static const char *TAG = "livekit";
 
 typedef struct {
     livekit_eng_handle_t engine;
-    // TODO: Add fields here
-} livekit_room_room_t;
+} livekit_room_t;
+
+static void populate_media_options(
+    livekit_eng_media_options_t *media_options,
+    const livekit_pub_options_t *pub_options,
+    const livekit_sub_options_t *sub_options)
+{
+    if (pub_options->kind & LIVEKIT_MEDIA_TYPE_AUDIO) {
+        media_options->audio_dir |= ESP_PEER_MEDIA_DIR_SEND_ONLY;
+
+        esp_peer_audio_codec_t codec = ESP_PEER_AUDIO_CODEC_NONE;
+        switch (pub_options->audio_encode.codec) {
+            case LIVEKIT_AUDIO_CODEC_G711A:
+                codec = ESP_PEER_AUDIO_CODEC_G711A;
+                break;
+            case LIVEKIT_AUDIO_CODEC_G711U:
+                codec = ESP_PEER_AUDIO_CODEC_G711U;
+                break;
+            case LIVEKIT_AUDIO_CODEC_OPUS:
+                codec = ESP_PEER_AUDIO_CODEC_OPUS;
+                break;
+            default:
+                ESP_LOGE(TAG, "Unsupported audio codec");
+                break;
+        }
+        media_options->audio_info.codec = codec;
+        media_options->audio_info.sample_rate = pub_options->audio_encode.sample_rate;
+        media_options->audio_info.channel = pub_options->audio_encode.channel_count;
+    }
+    if (pub_options->kind & LIVEKIT_MEDIA_TYPE_VIDEO) {
+        media_options->video_dir |= ESP_PEER_MEDIA_DIR_SEND_ONLY;
+        esp_peer_video_codec_t codec = ESP_PEER_VIDEO_CODEC_NONE;
+        switch (pub_options->video_encode.codec) {
+            case LIVEKIT_VIDEO_CODEC_H264:
+                codec = ESP_PEER_VIDEO_CODEC_H264;
+                break;
+            default:
+                ESP_LOGE(TAG, "Unsupported video codec");
+                break;
+        }
+        media_options->video_info.codec = codec;
+        media_options->video_info.width = pub_options->video_encode.width;
+        media_options->video_info.height = pub_options->video_encode.height;
+        media_options->video_info.fps = pub_options->video_encode.fps;
+    }
+    if (sub_options->kind & LIVEKIT_MEDIA_TYPE_AUDIO) {
+        media_options->audio_dir |= ESP_PEER_MEDIA_DIR_RECV_ONLY;
+    }
+    if (sub_options->kind & LIVEKIT_MEDIA_TYPE_VIDEO) {
+        media_options->video_dir |= ESP_PEER_MEDIA_DIR_RECV_ONLY;
+    }
+    media_options->capturer = pub_options->capturer;
+    media_options->renderer = sub_options->renderer;
+}
 
 static void on_eng_connected(livekit_eng_event_connected_t detail, void *ctx)
 {
@@ -76,16 +129,44 @@ static void on_eng_stream_trailer(livekit_eng_event_stream_trailer_t detail, voi
     // TODO: Implement
 }
 
-livekit_err_t livekit_room_create(livekit_room_options_t *options, livekit_room_handle_t *handle)
+livekit_err_t livekit_room_create(livekit_room_handle_t *handle, const livekit_room_options_t *options)
 {
-    livekit_room_room_t *room = (livekit_room_room_t *)calloc(1, sizeof(livekit_room_room_t));
+    if (handle == NULL || options == NULL) {
+        return LIVEKIT_ERR_INVALID_ARG;
+    }
+
+    // Validate options
+    if (options->publish.kind != LIVEKIT_MEDIA_TYPE_NONE &&
+        options->publish.capturer == NULL) {
+        ESP_LOGE(TAG, "Capturer must be set for media publishing");
+        return LIVEKIT_ERR_INVALID_ARG;
+    }
+    if (options->subscribe.kind != LIVEKIT_MEDIA_TYPE_NONE &&
+        options->subscribe.renderer == NULL) {
+        ESP_LOGE(TAG, "Renderer must be set for subscribing to media");
+        return LIVEKIT_ERR_INVALID_ARG;
+    }
+    if ((options->publish.kind & LIVEKIT_MEDIA_TYPE_AUDIO) &&
+        (options->publish.audio_encode.codec == LIVEKIT_AUDIO_CODEC_NONE)) {
+        ESP_LOGE(TAG, "Encode options must be set for audio publishing");
+        return LIVEKIT_ERR_INVALID_ARG;
+    }
+    if ((options->publish.kind & LIVEKIT_MEDIA_TYPE_VIDEO) &&
+        options->publish.video_encode.codec == LIVEKIT_VIDEO_CODEC_NONE) {
+        ESP_LOGE(TAG, "Encode options must be set for video publishing");
+        return LIVEKIT_ERR_INVALID_ARG;
+    }
+
+    livekit_room_t *room = calloc(1, sizeof(livekit_room_t));
     if (room == NULL) {
-        ESP_LOGE(TAG, "Failed to allocate memory for new room");
         return LIVEKIT_ERR_NO_MEM;
     }
 
+    livekit_eng_media_options_t media_options = {};
+    populate_media_options(&media_options, &options->publish, &options->subscribe);
+
     livekit_eng_options_t eng_options = {
-        .ctx = room,
+        .media = media_options,
         .on_connected = on_eng_connected,
         .on_disconnected = on_eng_disconnected,
         .on_error = on_eng_error,
@@ -97,37 +178,44 @@ livekit_err_t livekit_room_create(livekit_room_options_t *options, livekit_room_
         .on_stream_header = on_eng_stream_header,
         .on_stream_chunk = on_eng_stream_chunk,
         .on_stream_trailer = on_eng_stream_trailer,
+        .ctx = room
     };
-    livekit_eng_create(&eng_options, &room->engine);
-    if (room->engine == NULL) {
-        ESP_LOGE(TAG, "Failed to create engine");
-        free(room);
-        return LIVEKIT_ERR_OTHER;
-    }
 
-    *handle = (livekit_room_handle_t)room;
-    return LIVEKIT_ERR_NONE;
+    int ret = LIVEKIT_ERR_OTHER;
+    do {
+        if (livekit_eng_create(&room->engine, &eng_options) != LIVEKIT_ENG_ERR_NONE) {
+            ESP_LOGE(TAG, "Failed to create engine");
+            ret = LIVEKIT_ERR_ENGINE;
+            break;
+        }
+        *handle = (livekit_room_handle_t)room;
+        return LIVEKIT_ERR_NONE;
+    } while (0);
+
+    free(room);
+    return ret;
 }
 
 livekit_err_t livekit_room_destroy(livekit_room_handle_t handle)
 {
-    livekit_room_room_t *room = (livekit_room_room_t *)handle;
+    livekit_room_t *room = (livekit_room_t *)handle;
     if (room == NULL) {
         return LIVEKIT_ERR_INVALID_ARG;
     }
+    livekit_room_close(handle);
     livekit_eng_destroy(room->engine);
     free(room);
     return LIVEKIT_ERR_NONE;
 }
 
-livekit_err_t livekit_room_connect(const char *server_url, const char *token, livekit_room_handle_t handle)
+livekit_err_t livekit_room_connect(livekit_room_handle_t handle, const char *server_url, const char *token)
 {
-    if (server_url == NULL || token == NULL || handle == NULL) {
+    if (handle == NULL || server_url == NULL || token == NULL) {
         return LIVEKIT_ERR_INVALID_ARG;
     }
-    livekit_room_room_t *room = (livekit_room_room_t *)handle;
+    livekit_room_t *room = (livekit_room_t *)handle;
 
-    if (livekit_eng_connect(server_url, token, room->engine) != LIVEKIT_ENG_ERR_NONE) {
+    if (livekit_eng_connect(room->engine, server_url, token) != LIVEKIT_ENG_ERR_NONE) {
         ESP_LOGE(TAG, "Failed to connect engine");
         return LIVEKIT_ERR_OTHER;
     }
@@ -139,7 +227,7 @@ livekit_err_t livekit_room_close(livekit_room_handle_t handle)
     if (handle == NULL) {
         return LIVEKIT_ERR_INVALID_ARG;
     }
-    livekit_room_room_t *room = (livekit_room_room_t *)handle;
-    livekit_eng_close(LIVEKIT_DISCONNECT_REASON_CLIENT_INITIATED, room->engine);
+    livekit_room_t *room = (livekit_room_t *)handle;
+    livekit_eng_close(room->engine);
     return LIVEKIT_ERR_NONE;
 }

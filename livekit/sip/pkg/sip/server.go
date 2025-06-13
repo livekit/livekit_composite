@@ -106,6 +106,8 @@ type Handler interface {
 
 	RegisterTransferSIPParticipantTopic(sipCallId string) error
 	DeregisterTransferSIPParticipantTopic(sipCallId string)
+
+	OnCallEnd(ctx context.Context, callInfo *livekit.SIPCallInfo, reason string)
 }
 
 type Server struct {
@@ -261,6 +263,7 @@ func (s *Server) Start(agent *sipgo.UserAgent, sc *ServiceConfig, unhandled Requ
 	s.sipSrv.OnInvite(s.onInvite)
 	s.sipSrv.OnBye(s.onBye)
 	s.sipSrv.OnNotify(s.onNotify)
+	s.sipSrv.OnNoRoute(s.OnNoRoute)
 	s.sipUnhandled = unhandled
 
 	// Ignore ACKs

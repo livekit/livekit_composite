@@ -105,7 +105,7 @@ func (c *Client) newCall(ctx context.Context, conf *config.Config, log logger.Lo
 		state:     state,
 		jitterBuf: jitterBuf,
 	}
-	c.log = c.log.WithValues("jitterBuf", call.jitterBuf)
+	call.log = call.log.WithValues("jitterBuf", call.jitterBuf)
 	call.cc = c.newOutbound(log, id, URI{
 		User:      sipConf.from,
 		Host:      sipConf.host,
@@ -205,17 +205,25 @@ func (c *outboundCall) Dial(ctx context.Context) error {
 func (c *outboundCall) WaitClose(ctx context.Context) error {
 	ctx = context.WithoutCancel(ctx)
 	defer c.ensureClosed(ctx)
-	select {
-	case <-c.Disconnected():
-		c.CloseWithReason(callDropped, "removed", livekit.DisconnectReason_CLIENT_INITIATED)
-		return nil
-	case <-c.media.Timeout():
-		c.closeWithTimeout()
-		err := psrpc.NewErrorf(psrpc.DeadlineExceeded, "media timeout")
-		c.setErrStatus(ctx, err)
-		return err
-	case <-c.Closed():
-		return nil
+
+	ticker := time.NewTicker(10 * time.Minute)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ticker.C:
+			c.log.Debugw("sending keep-alive")
+			c.state.ForceFlush(ctx)
+		case <-c.Disconnected():
+			c.CloseWithReason(callDropped, "removed", livekit.DisconnectReason_CLIENT_INITIATED)
+			return nil
+		case <-c.media.Timeout():
+			c.closeWithTimeout()
+			err := psrpc.NewErrorf(psrpc.DeadlineExceeded, "media timeout")
+			c.setErrStatus(ctx, err)
+			return err
+		case <-c.Closed():
+			return nil
+		}
 	}
 }
 
@@ -290,6 +298,11 @@ func (c *outboundCall) close(err error, status CallStatus, description string, r
 		c.c.cmu.Unlock()
 
 		c.c.DeregisterTransferSIPParticipant(string(c.cc.ID()))
+
+		// Call the handler asynchronously to avoid blocking
+		if c.c.handler != nil {
+			go c.c.handler.OnCallEnd(context.Background(), c.state.callInfo, description)
+		}
 	})
 }
 

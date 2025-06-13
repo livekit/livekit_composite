@@ -30325,6 +30325,7 @@ Returns [SIPOutboundTrunkInfo](#sipoutboundtrunkinfo).
 | name | string | yes | name of the trunk. |
 | metadata | string |  | User-defined metadata for the trunk. This metadata is added to every SIP participant that uses the trunk. |
 | address | string | yes | Hostname or IP the SIP INVITE is sent to. This is _not_ a SIP URI and shouldn't contain the `sip:` protocol. |
+| destination_country | string | yes | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. The country code is used by LiveKit to route calls. |
 | numbers | array<string> | yes | List of provider phone numbers associated with the trunk that can be used as a caller id. |
 | transport | [SIPTransport](#siptransport) |  | Protocol to use for SIP transport: auto, TCP, or UDP. |
 | auth_username | string |  | If configured, the username for authorized use of the provider's SIP trunk. |
@@ -30569,6 +30570,7 @@ Enum. Valid values are as follows:
 | name | string | Trunk name. |
 | metadata | string | User-defined metadata for trunk. |
 | address | string | Hostname or IP address the SIP request message (SIP INVITE) is sent to. |
+| destination_country | string | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. |
 | transport | [SIPTransport](#siptransport) | Protocol to use for SIP transport: auto, TCP, or UDP. |
 | numbers | array<string> | Phone numbers used to make calls. A random number in the list is selected whenever a call is made. |
 | auth_username | string | Username used to authenticate with the SIP server. |
@@ -30581,6 +30583,7 @@ Enum. Valid values are as follows:
 | Field | Type | Description |
 | address | string | Hostname or IP address the SIP request message (SIP INVITE) is sent to. |
 | transport | [SIPTransport](#siptransport) | Protocol to use for SIP transport: auto, TCP, or UDP. |
+| destination_country | string | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. |
 | numbers | array<string> | Phone numbers used to make calls. A random number in the list is selected whenever a call is made. |
 | auth_username | string | Username used to authenticate with the SIP server. |
 | auth_password | string | Password used to authenticate with the SIP server. |
@@ -30667,5 +30670,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-06-07T00:51:56.797Z.
+This document was rendered at 2025-06-11T21:07:02.600Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

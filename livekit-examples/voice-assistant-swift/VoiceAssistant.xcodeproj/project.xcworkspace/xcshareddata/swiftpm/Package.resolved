@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/livekit/components-swift",
       "state" : {
-        "revision" : "8376284cd357829dd16a8b25ffd809a1dfcce9ff",
-        "version" : "0.1.3"
+        "revision" : "1f3a5ef0dab1b5d8d27dde9a0ca97ac687226154",
+        "version" : "0.1.4"
       }
     },
     {

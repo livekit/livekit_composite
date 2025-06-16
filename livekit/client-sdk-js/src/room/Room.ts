@@ -601,7 +601,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
           this.handleParticipantDisconnected(identity, participant);
         });
 
-        this.emit(RoomEvent.Moved, roomMoved.room!.name, roomMoved.token);
+        this.emit(RoomEvent.Moved, roomMoved.room!.name);
 
         if (roomMoved.participant) {
           this.handleParticipantUpdates([roomMoved.participant, ...roomMoved.otherParticipants]);
@@ -1301,10 +1301,10 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
    */
   async switchActiveDevice(kind: MediaDeviceKind, deviceId: string, exact: boolean = true) {
     let success = true;
-    let needsUpdateWithoutTracks = false;
+    let shouldTriggerImmediateDeviceChange = false;
     const deviceConstraint = exact ? { exact: deviceId } : deviceId;
     if (kind === 'audioinput') {
-      needsUpdateWithoutTracks = this.localParticipant.audioTrackPublications.size === 0;
+      shouldTriggerImmediateDeviceChange = this.localParticipant.audioTrackPublications.size === 0;
       const prevDeviceId =
         this.getActiveDevice(kind) ?? this.options.audioCaptureDefaults!.deviceId;
       this.options.audioCaptureDefaults!.deviceId = deviceConstraint;
@@ -1319,8 +1319,10 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
         this.options.audioCaptureDefaults!.deviceId = prevDeviceId;
         throw e;
       }
+      const isMuted = tracks.some((t) => t.track?.isMuted ?? false);
+      if (success && isMuted) shouldTriggerImmediateDeviceChange = true;
     } else if (kind === 'videoinput') {
-      needsUpdateWithoutTracks = this.localParticipant.videoTrackPublications.size === 0;
+      shouldTriggerImmediateDeviceChange = this.localParticipant.videoTrackPublications.size === 0;
       const prevDeviceId =
         this.getActiveDevice(kind) ?? this.options.videoCaptureDefaults!.deviceId;
       this.options.videoCaptureDefaults!.deviceId = deviceConstraint;
@@ -1336,6 +1338,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
         throw e;
       }
     } else if (kind === 'audiooutput') {
+      shouldTriggerImmediateDeviceChange = true;
       if (
         (!supportsSetSinkId() && !this.options.webAudioMix) ||
         (this.options.webAudioMix && this.audioContext && !('setSinkId' in this.audioContext))
@@ -1367,12 +1370,9 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
         throw e;
       }
     }
-    if (needsUpdateWithoutTracks || kind === 'audiooutput') {
-      // if there are not active tracks yet or we're switching audiooutput, we need to manually update the active device map here as changing audio output won't result in a track restart
-      this.localParticipant.activeDeviceMap.set(
-        kind,
-        (kind === 'audiooutput' && this.options.audioOutput?.deviceId) || deviceId,
-      );
+
+    if (shouldTriggerImmediateDeviceChange) {
+      this.localParticipant.activeDeviceMap.set(kind, deviceId);
       this.emit(RoomEvent.ActiveDeviceChanged, kind, deviceId);
     }
 
@@ -2649,7 +2649,7 @@ export type RoomEventCallbacks = {
   reconnected: () => void;
   disconnected: (reason?: DisconnectReason) => void;
   connectionStateChanged: (state: ConnectionState) => void;
-  moved: (name: string, token: string) => void;
+  moved: (name: string) => void;
   mediaDevicesChanged: () => void;
   participantConnected: (participant: RemoteParticipant) => void;
   participantDisconnected: (participant: RemoteParticipant) => void;

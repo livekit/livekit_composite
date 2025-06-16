@@ -17,7 +17,7 @@
     "framer-motion": "^11.15.0",
     "livekit-client": "^2.7.5",
     "livekit-server-sdk": "^2.9.3",
-    "lucide-react": "^0.514.0",
+    "lucide-react": "^0.515.0",
     "next": "15.3.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

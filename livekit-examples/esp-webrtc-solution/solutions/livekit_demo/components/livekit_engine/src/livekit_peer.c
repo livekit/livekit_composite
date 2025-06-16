@@ -15,6 +15,7 @@ static const char *PUB_TAG = "livekit_peer.pub";
 
 #define RELIABLE_CHANNEL_LABEL "_reliable"
 #define LOSSY_CHANNEL_LABEL "_lossy"
+#define STREAM_ID_INVALID 0xFFFF
 
 #define PC_EXIT_BIT      (1 << 0)
 #define PC_PAUSED_BIT    (1 << 1)
@@ -32,6 +33,9 @@ typedef struct {
     media_lib_event_grp_handle_t wait_event;
 
     esp_codec_dev_handle_t        play_handle;
+
+    uint16_t reliable_stream_id;
+    uint16_t lossy_stream_id;
 } livekit_peer_t;
 
 static esp_peer_media_dir_t get_media_direction(esp_peer_media_dir_t direction, livekit_pb_signal_target_t target) {
@@ -87,6 +91,7 @@ static int on_state(esp_peer_state_t state, void *ctx)
     switch (state) {
         case ESP_PEER_STATE_CONNECTED:
             create_data_channels(peer);
+            peer->options.on_connected(peer->options.ctx);
             break;
         default:
             break;
@@ -143,6 +148,12 @@ static int on_channel_open(esp_peer_data_channel_info_t *ch, void *ctx)
 {
     livekit_peer_t *peer = (livekit_peer_t *)ctx;
     ESP_LOGI(TAG(peer), "Channel open: label=%s, stream_id=%d", ch->label, ch->stream_id);
+
+    if (strcmp(ch->label, RELIABLE_CHANNEL_LABEL) == 0) {
+        peer->reliable_stream_id = ch->stream_id;
+    } else if (strcmp(ch->label, LOSSY_CHANNEL_LABEL) == 0) {
+        peer->lossy_stream_id = ch->stream_id;
+    }
     return 0;
 }
 
@@ -150,19 +161,48 @@ static int on_channel_close(esp_peer_data_channel_info_t *ch, void *ctx)
 {
     livekit_peer_t *peer = (livekit_peer_t *)ctx;
     ESP_LOGI(TAG(peer), "Channel close: label=%s, stream_id=%d", ch->label, ch->stream_id);
+
+    if (strcmp(ch->label, RELIABLE_CHANNEL_LABEL) == 0) {
+        peer->reliable_stream_id = STREAM_ID_INVALID;
+    } else if (strcmp(ch->label, LOSSY_CHANNEL_LABEL) == 0) {
+        peer->lossy_stream_id = STREAM_ID_INVALID;
+    }
     return 0;
 }
 
 static int on_data(esp_peer_data_frame_t *frame, void *ctx)
 {
     livekit_peer_t *peer = (livekit_peer_t *)ctx;
-    ESP_LOGI(TAG(peer), "Data received: size=%d", frame->size);
+    ESP_LOGI(TAG(peer), "Data received: size=%d, stream_id=%d", frame->size, frame->stream_id);
+
+    if (peer->options.on_packet_received == NULL) {
+        ESP_LOGE(TAG(peer), "Packet received handler is not set");
+        return -1;
+    }
+    if (frame->type != ESP_PEER_DATA_CHANNEL_DATA) {
+        ESP_LOGE(TAG(peer), "Unexpected data frame type: %d", frame->type);
+        return -1;
+    }
+
+    livekit_pb_data_packet_t packet = {};
+    pb_istream_t stream = pb_istream_from_buffer((const pb_byte_t *)frame->data, frame->size);
+    if (!pb_decode(&stream, LIVEKIT_PB_DATA_PACKET_FIELDS, &packet)) {
+        ESP_LOGE(TAG(peer), "Failed to decode data packet: %s", stream.errmsg);
+        return -1;
+    }
+
+    ESP_LOGI(TAG(peer), "Decoded data packet: type=%d", packet.which_value);
+    peer->options.on_packet_received(&packet, peer->options.ctx);
+    pb_release(LIVEKIT_PB_DATA_PACKET_FIELDS, &packet);
     return 0;
 }
 
 livekit_peer_err_t livekit_peer_create(livekit_peer_handle_t *handle, livekit_peer_options_t options)
 {
-    if (handle == NULL || options.on_ice_candidate == NULL || options.on_sdp == NULL) {
+    if (handle == NULL ||
+        options.on_connected == NULL ||
+        options.on_ice_candidate == NULL ||
+        options.on_sdp == NULL) {
         return LIVEKIT_PEER_ERR_INVALID_ARG;
     }
 
@@ -173,6 +213,9 @@ livekit_peer_err_t livekit_peer_create(livekit_peer_handle_t *handle, livekit_pe
     peer->options = options;
     peer->ice_role = options.target == LIVEKIT_PB_SIGNAL_TARGET_SUBSCRIBER ?
             ESP_PEER_ROLE_CONTROLLED : ESP_PEER_ROLE_CONTROLLING;
+
+    peer->reliable_stream_id = STREAM_ID_INVALID;
+    peer->lossy_stream_id = STREAM_ID_INVALID;
 
     *handle = (livekit_peer_handle_t)peer;
     return LIVEKIT_PEER_ERR_NONE;
@@ -346,5 +389,79 @@ livekit_peer_err_t livekit_peer_handle_ice_candidate(livekit_peer_handle_t handl
         ESP_LOGE(TAG(peer), "Failed to handle ICE candidate");
         return LIVEKIT_PEER_ERR_RTC;
     }
+    return LIVEKIT_PEER_ERR_NONE;
+}
+
+livekit_peer_err_t livekit_peer_send_data_packet(livekit_peer_handle_t handle, livekit_pb_data_packet_t* packet, livekit_pb_data_packet_kind_t kind)
+{
+    if (handle == NULL || packet == NULL) {
+        return LIVEKIT_PEER_ERR_INVALID_ARG;
+    }
+    livekit_peer_t *peer = (livekit_peer_t *)handle;
+
+    uint16_t stream_id = kind == LIVEKIT_PB_DATA_PACKET_KIND_RELIABLE ?
+        peer->reliable_stream_id : peer->lossy_stream_id;
+    if (stream_id == STREAM_ID_INVALID) {
+        ESP_LOGE(TAG(peer), "Required data channel not connected");
+        return LIVEKIT_PEER_ERR_INVALID_STATE;
+    }
+    esp_peer_data_frame_t frame_info = {
+        .type = ESP_PEER_DATA_CHANNEL_DATA,
+        .stream_id = stream_id
+    };
+
+    // TODO: Optimize encoding
+    size_t encoded_size = 0;
+    if (!pb_get_encoded_size(&encoded_size, LIVEKIT_PB_DATA_PACKET_FIELDS, packet)) {
+        return LIVEKIT_PEER_ERR_MESSAGE;
+    }
+    uint8_t *enc_buf = (uint8_t *)malloc(encoded_size);
+    if (enc_buf == NULL) {
+        return LIVEKIT_PEER_ERR_NO_MEM;
+    }
+
+    int ret = LIVEKIT_PEER_ERR_NONE;
+    do {
+        pb_ostream_t stream = pb_ostream_from_buffer(enc_buf, encoded_size);
+        if (!pb_encode(&stream, LIVEKIT_PB_DATA_PACKET_FIELDS, packet)) {
+            ESP_LOGE(TAG(peer), "Failed to encode data packet");
+            ret = LIVEKIT_PEER_ERR_MESSAGE;
+            break;
+        }
+
+        frame_info.data = enc_buf;
+        frame_info.size = stream.bytes_written;
+        if (esp_peer_send_data(peer->connection, &frame_info) != ESP_PEER_ERR_NONE) {
+            ESP_LOGE(TAG(peer), "Data channel send failed");
+            ret = LIVEKIT_PEER_ERR_RTC;
+            break;
+        }
+    } while (0);
+
+    free(enc_buf);
+    return ret;
+}
+
+livekit_peer_err_t livekit_peer_send_audio(livekit_peer_handle_t handle, esp_peer_audio_frame_t* frame)
+{
+    if (handle == NULL) {
+        return LIVEKIT_PEER_ERR_INVALID_ARG;
+    }
+    livekit_peer_t *peer = (livekit_peer_t *)handle;
+    assert(peer->options.target == LIVEKIT_PB_SIGNAL_TARGET_PUBLISHER);
+
+    esp_peer_send_audio(peer->connection, frame);
+    return LIVEKIT_PEER_ERR_NONE;
+}
+
+livekit_peer_err_t livekit_peer_send_video(livekit_peer_handle_t handle, esp_peer_video_frame_t* frame)
+{
+    if (handle == NULL) {
+        return LIVEKIT_PEER_ERR_INVALID_ARG;
+    }
+    livekit_peer_t *peer = (livekit_peer_t *)handle;
+    assert(peer->options.target == LIVEKIT_PB_SIGNAL_TARGET_PUBLISHER);
+
+    esp_peer_send_video(peer->connection, frame);
     return LIVEKIT_PEER_ERR_NONE;
 }

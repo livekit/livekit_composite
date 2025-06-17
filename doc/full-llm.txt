@@ -17072,7 +17072,8 @@ You can override this node to:
 To use the default implementation, call `Agent.default.tts_node()`.
 
 ```python
-from livekit.agents import ModelSettings, rtc, Agent
+from livekit import rtc
+from livekit.agents import ModelSettings, Agent
 from typing import AsyncIterable
 
 async def tts_node(
@@ -18176,6 +18177,7 @@ A `UserInputTranscribedEvent` is emitted when user transcription is available.
 
 - `transcript`: str
 - `is_final`: bool
+- `speaker_id`: str | None - Only available if speaker diarization is supported in your STT plugin.
 
 #### Example
 
@@ -18184,7 +18186,7 @@ from livekit.agents import UserInputTranscribedEvent
 
 @session.on("user_input_transcribed")
 def on_user_input_transcribed(event: UserInputTranscribedEvent):
-    print(f"User input transcribed: {event.transcript}, final: {event.is_final}")
+    print(f"User input transcribed: {event.transcript}, final: {event.is_final}, speaker id: {event.speaker_id}")
 
 ```
 
@@ -20596,7 +20598,7 @@ from livekit.plugins import openai
 session = AgentSession(
    tts=openai.TTS.with_azure(
       model="gpt-4o-mini-tts",
-      voice="choral",
+      voice="coral",
    )
    # ... llm, stt, etc.
 )
@@ -20610,6 +20612,8 @@ This section describes some of the available parameters. For a complete referenc
 - **`model`** _(string)_ (optional) - Default: `gpt-4o-mini-tts`: ID of the model to use for TTS. To learn more, see [Text to speech models](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models?tabs=global-standard%2Cstandard-audio#text-to-speech-models-preview).
 
 - **`voice`** _(string)_ (optional) - Default: `ash`: OpenAI text-to-speech voice. To learn more, see the list of supported voices for `voice` in the [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference-preview#createspeechrequest).
+
+- **`instructions`** _(string)_ (optional) - Default: ``: Instructions to control tone, style, and other characteristics of the speech.
 
 - **`azure_endpoint`** _(string)_ (optional) - Environment: `AZURE_OPENAI_ENDPOINT`: Azure OpenAI endpoint in the following format: `https://{your-resource-name}.openai.azure.com`.
 
@@ -21581,7 +21585,7 @@ For additional information about installing and using plugins, see the [plugins 
 
 ## Available providers
 
-The following table lists the available realtime model providers.
+The following table lists the available realtime model providers. All providers support fast and expressive full speech-to-speech generation, tool calling, image understanding, text modalities, and simple VAD-based [turn detection](https://docs.livekit.io/agents/build/turns.md). Support for other features is noted in the following table.
 
 | Provider | Plugin | Notes |
 | -------- | ------ | ----- |
@@ -21980,11 +21984,7 @@ Large language models (LLMs) are a type of AI model that can generate text outpu
 
 ## Available providers
 
-The agents framework includes plugins for the following LLM providers out-of-the-box. Choose a provider from the list for a step-by-step guide. You can also implement the [LLM node](https://docs.livekit.io/agents/build/nodes.md#llm-node) to provide custom behavior or an alternative provider.
-
-> 💡 **OpenAI API compatibility**
-> 
-> Many providers have standardized around the OpenAI API "chat completions" API, even for other models like Llama, DeepSeek, and more. The LiveKit Agents OpenAI plugin includes compatibility with many of these providers, listed in the following table.
+The agents framework includes plugins for the following LLM providers out-of-the-box. Choose a provider from the list below for a step-by-step guide. You can also implement the [LLM node](https://docs.livekit.io/agents/build/nodes.md#llm-node) to provide custom behavior or an alternative provider. All providers support high-performance, low-latency streaming and tool calls. Support for other features is noted in the following table.
 
 | Provider | Plugin | Notes |
 | -------- | ------ | ----- |
@@ -21995,7 +21995,7 @@ The agents framework includes plugins for the following LLM providers out-of-the
 | [Fireworks](https://docs.livekit.io/agents/integrations/llm/fireworks.md) | `openai` | Wide range of models from Llama, DeepSeek, Mistral, and more. |
 | [Google Gemini](https://docs.livekit.io/agents/integrations/llm/gemini.md) | `google` |  |
 | [Groq](https://docs.livekit.io/agents/integrations/llm/groq.md) | `groq` | Models from Llama, DeepSeek, and more. |
-| [Letta](https://docs.livekit.io/agents/integrations/llm/letta.md) | `openai` |  |
+| [Letta](https://docs.livekit.io/agents/integrations/llm/letta.md) | `openai` | Stateful API with memory features. |
 | [Ollama](https://docs.livekit.io/agents/integrations/llm/ollama.md) | `openai` | Self-hosted models from Llama, DeepSeek, and more. |
 | [OpenAI](https://docs.livekit.io/agents/integrations/llm/openai.md) | `openai` |  |
 | [Azure OpenAI](https://docs.livekit.io/agents/integrations/llm/azure-openai.md) | `openai` |  |
@@ -22051,18 +22051,11 @@ async with llm.chat(chat_ctx=chat_ctx) as stream:
 
 ### Tool usage
 
-Most LLM providers support tools (sometimes called "functions"). LiveKit Agents has full support for them within an `AgentSession`. For more information, see [the documentation](https://docs.livekit.io/agents/build/tools.md).
+All LLM providers support tools (sometimes called "functions"). LiveKit Agents has full support for them within an `AgentSession`. For more information, see [Tool definition and use](https://docs.livekit.io/agents/build/tools.md).
 
 ### Vision usage
 
-Some LLM providers support vision within their models. LiveKit agents supports vision input from URL or from [realtime video frames](https://docs.livekit.io/home/client/tracks.md). Consult your model provider for details on compatible image types, external URL support, and other constraints.
-
-```python
-from livekit.agents.llm import ImageContent
-
-chat_ctx.add_message(role="user", content=["Describe this image", ImageContent(image="https://picsum.photos/200/300")])
-
-```
+All LLM providers support vision within most of their models. LiveKit agents supports vision input from URL or from [realtime video frames](https://docs.livekit.io/home/client/tracks.md). Consult your model provider for details on compatible image types, external URL support, and other constraints. For more information, see [Vision](https://docs.livekit.io/agents/build/vision.md).
 
 ## Further reading
 
@@ -23156,12 +23149,15 @@ Speech-to-text (STT) models process incoming audio and convert it to text in rea
 
 The agents framework includes plugins for the following STT providers out-of-the-box. Choose a provider from the list for a step-by-step guide. You can also implement the [STT node](https://docs.livekit.io/agents/build/nodes.md#stt-node) to provide custom behavior or an alternative provider.
 
+All STT providers support low-latency multilingual transcription. Support for other features is noted in the following table.
+
 | Provider | Plugin | Notes |
 | -------- | ------ | ----- |
 | [AssemblyAI](https://docs.livekit.io/agents/integrations/stt/assemblyai.md) | `assemblyai` |  |
 | [Amazon Transcribe](https://docs.livekit.io/agents/integrations/stt/aws.md) | `aws` |  |
 | [Azure AI Speech](https://docs.livekit.io/agents/integrations/stt/azure.md) | `azure` |  |
 | [Azure OpenAI](https://docs.livekit.io/agents/integrations/stt/azure-openai.md) | `openai` |  |
+| [Cartesia](https://docs.livekit.io/agents/integrations/stt/cartesia.md) | `cartesia` |  |
 | [Clova](https://docs.livekit.io/agents/integrations/stt/clova.md) | `clova` |  |
 | [Deepgram](https://docs.livekit.io/agents/integrations/stt/deepgram.md) | `deepgram` |  |
 | [fal](https://docs.livekit.io/agents/integrations/stt/fal.md) | `fal` |  |
@@ -23169,6 +23165,7 @@ The agents framework includes plugins for the following STT providers out-of-the
 | [Google Cloud](https://docs.livekit.io/agents/integrations/stt/google.md) | `google` |  |
 | [Groq](https://docs.livekit.io/agents/integrations/stt/groq.md) | `groq` |  |
 | [OpenAI](https://docs.livekit.io/agents/integrations/stt/openai.md) | `openai` |  |
+| [Sarvam](https://docs.livekit.io/agents/integrations/stt/sarvam.md) | `sarvam` |  |
 | [Speechmatics](https://docs.livekit.io/agents/integrations/stt/speechmatics.md) | `speechmatics` |  |
 
 Have another provider in mind? LiveKit is open source and welcomes [new plugin contributions](https://docs.livekit.io/agents/integrations.md#contribute).
@@ -23655,6 +23652,75 @@ The following resources provide more information about using Azure OpenAI with L
 
 ---
 
+## Cartesia
+
+## Overview
+
+[Cartesia](https://www.cartesia.ai/) provides advanced speech recognition technology with their Ink-Whisper model, optimized for real-time transcription in conversational settings. With LiveKit's Cartesia integration and the Agents framework, you can build AI agents that provide high-accuracy transcriptions with ultra-low latency.
+
+## Quick reference
+
+This section includes a basic usage example and some reference material. For links to more detailed documentation, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[cartesia]~=1.0"
+
+```
+
+### Authentication
+
+The Cartesia plugin requires a [Cartesia API key](https://play.cartesia.ai/keys).
+
+Set `CARTESIA_API_KEY` in your `.env` file.
+
+### Usage
+
+Use Cartesia STT in an `AgentSession` or as a standalone transcription service. For example, you can use this STT in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import cartesia
+
+session = AgentSession(
+   stt = cartesia.STT(
+      model="ink-whisper"
+   ),
+   # ... llm, tts, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/cartesia/index.html.md#livekit.plugins.cartesia.STT) for a complete list of all available parameters.
+
+- **`model`** _(string)_ (optional) - Default: `ink-whisper`: Selected model to use for STT. See [Cartesia STT models](https://docs.cartesia.ai/build-with-cartesia/models/stt) for supported values.
+
+- **`language`** _(string)_ (optional) - Default: `en`: Language of input audio in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes) format. See [Cartesia STT models](https://docs.cartesia.ai/build-with-cartesia/models/stt) for supported values.
+
+## Additional resources
+
+The following resources provide more information about using Cartesia with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-cartesia/)**: The `livekit-plugins-cartesia` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/cartesia/index.html.md#livekit.plugins.cartesia.STT)**: Reference for the Cartesia STT plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-cartesia)**: View the source or contribute to the LiveKit Cartesia STT plugin.
+
+- **[Cartesia docs](https://docs.cartesia.ai/build-with-cartesia/models/stt)**: Cartesia STT docs.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Cartesia STT.
+
+- **[Cartesia TTS](https://docs.livekit.io/agents/integrations/tts/cartesia.md)**: Guide to the Cartesia TTS integration with LiveKit Agents.
+
+---
+
+---
+
 ## Clova
 
 ## Overview
@@ -23758,14 +23824,7 @@ from livekit.plugins import deepgram
 
 session = AgentSession(
    stt = deepgram.STT(
-      model="nova-2-general",
-      interim_results=True,
-      smart_format=True,
-      punctuate=True,
-      filler_words=True,
-      profanity_filter=False,
-      keywords=[("LiveKit", 1.5)],
-      language="en-US",
+      model="nova-3",
    ),
    # ... llm, tts, etc.
 )
@@ -23774,23 +23833,15 @@ session = AgentSession(
 
 ### Parameters
 
-This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/deepgram/index.html.md#livekit.plugins.deepgram.STT) for a complete list of all available parameters.
+This section describes the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/deepgram/index.html.md#livekit.plugins.deepgram.STT) for more details.
 
-- **`model`** _(string)_ (optional) - Default: `nova-2-general`: ID of the model to use for inference. To learn more, see [supported models](https://developers.deepgram.com/docs/model).
+- **`model`** _(string)_ (optional) - Default: `nova-3`: The Deepgram model to use for speech recognition.
 
-- **`interim_results`** _(bool)_ (optional) - Default: `true`: Enable preliminary results before the final transcription is available.
+- **`language`** _(string)_ (optional) - Default: `en-US`: The language code for recognition.
 
-- **`smart_format`** _(bool)_ (optional) - Default: `true`: Enable smart formatting to improve the readability of transcriptions.
+- **`endpointing_ms`** _(int)_ (optional) - Default: `25`: Time in milliseconds of silence to consider end of speech. Set to 0 to disable.
 
-- **`punctuate`** _(bool)_ (optional) - Default: `true`: Enable punctuation in transcriptions.
-
-- **`filler_words`** _(bool)_ (optional) - Default: `true`: Enable filler words to improve turn detection.
-
-- **`profanity_filter`** _(bool)_ (optional) - Default: `false`: Replace recognized profanity with asterisks in transcriptions.
-
-- **`keywords`** _(list[tuple[string, float]])_ (optional) - Default: `[]`: A list of keywords and intensifiers to boost or suppress in transcriptions. Positive values boost; negative values suppress.
-
-- **`language`** _(string)_ (optional) - Default: `en`: Language of input audio in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes) format.
+- **`keyterms`** _(list[string])_ (optional) - Default: `[]`: List of key terms to improve recognition accuracy. Supported by Nova-3 models.
 
 ## Additional resources
 
@@ -23847,7 +23898,6 @@ from livekit.plugins import fal
 session = AgentSession(
    stt = fal.STT(
       language="de",
-      task="translate",
    ),
    # ... llm, tts, etc.
 )
@@ -23859,8 +23909,6 @@ session = AgentSession(
 This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/fal/index.html.md#livekit.plugins.fal.STT) for a complete list of all available parameters.
 
 - **`language`** _(str)_ (optional) - Default: `en`: Speech recognition language.
-
-- **`task`** _(str)_ (optional) - Default: `transcribe`: Task to perform with audio file. Valid values are `transcribe` and `translate`.
 
 ## Additional resources
 
@@ -23959,8 +24007,6 @@ This section describes some of the available parameters. See the [plugin referen
 - **`languages`** _(list[string])_ (optional) - Default: `[]`: List of languages to use for transcription. If empty, Gladia will auto-detect the language.
 
 - **`code_switching`** _(bool)_ (optional) - Default: `false`: Enable switching between languages during recognition.
-
-- **`energy_filter`** _(bool)_ (optional) - Default: `true`: Enable voice activity detection with energy filtering.
 
 - **`translation_enabled`** _(bool)_ (optional) - Default: `false`: Enable real-time translation.
 
@@ -24197,6 +24243,76 @@ The following resources provide more information about using OpenAI with LiveKit
 
 ---
 
+## Sarvam
+
+## Overview
+
+[Sarvam](https://docs.sarvam.ai/) provides advanced speech recognition technology optimized for Indian languages. With LiveKit's Sarvam integration and the Agents framework, you can build AI agents that provide high-accuracy transcriptions for Indian languages and accents.
+
+## Quick reference
+
+This section provides a quick reference for the Sarvam STT plugin. For more information, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[sarvam]~=1.0"
+
+```
+
+### Authentication
+
+The Sarvam plugin requires a [Sarvam API key](https://docs.sarvam.ai/).
+
+Set `SARVAM_API_KEY` in your `.env` file.
+
+### Usage
+
+Use Sarvam STT in an `AgentSession` or as a standalone transcription service. For example, you can use this STT in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import sarvam
+
+session = AgentSession(
+   stt=sarvam.STT(
+      language="hi-IN",
+      model="saarika:v2.5",
+   ),
+   # ... llm, tts, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/sarvam/index.html.md#livekit.plugins.sarvam.STT) for a complete list of all available parameters.
+
+- **`language`** _(string)_ (optional): BCP-47 language code for supported Indian languages. See [documentation](https://docs.sarvam.ai/api-reference-docs/speech-to-text/transcribe#request.body.language_code.language_code) for a complete list of supported languages.
+
+- **`model`** _(string)_ (optional) - Default: `saarika:v2.5`: The Sarvam STT model to use. See [documentation](https://docs.sarvam.ai/api-reference-docs/speech-to-text/transcribe#request.body.model) for a complete list of supported models.
+
+## Additional resources
+
+The following resources provide more information about using Sarvam with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-sarvam/)**: The `livekit-plugins-sarvam` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/sarvam/index.html.md#livekit.plugins.sarvam.STT)**: Reference for the Sarvam STT plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-sarvam)**: View the source or contribute to the LiveKit Sarvam STT plugin.
+
+- **[Sarvam docs](https://docs.sarvam.ai/)**: Sarvam's full docs site.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Sarvam.
+
+- **[Sarvam TTS](https://docs.livekit.io/agents/integrations/tts/sarvam.md)**: Guide to the Sarvam TTS integration with LiveKit Agents.
+
+---
+
+---
+
 ## Speechmatics
 
 ## Overview
@@ -24230,81 +24346,55 @@ Use Speechmatics STT in an `AgentSession` or as a standalone transcription servi
 from livekit.plugins import speechmatics
 
 session = AgentSession(
-   stt = speechmatics.STT(
-      transcription_config=speechmatics.types.TranscriptionConfig(
-         operating_point="enhanced", 
-         enable_partials=True,
-         language="en",
-         output_locale="en-US",
-         diarization="speaker",
-         enable_entities=True,
-         additional_vocab=[
-            {
-                  "content": "financial crisis"
-            },
-            {
-                  "content": "gnocchi", 
-                  "sounds_like": [
-                  "nyohki", 
-                  "nokey", 
-                  "nochi"
-                  ]
-            },
-            {
-                  "content": "CEO",
-                  "sounds_like": [
-                  "C.E.O."
-                  ]
-            }
-         ],
-         max_delay=0.7,
-         max_delay_mode="flexible"
-      ), 
-      audio_settings=speechmatics.types.AudioSettings(
-         encoding="pcm_s16le",
-         sample_rate=16000, 
-      ),
-   ),
+   stt = speechmatics.STT(),
    # ... llm, tts, etc.
 )
 
 ```
 
+### Speaker diarization
+
+Enable [speaker diarization](https://docs.speechmatics.com/features/diarization#speaker-diarization) by initializing the STT with `diarization="speaker"` and a `speaker_diarization_config`. You need to override the entire `transcription_config` so set the other values as needed.
+
+```python
+stt = speechmatics.STT(
+   transcription_config=speechmatics.types.TranscriptionConfig(
+      language="en",
+      operating_point="enhanced",
+      enable_partials=True,
+      max_delay=0.7,
+      diarization="speaker",
+      speaker_diarization_config={"max_speakers": 2}, # Adjust as needed
+   )
+)
+
+```
+
+Results are available as the `speaker_id` property on the events emitted by [user_input_transcribed](https://docs.livekit.io/agents/build/events.md#user_input_transcribed):
+
+```python
+from livekit.agents import UserInputTranscribedEvent
+
+@session.on("user_input_transcribed")
+def on_user_input_transcribed(event: UserInputTranscribedEvent):
+   print(f"user_input_transcribed: \"[{event.speaker_id}]: {event.transcript}\"")
+
+```
+
 ### Parameters
 
-This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/speechmatics/index.html.md#livekit.plugins.speechmatics.STT) for a complete list of all available parameters.
+This section describes the key parameters for the Speechmatics STT plugin. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/speechmatics/index.html.md#livekit.plugins.speechmatics.STT) for a complete list of all available parameters.
 
-- **`operating_point`** _(string)_ (optional) - Default: `enhanced`: Operating point to use for the transcription per required accuracy & complexity. To learn more, see [Accuracy Reference](https://docs.speechmatics.com/features/accuracy-language-packs#accuracy).
+- **`transcription_config`** _(TranscriptionConfig)_ (optional): Configuration for the transcription service. If you override this parameter, you must provide all configuration values. The following parameters are available:
 
-- **`enable_partials`** _(bool)_ (optional) - Default: `True`: Partial transcripts allow you to receive preliminary transcriptions and update as more context is available until the higher-accuracy [final transcript](https://docs.speechmatics.com/rt-api-ref#addtranscript) is returned. Partials are returned faster but without any post-processing such as formatting.
-
-- **`language`** _(string)_ (optional) - Default: `en`: ISO 639-1 language code. All languages are global and can understand different dialects/accents. To see the list of all supported languages, see [Supported Languages](https://docs.speechmatics.com/introduction/supported-languages).
-
-### Usage
-
-Create a Speechmatics STT that can be used in a `VoiceAgent` or as a standalone transcription service. For example, you can use this STT in the `VoiceAgent` [quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
-
-### Parameters
-
-This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/speechmatics/index.html.md#livekit.plugins.speechmatics.STT) for a complete list of all available parameters.
-
-- **`operating_point`** _(string)_ (optional) - Default: `enhanced`: Operating point to use for the transcription per required accuracy & complexity. To learn more, see [Accuracy Reference](https://docs.speechmatics.com/features/accuracy-language-packs#accuracy).
-
-- **`enable_partials`** _(bool)_ (optional) - Default: `True`: Partial transcripts allow you to receive preliminary transcriptions and update as more context is available until the higher-accuracy [final transcript](https://docs.speechmatics.com/rt-api-ref#addtranscript) is returned. Partials are returned faster but without any post-processing such as formatting.
-
-- **`language`** _(string)_ (optional) - Default: `en`: ISO 639-1 language code. All languages are global and can understand different dialects/accents. To see the list of all supported languages, see [Supported Languages](https://docs.speechmatics.com/introduction/supported-languages).
-
-- **`output_locale`** _(string)_ (optional) - Default: `en-US`: RFC-5646 language code for transcription output. For supported locales, see [Output Locale](https://docs.speechmatics.com/features/accuracy-language-packs#output-locale).
-
-- **`diarization`** _(string)_ (optional) - Default: `NULL`: Setting this to `speaker` enables accurate labeling of different speakers detected with the attributed transcribed output e.g. S1, S2. For more information, visit [Speaker Diarization](https://docs.speechmatics.com/features/diarization#speaker-diarization).
-
-- **`additional_vocab`** _(list[dict{“content”:str, ”sounds_like”:str}])_ (optional) - Default: `NULL`: Add custom words for each transcription job. To learn more, see [Custom Dictionary](https://docs.speechmatics.com/features/custom-dictionary).
-
-- **`enable_entities`** _(bool)_ (optional) - Default: `False`: Allows the written form of various entities such as phone numbers, emails, currency, etc to be output in the transcript. To learn more about the supported entities, see [Entities](https://docs.speechmatics.com/features/entities).
-
-- **`max_delay`** _(number)_ (optional) - Default: `0.7`: The delay in seconds between the end of a spoken word and returning the final transcript results.
-
-- **`max_delay_mode`** _(string)_ (optional) - Default: `flexible`: If set to `flexible`, the final transcript is delayed until proper numeral formatting is complete. To learn more, see [Numeral Formatting](https://docs.speechmatics.com/features/realtime-latency#numeral-formatting).
+- - **`language`** _(string)_ (optional) - Default: `en`: ISO 639-1 language code. All languages are global and can understand different dialects/accents. To see the list of all supported languages, see [Supported Languages](https://docs.speechmatics.com/introduction/supported-languages).
+- - **`operating_point`** _(string)_ (optional) - Default: `enhanced`: Operating point to use for the transcription per required accuracy & complexity. To learn more, see [Accuracy Reference](https://docs.speechmatics.com/features/accuracy-language-packs#accuracy).
+- - **`enable_partials`** _(bool)_ (optional) - Default: `true`: Partial transcripts allow you to receive preliminary transcriptions and update as more context is available until the higher-accuracy [final transcript](https://docs.speechmatics.com/rt-api-ref#addtranscript) is returned. Partials are returned faster but without any post-processing such as formatting.
+- - **`max_delay`** _(number)_ (optional) - Default: `0.7`: The delay in seconds between the end of a spoken word and returning the final transcript results.
+- - **`speaker_diarization_config`** _(dict)_ (optional): Configuration for speaker diarization. The following parameters are available:
+- - **`max_speakers`** _(int)_ (optional) - Default: `2`: Maximum number of speakers to detect in the audio. Valid values range from 2 to 100.
+- - **`speaker_sensitivity`** _(float)_ (optional) - Default: `0.5`: Sensitivity of speaker detection between 0 and 1. Higher values increase likelihood of detecting more unique speakers.
+- - **`prefer_current_speaker`** _(bool)_ (optional) - Default: `false`: When true, reduces likelihood of switching between similar sounding speakers by preferring the current speaker.
 
 ## Additional resources
 
@@ -24336,11 +24426,14 @@ Text-to-speech (TTS) models produce realtime synthetic speech from text input. I
 
 The agents framework includes plugins for the following TTS providers out-of-the-box. Choose a provider from the list for a step-by-step guide. You can also implement the [TTS node](https://docs.livekit.io/agents/build/nodes.md#tts-node) to provide custom behavior or an alternative provider.
 
+All TTS providers support high quality, low-latency, and lifelike multilingual voice synthesis. Support for other features is noted in the following table.
+
 | Provider | Plugin | Notes |
 | -------- | ------ | ----- |
 | [Amazon Polly](https://docs.livekit.io/agents/integrations/tts/aws.md) | `aws` |  |
 | [Azure AI Speech](https://docs.livekit.io/agents/integrations/tts/azure.md) | `azure` |  |
 | [Azure OpenAI](https://docs.livekit.io/agents/integrations/tts/azure-openai.md) | `openai` |  |
+| [Baseten](https://docs.livekit.io/agents/integrations/tts/baseten.md) | `baseten` |  |
 | [Cartesia](https://docs.livekit.io/agents/integrations/tts/cartesia.md) | `cartesia` |  |
 | [Deepgram](https://docs.livekit.io/agents/integrations/tts/deepgram.md) | `deepgram` |  |
 | [ElevenLabs](https://docs.livekit.io/agents/integrations/tts/elevenlabs.md) | `elevenlabs` |  |
@@ -24352,6 +24445,7 @@ The agents framework includes plugins for the following TTS providers out-of-the
 | [PlayHT](https://docs.livekit.io/agents/integrations/tts/playai.md) | `playai` |  |
 | [Resemble AI](https://docs.livekit.io/agents/integrations/tts/resemble.md) | `resemble` |  |
 | [Rime](https://docs.livekit.io/agents/integrations/tts/rime.md) | `rime` |  |
+| [Sarvam](https://docs.livekit.io/agents/integrations/tts/sarvam.md) | `sarvam` |  |
 | [Speechify](https://docs.livekit.io/agents/integrations/tts/speechify.md) | `speechify` |  |
 
 Have another provider in mind? LiveKit is open source and welcomes [new plugin contributions](https://docs.livekit.io/agents/integrations.md#contribute).
@@ -24659,7 +24753,7 @@ from livekit.plugins import openai
 session = AgentSession(
    tts=openai.TTS.with_azure(
       model="gpt-4o-mini-tts",
-      voice="choral",
+      voice="coral",
    )
    # ... llm, stt, etc.
 )
@@ -24673,6 +24767,8 @@ This section describes some of the available parameters. For a complete referenc
 - **`model`** _(string)_ (optional) - Default: `gpt-4o-mini-tts`: ID of the model to use for TTS. To learn more, see [Text to speech models](https://learn.microsoft.com/en-us/azure/ai-services/openai/concepts/models?tabs=global-standard%2Cstandard-audio#text-to-speech-models-preview).
 
 - **`voice`** _(string)_ (optional) - Default: `ash`: OpenAI text-to-speech voice. To learn more, see the list of supported voices for `voice` in the [Azure documentation](https://learn.microsoft.com/en-us/azure/ai-services/openai/reference-preview#createspeechrequest).
+
+- **`instructions`** _(string)_ (optional) - Default: ``: Instructions to control tone, style, and other characteristics of the speech.
 
 - **`azure_endpoint`** _(string)_ (optional) - Environment: `AZURE_OPENAI_ENDPOINT`: Azure OpenAI endpoint in the following format: `https://{your-resource-name}.openai.azure.com`.
 
@@ -24703,6 +24799,87 @@ The following resources provide more information about using Azure OpenAI with L
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Azure OpenAI.
 
 - **[Azure ecosystem guide](https://docs.livekit.io/agents/integrations/azure.md)**: Overview of the entire Azure AI and LiveKit Agents integration.
+
+---
+
+---
+
+## Baseten
+
+## Overview
+
+[Baseten](https://www.baseten.co/) is a hosted inference platform that allows you to deploy and serve any machine learning model. With LiveKit's Baseten integration and the Agents framework, you can build AI agents that provide high-quality speech synthesis using models like Orpheus.
+
+## Quick reference
+
+This section provides a quick reference for the Baseten TTS plugin. For more information, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[baseten]~=1.0"
+
+```
+
+### Authentication
+
+The Baseten plugin requires a [Baseten API key](https://app.baseten.co/settings/api-keys).
+
+Set the following in your `.env` file:
+
+```shell
+BASETEN_API_KEY=<your-baseten-api-key>
+
+```
+
+### Model deployment
+
+You must deploy a TTS model such as [Orpheus](https://www.baseten.co/library/orpheus-tts/) to Baseten to use it with LiveKit Agents. Your deployment includes a private model endpoint URL to provide to the LiveKit Agents integration.
+
+### Usage
+
+Use Baseten TTS within an `AgentSession` or as a standalone speech generator. For example, you can use this TTS in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import baseten
+
+session = AgentSession(
+   tts=baseten.TTS(
+      model_endpoint="<your-model-endpoint>",
+      voice="tara",
+   )
+   # ... llm, stt, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/baseten/index.html.md#livekit.plugins.baseten.TTS) for a complete list of all available parameters.
+
+- **`model_endpoint`** _(string)_ (optional) - Environment: `BASETEN_MODEL_ENDPOINT`: The endpoint URL for your deployed model. You can find this in your Baseten dashboard.
+
+- **`voice`** _(string)_ (optional) - Default: `tara`: The voice to use for speech synthesis.
+
+- **`language`** _(string)_ (optional) - Default: `en`: Language of output audio in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes) format.
+
+- **`temperature`** _(float)_ (optional) - Default: `0.6`: Controls the randomness of the generated speech. Higher values make the output more random.
+
+## Additional resources
+
+The following resources provide more information about using Baseten with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-baseten/)**: The `livekit-plugins-baseten` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/baseten/index.html.md#livekit.plugins.baseten.TTS)**: Reference for the Baseten TTS plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-baseten)**: View the source or contribute to the LiveKit Baseten TTS plugin.
+
+- **[Baseten docs](https://docs.baseten.co/)**: Baseten's full docs site.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Baseten.
 
 ---
 
@@ -24754,11 +24931,11 @@ session = AgentSession(
 
 This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/cartesia/index.html.md#livekit.plugins.cartesia.TTS) for a complete list of all available parameters.
 
-- **`model`** _(string)_ (optional) - Default: `sonic-2`: ID of the model to use for generation. See [supported models](https://docs.cartesia.ai/build-with-cartesia/models).
+- **`model`** _(string)_ (optional) - Default: `sonic-2`: ID of the model to use for generation. See [supported models](https://docs.cartesia.ai/build-with-cartesia/models/tts).
 
 - **`voice`** _(string | list[float])_ (optional) - Default: `794f9389-aac1-45b6-b726-9d9369183238`: ID of the voice to use for generation, or an embedding array. See [official documentation](https://docs.cartesia.ai/api-reference/tts/tts#send.Generation%20Request.voice).
 
-- **`language`** _(string)_ (optional) - Default: `en`: Language of input text in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes) format. For a list of languages support by model, see [supported models](https://docs.cartesia.ai/build-with-cartesia/models).
+- **`language`** _(string)_ (optional) - Default: `en`: Language of input text in [ISO-639-1](https://en.wikipedia.org/wiki/List_of_ISO_639_language_codes) format. For a list of languages support by model, see [supported models](https://docs.cartesia.ai/build-with-cartesia/models/tts).
 
 ## Customizing pronunciation
 
@@ -24774,9 +24951,11 @@ The following resources provide more information about using Cartesia with LiveK
 
 - **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-cartesia)**: View the source or contribute to the LiveKit Cartesia TTS plugin.
 
-- **[Cartesia docs](https://docs.cartesia.ai)**: Cartesia TTS docs.
+- **[Cartesia docs](https://docs.cartesia.ai/build-with-cartesia/models/tts)**: Cartesia TTS docs.
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Cartesia TTS.
+
+- **[Cartesia STT](https://docs.livekit.io/agents/integrations/stt/cartesia.md)**: Guide to the Cartesia STT integration with LiveKit Agents.
 
 ---
 
@@ -25552,6 +25731,84 @@ The following resources provide more information about using Rime with LiveKit A
 - **[Rime docs](https://docs.rime.ai)**: Rime TTS docs.
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Rime TTS.
+
+---
+
+---
+
+## Sarvam
+
+## Overview
+
+[Sarvam](https://sarvam.ai/) provides high-quality text-to-speech technology optimized for Indian languages. With LiveKit's Sarvam integration and the Agents framework, you can build voice AI agents that sound natural in Indian languages.
+
+## Quick reference
+
+This section provides a quick reference for the Sarvam TTS plugin. For more information, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[sarvam]~=1.0"
+
+```
+
+### Authentication
+
+The Sarvam plugin requires a [Sarvam API key](https://dashboard.sarvam.ai/key-management).
+
+Set `SARVAM_API_KEY` in your `.env` file.
+
+### Usage
+
+Use Sarvam TTS within an `AgentSession` or as a standalone speech generator. For example, you can use this TTS in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import sarvam
+
+session = AgentSession(
+   tts=sarvam.TTS(
+      target_language_code="hi-IN",
+      speaker="anushka",
+   )
+   # ... llm, stt, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/sarvam/index.html.md#livekit.plugins.sarvam.TTS) for a complete list of all available parameters.
+
+- **`target_language_code`** _(string)_: BCP-47 language code for supported Indian languages. For example: `hi-IN` for Hindi, `en-IN` for Indian English. See [documentation](https://docs.sarvam.ai/api-reference-docs/text-to-speech/convert#request.body.target_language_code) for a complete list of supported languages.
+
+- **`model`** _(string)_ (optional) - Default: `bulbul:v2`: The Sarvam TTS model to use. Currently only `bulbul:v2` is supported. See [documentation](https://docs.sarvam.ai/api-reference-docs/text-to-speech/convert#request.body.model) for a complete list of supported models.
+
+- **`speaker`** _(string)_ (optional) - Default: `anushka`: Voice to use for synthesis. See [documentation](https://docs.sarvam.ai/api-reference-docs/text-to-speech/convert#request.body.speaker) for a complete list of supported voices.
+
+- **`pitch`** _(float)_ (optional) - Default: `0.0`: Voice pitch adjustment. Valid range: -20.0 to 20.0.
+
+- **`pace`** _(float)_ (optional) - Default: `1.0`: Speech rate multiplier. Valid range: 0.5 to 2.0.
+
+- **`loudness`** _(float)_ (optional) - Default: `1.0`: Volume multiplier. Valid range: 0.5 to 2.0.
+
+## Additional resources
+
+The following resources provide more information about using Sarvam with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-sarvam/)**: The `livekit-plugins-sarvam` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/sarvam/index.html.md#livekit.plugins.sarvam.TTS)**: Reference for the Sarvam TTS plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-sarvam)**: View the source or contribute to the LiveKit Sarvam TTS plugin.
+
+- **[Sarvam docs](https://docs.sarvam.ai/)**: Sarvam's full docs site.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Sarvam.
+
+- **[Sarvam STT](https://docs.livekit.io/agents/integrations/stt/sarvam.md)**: Guide to the Sarvam STT integration with LiveKit Agents.
 
 ---
 
@@ -30670,5 +30927,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-06-11T21:07:02.600Z.
+This document was rendered at 2025-06-16T23:04:35.764Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

@@ -1,7 +1,7 @@
 # LiveKit Knowledge Base for LLM Assistant
 
 [LiveKit Docs](https://docs.livekit.io/)
-[![Ask DeepWiki for understanding the codebase](https://deepwiki.com/badge.svg)](https://deepwiki.com/livekit/livekit_composite)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/livekit/livekit_composite)
 [![Slack community](https://img.shields.io/endpoint?url=https%3A%2F%2Flivekit.io%2Fbadges%2Fslack)](https://livekit.io/join-slack)
 [![Twitter Follow](https://img.shields.io/twitter/follow/livekit)](https://twitter.com/livekit)
 

@@ -152,7 +152,10 @@ func (s *s3Storage) UploadFile(filepath, storagePath, contentType string) (strin
 }
 
 func (s *s3Storage) upload(reader io.Reader, storagePath, contentType string) (string, error) {
+	l := NewS3Logger()
 	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
+		o.Logger = l
+		o.ClientLogMode = aws.LogRequest | aws.LogResponse | aws.LogRetries
 		o.UsePathStyle = s.conf.ForcePathStyle
 	})
 

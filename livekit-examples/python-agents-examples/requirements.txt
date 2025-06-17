@@ -1,5 +1,5 @@
-livekit-agents[openai,silero,turn-detector,deepgram,google,anthropic,cartesia,elevenlabs,rime,playai,groq,tavus]~=1.0
-livekit-plugins-noise-cancellation~=0.0
+livekit-agents[openai,silero,turn-detector,deepgram,google,anthropic,cartesia,elevenlabs,rime,playai,groq,tavus,gladia]~=1.1
+livekit-plugins-noise-cancellation
 python-dotenv
 requests>=2.32.0
 annoy

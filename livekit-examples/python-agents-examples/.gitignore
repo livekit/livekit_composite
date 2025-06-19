@@ -1,6 +1,9 @@
 .env
 .env.local
+.next/
+node_modules
 rag/data
 __pycache__
 /venv
 .DS_Store
+README_TEMPLATE.md

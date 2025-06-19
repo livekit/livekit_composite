@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
+    "test": "vitest run",
     "format:check": "prettier --check \"**/*.{ts,tsx,md,json}\"",
     "format:write": "prettier --write \"**/*.{ts,tsx,md,json}\""
   },
@@ -17,7 +18,7 @@
     "@livekit/components-styles": "1.1.6",
     "@livekit/krisp-noise-filter": "0.3.0",
     "@livekit/track-processors": "^0.5.4",
-    "livekit-client": "2.13.5",
+    "livekit-client": "2.13.6",
     "livekit-server-sdk": "2.13.0",
     "next": "15.2.4",
     "react": "18.3.1",
@@ -31,9 +32,10 @@
     "@types/react-dom": "18.3.7",
     "eslint": "9.29.0",
     "eslint-config-next": "15.3.3",
+    "prettier": "3.5.3",
     "source-map-loader": "^5.0.0",
     "typescript": "5.8.3",
-    "prettier": "3.5.3"
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=18"

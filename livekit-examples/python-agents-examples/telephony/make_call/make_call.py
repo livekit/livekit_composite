@@ -56,7 +56,7 @@ async def make_call(phone_number):
 
 async def main():
     # Replace with the actual phone number including country code
-    phone_number = "+13432024203"
+    phone_number = "+1231231231"
     await make_call(phone_number)
 
 if __name__ == "__main__":

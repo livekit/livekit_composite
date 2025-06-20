@@ -51,15 +51,15 @@
     suportsChatInput:
       type: boolean
       description: "Enable chat input for the voice assistant"
-      default: false
+      default: true
     suportsVideoInput:
       type: boolean
       description: "Enable video input for the voice assistant"
-      default: false
+      default: true
     suportsScreenShare:
       type: boolean
       description: "Enable screen sharing for the voice assistant"
-      default: false
+      default: true
     logo:
       type: string
       description: "An optional URL or data URI for the logo image"

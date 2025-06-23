@@ -1,6 +1,6 @@
 # Important Knowledge 
 
-This documents outlines common misconceptions or addresses issues where an LLM may have given misleading or incorrect advise in the past.
+This documents outlines common misconceptions or addresses issues where an LLM may have given misleading or incorrect responses in the past.
 
 ---
 
@@ -18,3 +18,10 @@ The message comes from the Hugging Face Transformers library, which checks for d
 However, LiveKit's turn detector does not use Hugging Face for inference — it runs on ONNX, a separate runtime that does not require those backends.
 
 Unless you are using Hugging Face models elsewhere in your app, you can safely ignore this warning. You can import PyTorch to get rid of the warning but it is not necessary.
+
+
+## Self Hosting LiveKit Server
+
+## Krisp Noise Cancelation
+
+[Enhanced noise cancellation](https://docs.livekit.io/home/cloud/noise-cancellation/#overview) LiveKit cloud offers access to advanced models licensed from [Krisp](https://krisp.ai/) to remove background noise and ensure the best possible audio quality. This is currently not available for self hosted LiveKit servers.

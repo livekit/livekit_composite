@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/frostbyte73/core"
 	"github.com/go-logr/logr"
 	"github.com/pion/rtp"
 
@@ -31,7 +32,8 @@ type Buffer struct {
 	onPacket     PacketFunc
 	onPacketLoss func()
 
-	mu sync.Mutex
+	mu     sync.Mutex
+	closed core.Fuse
 
 	initialized bool
 	prevSN      uint16
@@ -77,10 +79,15 @@ func NewBuffer(
 	}
 
 	go func() {
-		for range b.timer.C {
-			b.mu.Lock()
-			b.popReady()
-			b.mu.Unlock()
+		for {
+			select {
+			case <-b.timer.C:
+				b.mu.Lock()
+				b.popReady()
+				b.mu.Unlock()
+			case <-b.closed.Watch():
+				return
+			}
 		}
 	}()
 
@@ -157,6 +164,7 @@ func (s *BufferStats) PacketLoss() float64 {
 
 func (b *Buffer) Close() {
 	b.timer.Stop()
+	b.closed.Break()
 }
 
 // push adds a packet to the buffer

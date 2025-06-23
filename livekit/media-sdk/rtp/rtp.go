@@ -45,6 +45,11 @@ type Handler interface {
 	HandleRTP(h *rtp.Header, payload []byte) error
 }
 
+type HandlerCloser interface {
+	Handler
+	Close()
+}
+
 type HandlerFunc func(h *rtp.Header, payload []byte) error
 
 func (fnc HandlerFunc) String() string {
@@ -58,7 +63,9 @@ func (fnc HandlerFunc) HandleRTP(h *rtp.Header, payload []byte) error {
 	return fnc(h, payload)
 }
 
-func HandleLoop(r Reader, h Handler) error {
+func HandleLoop(r Reader, h HandlerCloser) error {
+	defer h.Close()
+
 	for {
 		p, _, err := r.ReadRTP()
 		if err != nil {
@@ -70,6 +77,16 @@ func HandleLoop(r Reader, h Handler) error {
 		}
 	}
 }
+
+type nopCloser struct {
+	Handler
+}
+
+func NewNopCloser(h Handler) HandlerCloser {
+	return nopCloser{h}
+}
+
+func (nopCloser) Close() {}
 
 // Buffer is a Writer that clones and appends RTP packets into a slice.
 type Buffer []*Packet

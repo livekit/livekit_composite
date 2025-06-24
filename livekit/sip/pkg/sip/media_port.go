@@ -26,8 +26,8 @@ import (
 	"time"
 
 	"github.com/frostbyte73/core"
-	msdk "github.com/livekit/media-sdk"
 
+	msdk "github.com/livekit/media-sdk"
 	"github.com/livekit/media-sdk/dtmf"
 	"github.com/livekit/media-sdk/rtp"
 	"github.com/livekit/media-sdk/sdp"
@@ -61,12 +61,13 @@ type UDPConn interface {
 	WriteToUDPAddrPort(b []byte, addr netip.AddrPort) (int, error)
 }
 
-func newUDPConn(conn UDPConn) *udpConn {
-	return &udpConn{UDPConn: conn}
+func newUDPConn(log logger.Logger, conn UDPConn) *udpConn {
+	return &udpConn{UDPConn: conn, log: log}
 }
 
 type udpConn struct {
 	UDPConn
+	log logger.Logger
 	src atomic.Pointer[netip.AddrPort]
 	dst atomic.Pointer[netip.AddrPort]
 }
@@ -82,13 +83,23 @@ func (c *udpConn) GetSrc() (netip.AddrPort, bool) {
 
 func (c *udpConn) SetDst(addr netip.AddrPort) {
 	if addr.IsValid() {
-		c.dst.Store(&addr)
+		prev := c.dst.Swap(&addr)
+		if prev == nil || !prev.IsValid() {
+			c.log.Infow("setting media destination", "addr", addr.String())
+		} else if *prev != addr {
+			c.log.Infow("changing media destination", "addr", addr.String())
+		}
 	}
 }
 
 func (c *udpConn) Read(b []byte) (n int, err error) {
 	n, addr, err := c.ReadFromUDPAddrPort(b)
-	c.src.Store(&addr)
+	prev := c.src.Swap(&addr)
+	if prev == nil || !prev.IsValid() {
+		c.log.Infow("setting media source", "addr", addr.String())
+	} else if *prev != addr {
+		c.log.Infow("changing media source", "addr", addr.String())
+	}
 	return n, err
 }
 
@@ -147,7 +158,7 @@ func NewMediaPortWith(log logger.Logger, mon *stats.CallMonitor, conn UDPConn, o
 		mediaTimeout:  mediaTimeout,
 		timeoutReset:  make(chan struct{}, 1),
 		jitterEnabled: opts.EnableJitterBuffer,
-		port:          newUDPConn(conn),
+		port:          newUDPConn(log, conn),
 		audioOut:      msdk.NewSwitchWriter(sampleRate),
 		audioIn:       msdk.NewSwitchWriter(sampleRate),
 		stats:         opts.Stats,
@@ -179,7 +190,7 @@ type MediaPort struct {
 	mu           sync.Mutex
 	conf         *MediaConf
 	sess         rtp.Session
-	hnd          atomic.Pointer[rtp.Handler]
+	hnd          atomic.Pointer[rtp.HandlerCloser]
 	dtmfOutRTP   *rtp.Stream
 	dtmfOutAudio msdk.PCM16Writer
 
@@ -291,6 +302,11 @@ func (p *MediaPort) Close() {
 			_ = p.sess.Close()
 		}
 		_ = p.port.Close()
+
+		hnd := p.hnd.Load()
+		if hnd != nil {
+			(*hnd).Close()
+		}
 	})
 }
 
@@ -547,7 +563,7 @@ func (p *MediaPort) setupInput() {
 			),
 		)
 	}
-	var hnd rtp.Handler = newRTPHandlerCount(mux, &p.stats.MuxPackets, &p.stats.MuxBytes)
+	var hnd rtp.HandlerCloser = rtp.NewNopCloser(newRTPHandlerCount(mux, &p.stats.MuxPackets, &p.stats.MuxBytes))
 	if p.jitterEnabled {
 		hnd = rtp.HandleJitter(hnd)
 	}

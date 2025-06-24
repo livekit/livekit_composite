@@ -31022,5 +31022,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-06-21T19:18:36.242Z.
+This document was rendered at 2025-06-23T20:22:05.847Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

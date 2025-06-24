@@ -11,6 +11,7 @@ import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 
+import org.webrtc.AudioTrack;
 import org.webrtc.DataChannel;
 import org.webrtc.IceCandidate;
 import org.webrtc.MediaStream;
@@ -447,6 +448,8 @@ class PeerConnectionObserver implements PeerConnection.Observer {
             if (!existingTrack) {
                 if (track.kind().equals(MediaStreamTrack.VIDEO_TRACK_KIND)) {
                     videoTrackAdapters.addAdapter((VideoTrack) track);
+                } else if (track.kind().equals(MediaStreamTrack.AUDIO_TRACK_KIND)) {
+                    ((AudioTrack) track).setVolume(WebRTCModuleOptions.getInstance().defaultTrackVolume);
                 }
                 remoteTracks.put(track.id(), track);
             }

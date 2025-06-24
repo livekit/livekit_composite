@@ -185,7 +185,7 @@ func (s *azureBLOBStorage) GeneratePresignedUrl(storagePath string) (string, err
 		return "", err
 	}
 
-	return fmt.Sprintf("https://%s.blob.core.windows.net?%s", s.conf.AccountName, qp), nil
+	return fmt.Sprintf("https://%s.blob.core.windows.net?%s", s.conf.AccountName, qp.Encode()), nil
 }
 
 func (s *azureBLOBStorage) Delete(storagePath string) error {

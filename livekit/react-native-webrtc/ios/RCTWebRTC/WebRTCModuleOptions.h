@@ -13,6 +13,8 @@ NS_ASSUME_NONNULL_BEGIN
 @property(nonatomic, assign) RTCLoggingSeverity loggingSeverity;
 @property(nonatomic, assign) BOOL enableMultitaskingCameraAccess;
 
+@property(nonatomic, assign) double defaultTrackVolume;
+
 #pragma mark - This class is a singleton
 
 + (instancetype _Nonnull)sharedInstance;

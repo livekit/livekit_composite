@@ -51,11 +51,11 @@ type BaseConfig struct {
 	StorageConfig *StorageConfig          `yaml:"storage,omitempty"` // storage config
 	BackupConfig  *StorageConfig          `yaml:"backup,omitempty"`  // backup config, for storage failures
 
-	// dev/debugging
+	// advanced
 	Insecure    bool                   `yaml:"insecure"`     // allow chrome to connect to an insecure websocket
 	Debug       DebugConfig            `yaml:"debug"`        // create dot file on internal error
 	ChromeFlags map[string]interface{} `yaml:"chrome_flags"` // additional flags to pass to Chrome
-	Latency     LatencyConfig          `yaml:"latency"`      // gstreamer latencies, modifying this may break the service
+	Latency     LatencyConfig          `yaml:"latency"`      // gstreamer latencies, modifying these may break the service
 }
 
 type SessionLimits struct {
@@ -74,27 +74,33 @@ type DebugConfig struct {
 }
 
 type LatencyConfig struct {
-	JitterBufferLatency time.Duration
-	AudioMixerLatency   time.Duration
-	PipelineLatency     time.Duration
+	JitterBufferLatency time.Duration `yaml:"jitter_buffer_latency"` // jitter buffer max latency for sdk egress
+	AudioMixerLatency   time.Duration `yaml:"audio_mixer_latency"`   // audio mixer latency, must be greater than jitter buffer latency
+	PipelineLatency     time.Duration `yaml:"pipeline_latency"`      // max latency for the entire pipeline
 }
 
 func (c *BaseConfig) initLogger(values ...interface{}) error {
-	var gstDebug []string
-	switch c.Logging.Level {
-	case "debug":
-		gstDebug = []string{"3"}
-	case "info", "warn":
-		gstDebug = []string{"2"}
-	case "error":
-		gstDebug = []string{"1"}
-	}
-	gstDebug = append(gstDebug,
-		"rtmpclient:4",
-		"srtlib:1",
-	)
-	if err := os.Setenv("GST_DEBUG", strings.Join(gstDebug, ",")); err != nil {
-		return err
+	_, exists := os.LookupEnv("GST_DEBUG")
+
+	// If GST_DEBUG is not set, use pre-defined values based on logging level
+	if !exists {
+		var gstDebug []string
+		switch c.Logging.Level {
+		case "debug":
+			gstDebug = []string{"3"}
+		case "info", "warn":
+			gstDebug = []string{"2"}
+		case "error":
+			gstDebug = []string{"1"}
+		}
+		gstDebug = append(gstDebug,
+			"rtmpclient:4",
+			"srtlib:1",
+		)
+
+		if err := os.Setenv("GST_DEBUG", strings.Join(gstDebug, ",")); err != nil {
+			return err
+		}
 	}
 
 	zl, err := logger.NewZapLogger(c.Logging)

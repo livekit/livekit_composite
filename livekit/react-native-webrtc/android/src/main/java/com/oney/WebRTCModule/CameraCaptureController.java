@@ -3,7 +3,7 @@ package com.oney.WebRTCModule;
 import android.content.Context;
 import android.hardware.camera2.CameraManager;
 import android.util.Log;
-import android.util.Pair;
+
 import androidx.annotation.Nullable;
 import androidx.core.util.Consumer;
 
@@ -31,6 +31,7 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
 
     private boolean isFrontFacing;
 
+
     /**
      * Equivalent to the camera index as a String
      */
@@ -39,6 +40,9 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
 
     private final Context context;
     private final CameraEnumerator cameraEnumerator;
+
+    private final String constraintDeviceId;
+    private final String constraintFacingMode;
     private ReadableMap constraints;
 
     /**
@@ -62,6 +66,9 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
         this.context = context;
         this.cameraEnumerator = cameraEnumerator;
         this.constraints = constraints;
+
+        this.constraintDeviceId = ReactBridgeUtil.getMapStrValue(this.constraints, "deviceId");
+        this.constraintFacingMode = ReactBridgeUtil.getMapStrValue(this.constraints, "facingMode");
     }
 
     @Nullable
@@ -113,8 +120,10 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
 
         // Find target camera to switch to.
         String[] deviceNames = cameraEnumerator.getDeviceNames();
-        final String deviceId = ReactBridgeUtil.getMapStrValue(constraints, "deviceId");
-        final String facingMode = ReactBridgeUtil.getMapStrValue(constraints, "facingMode");
+
+        // Use the initial deviceId/facingMode. It is a constraint violation to change these through applyConstraints.
+        final String deviceId = constraintDeviceId;
+        final String facingMode = constraintFacingMode;
         int cameraIndex = -1;
         String cameraName = null;
 
@@ -144,11 +153,12 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
 
         if (cameraName == null) {
             if (onFinishedCallback != null) {
-                onFinishedCallback.accept(new Exception("OverconstrainedError: could not find camera with deviceId: " + deviceId + " or facingMode: " + facingMode));
+                onFinishedCallback.accept(new Exception(
+                        "OverconstrainedError: could not find camera with deviceId: " + deviceId + " or facingMode: " + facingMode));
             }
             return;
         }
-        
+
         // For lambda reference
         final int finalCameraIndex = cameraIndex;
         final String finalCameraName = cameraName;
@@ -200,11 +210,8 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
 
     @Override
     protected VideoCapturer createVideoCapturer() {
-        String deviceId = ReactBridgeUtil.getMapStrValue(this.constraints, "deviceId");
-        String facingMode = ReactBridgeUtil.getMapStrValue(this.constraints, "facingMode");
-
-        CreateCapturerResult result = createVideoCapturer(deviceId, facingMode);
-        if(result == null) {
+        CreateCapturerResult result = createVideoCapturer(constraintDeviceId, constraintFacingMode);
+        if (result == null) {
             return null;
         }
 
@@ -233,12 +240,12 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
      * Constructs a new {@code VideoCapturer} instance attempting to satisfy
      * specific constraints.
      *
-     * @param deviceId the ID of the requested video device. If not
-     * {@code null} and a {@code VideoCapturer} can be created for it, then
-     * {@code facingMode} is ignored.
+     * @param deviceId   the ID of the requested video device. If not
+     *                   {@code null} and a {@code VideoCapturer} can be created for it, then
+     *                   {@code facingMode} is ignored.
      * @param facingMode the facing of the requested video source such as
-     * {@code user} and {@code environment}. If {@code null}, "user" is
-     * presumed.
+     *                   {@code user} and {@code environment}. If {@code null}, "user" is
+     *                   presumed.
      * @return a pair containing the deviceId and {@code VideoCapturer} satisfying the {@code facingMode} or
      * {@code deviceId} constraint, or null.
      */
@@ -325,7 +332,7 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
         public final int cameraIndex;
         public final String cameraName;
         public final VideoCapturer videoCapturer;
-    
+
         public CreateCapturerResult(int cameraIndex, String cameraName, VideoCapturer videoCapturer) {
             this.cameraIndex = cameraIndex;
             this.cameraName = cameraName;

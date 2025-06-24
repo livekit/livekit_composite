@@ -20,6 +20,7 @@
 #import "WebRTCModule+RTCPeerConnection.h"
 #import "WebRTCModule+VideoTrackAdapter.h"
 #import "WebRTCModule.h"
+#import "WebRTCModuleOptions.h"
 
 @implementation RTCPeerConnection (React)
 
@@ -932,6 +933,10 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(peerConnectionRemoveTrack
             if (track.kind == kRTCMediaStreamTrackKindVideo) {
                 RTCVideoTrack *videoTrack = (RTCVideoTrack *)track;
                 [peerConnection addVideoTrackAdapter:videoTrack];
+            } else if (track.kind == kRTCMediaStreamTrackKindAudio) {
+                RTCAudioTrack *audioTrack = (RTCAudioTrack *)track;
+                WebRTCModuleOptions *options = [WebRTCModuleOptions sharedInstance];
+                audioTrack.source.volume = options.defaultTrackVolume;
             }
 
             peerConnection.remoteTracks[track.trackId] = track;

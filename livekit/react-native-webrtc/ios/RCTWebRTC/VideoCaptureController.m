@@ -24,6 +24,7 @@
     if (self) {
         self.capturer = capturer;
         self.running = NO;
+        [self determineDevice:constraints];
         [self applyConstraints:constraints error:nil];
     }
 
@@ -117,32 +118,10 @@
     dispatch_semaphore_wait(semaphore, DISPATCH_TIME_FOREVER);
 }
 
-- (void)applyConstraints:(NSDictionary *)constraints error:(NSError **)outError {
+- (void)determineDevice:(NSDictionary *)constraints {
     // Clear device to prepare for starting camera with new constraints.
     self.device = nil;
-
-    BOOL hasChanged = NO;
-    
     NSString *deviceId = constraints[@"deviceId"];
-    int width = [constraints[@"width"] intValue];
-    int height = [constraints[@"height"] intValue];
-    int frameRate = [constraints[@"frameRate"] intValue];
-
-    if (self.width != width) {
-        hasChanged = YES;
-        self.width = width;
-    }
-    
-    if (self.height != height) {
-        hasChanged = YES;
-        self.height = height;
-    }
-    
-    if (self.frameRate != frameRate) {
-        hasChanged = YES;
-        self.frameRate = frameRate;
-    }
-
     id facingMode = constraints[@"facingMode"];
 
     if (!facingMode && !deviceId) {
@@ -164,7 +143,6 @@
 
         BOOL usingFrontCamera = position == AVCaptureDevicePositionFront;
         if (self.usingFrontCamera != usingFrontCamera) {
-            hasChanged = YES;
             self.usingFrontCamera = usingFrontCamera;
         }
     }
@@ -176,12 +154,35 @@
     }
     
     if (self.deviceId != deviceId && ![self.deviceId isEqualToString:deviceId]) {
-        hasChanged = YES;
         self.deviceId = deviceId;
     }
+}
 
+- (void)applyConstraints:(NSDictionary *)constraints error:(NSError **)outError {
+
+    BOOL hasChanged = NO;
+    
+    int width = [constraints[@"width"] intValue];
+    int height = [constraints[@"height"] intValue];
+    int frameRate = [constraints[@"frameRate"] intValue];
+
+    if (self.width != width) {
+        hasChanged = YES;
+        self.width = width;
+    }
+    
+    if (self.height != height) {
+        hasChanged = YES;
+        self.height = height;
+    }
+    
+    if (self.frameRate != frameRate) {
+        hasChanged = YES;
+        self.frameRate = frameRate;
+    }
 
     if (self.running && hasChanged) {
+        [self stopCapture];
         [self startCapture];
     }
 }

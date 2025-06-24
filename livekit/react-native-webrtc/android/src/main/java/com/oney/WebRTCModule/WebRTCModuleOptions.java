@@ -21,6 +21,7 @@ public class WebRTCModuleOptions {
     public Logging.Severity loggingSeverity;
     public String fieldTrials;
     public boolean enableMediaProjectionService;
+    public double defaultTrackVolume = 1.0;
 
     public static WebRTCModuleOptions getInstance() {
         if (instance == null) {

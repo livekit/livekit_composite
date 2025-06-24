@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
@@ -30,6 +31,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/smithy-go/middleware"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
 const (
@@ -157,6 +160,19 @@ func (s *s3Storage) upload(reader io.Reader, storagePath, contentType string) (s
 		o.Logger = l
 		o.ClientLogMode = aws.LogRequest | aws.LogResponse | aws.LogRetries
 		o.UsePathStyle = s.conf.ForcePathStyle
+
+		// switch to md5 checksum for oracle cloud
+		if s.conf.Endpoint != "" {
+			if parsed, err := url.Parse(s.conf.Endpoint); err == nil && strings.HasSuffix(parsed.Host, "oraclecloud.com") {
+				o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+					stack.Initialize.Remove("AWSChecksum:SetupInputContext")
+					stack.Build.Remove("AWSChecksum:RequestMetricsTracking")
+					stack.Finalize.Remove("AWSChecksum:ComputeInputPayloadChecksum")
+					stack.Finalize.Remove("addInputChecksumTrailer")
+					return smithyhttp.AddContentChecksumMiddleware(stack)
+				})
+			}
+		}
 	})
 
 	input := &s3.PutObjectInput{
@@ -187,7 +203,10 @@ func (s *s3Storage) upload(reader io.Reader, storagePath, contentType string) (s
 
 	var location string
 	if s.conf.ForcePathStyle {
-		location = fmt.Sprintf("https://%s/%s/%s", endpoint, s.conf.Bucket, storagePath)
+		if !strings.HasPrefix(endpoint, "http") {
+			endpoint = "https://" + endpoint
+		}
+		location = fmt.Sprintf("%s/%s/%s", endpoint, s.conf.Bucket, storagePath)
 	} else {
 		location = fmt.Sprintf("https://%s.%s/%s", s.conf.Bucket, endpoint, storagePath)
 	}

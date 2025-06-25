@@ -101,6 +101,7 @@ def categorize_files_by_repo(changed_files: list) -> dict:
         'Agents': [],
         'Embedded': [],
         'Examples': [],
+        'Knowledge': [],
         'Other': []
     }
     
@@ -131,6 +132,10 @@ def categorize_files_by_repo(changed_files: list) -> dict:
         elif file.startswith('livekit-examples/esp'):
             categories['Embedded'].append(file)
         
+        # Knowledge Base
+        elif file.startswith('knowledge_base/'):
+            categories['Knowledge'].append(file)
+        
         # Examples (catch-all for examples)
         elif (file.startswith('livekit-examples/') or 
               '/examples/' in file):
@@ -141,6 +146,85 @@ def categorize_files_by_repo(changed_files: list) -> dict:
             categories['Other'].append(file)
     
     return categories
+
+
+def categorize_files_by_subproject(changed_files: list) -> dict:
+    """Categorize changed files by individual repositories/projects for detailed analysis."""
+    subprojects = {}
+    
+    for file in changed_files:
+        # Skip root directory files (tool files)
+        if '/' not in file:
+            continue
+            
+        # Extract the subproject path (first two levels)
+        parts = file.split('/')
+        if len(parts) >= 2:
+            subproject_key = f"{parts[0]}/{parts[1]}"
+        else:
+            subproject_key = parts[0]
+        
+        # Special handling for specific patterns
+        if file.startswith('livekit/client-sdk-'):
+            # Extract the specific client SDK (e.g., client-sdk-js, client-sdk-swift)
+            sdk_name = parts[1] if len(parts) > 1 else "client-sdk"
+            subproject_key = f"livekit/{sdk_name}"
+        elif file.startswith('livekit/agents-js/'):
+            subproject_key = "livekit/agents-js"
+        elif file.startswith('livekit/agents/'):
+            subproject_key = "livekit/agents"
+        elif file.startswith('livekit-examples/'):
+            # For examples, use the specific example name
+            if len(parts) >= 2:
+                subproject_key = f"livekit-examples/{parts[1]}"
+            else:
+                subproject_key = "livekit-examples"
+        elif file.startswith('knowledge_base/'):
+            subproject_key = "knowledge_base"
+        
+        if subproject_key not in subprojects:
+            subprojects[subproject_key] = []
+        subprojects[subproject_key].append(file)
+    
+    return subprojects
+
+
+def get_subproject_display_name(subproject_key: str) -> str:
+    """Get a human-readable display name for a subproject."""
+    if subproject_key == "knowledge_base":
+        return "Knowledge Base"
+    elif subproject_key.startswith("livekit/client-sdk-"):
+        # Convert client-sdk-js to Client SDK (JavaScript)
+        sdk_name = subproject_key.split('/')[-1]
+        if sdk_name == "client-sdk-js":
+            return "Client SDK (JavaScript)"
+        elif sdk_name == "client-sdk-swift":
+            return "Client SDK (Swift)"
+        elif sdk_name == "client-sdk-android":
+            return "Client SDK (Android)"
+        elif sdk_name == "client-sdk-flutter":
+            return "Client SDK (Flutter)"
+        elif sdk_name == "client-sdk-react-native":
+            return "Client SDK (React Native)"
+        elif sdk_name == "client-sdk-unity":
+            return "Client SDK (Unity)"
+        else:
+            return f"Client SDK ({sdk_name.replace('client-sdk-', '').title()})"
+    elif subproject_key == "livekit/agents":
+        return "Agents (Python)"
+    elif subproject_key == "livekit/agents-js":
+        return "Agents (JavaScript)"
+    elif subproject_key.startswith("livekit-examples/"):
+        example_name = subproject_key.split('/')[-1]
+        return f"Example: {example_name.replace('-', ' ').title()}"
+    else:
+        # Convert livekit/some-component to Some Component
+        parts = subproject_key.split('/')
+        if len(parts) >= 2:
+            component_name = parts[-1].replace('-', ' ').title()
+            return f"{parts[0].title()}: {component_name}"
+        else:
+            return subproject_key.replace('-', ' ').title()
 
 
 def get_diff_stats(source: Optional[str] = None, dest: Optional[str] = None) -> str:
@@ -268,8 +352,11 @@ def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: l
     
     client = OpenAI(api_key=api_key)
     
-    # Categorize files by repository
+    # Categorize files by repository for brief summary
     file_categories = categorize_files_by_repo(changed_files)
+    
+    # Categorize files by subproject for detailed analysis
+    subprojects = categorize_files_by_subproject(changed_files)
     
     # Count changes per category
     category_counts = {category: len(files) for category, files in file_categories.items() if files}
@@ -311,17 +398,22 @@ Focus on the most significant changes and their impact.
             temperature=0.2
         )
         
-        # Process each category separately for detailed summary
+        # Process each subproject separately for detailed summary
         detailed_summaries = []
-        for category, files in file_categories.items():
+        
+        # Sort subprojects by display name for consistent ordering
+        sorted_subprojects = sorted(subprojects.items(), key=lambda x: get_subproject_display_name(x[0]))
+        
+        for subproject_key, files in sorted_subprojects:
             if not files:
                 continue
                 
-            print(f"Processing {category} changes ({len(files)} files)...")
+            display_name = get_subproject_display_name(subproject_key)
+            print(f"Processing {display_name} changes ({len(files)} files)...")
             
-            # Handle large categories by sampling files
+            # Handle large subprojects by sampling files
             if len(files) > max_files_per_category:
-                print(f"  ⚠️  Large category detected ({len(files)} files). Sampling {max_files_per_category} files for analysis.")
+                print(f"  ⚠️  Large subproject detected ({len(files)} files). Sampling {max_files_per_category} files for analysis.")
                 # Sample files intelligently - take first half and last half to get a good spread
                 half_size = max_files_per_category // 2
                 first_half = files[:half_size]
@@ -332,7 +424,7 @@ Focus on the most significant changes and their impact.
             else:
                 sampled_files = files
             
-            # Get diff for this category (using sampled files)
+            # Get diff for this subproject (using sampled files)
             category_diff = get_category_diff(None, None, sampled_files)
             if not category_diff:
                 continue
@@ -354,7 +446,7 @@ Focus on the most significant changes and their impact.
                 file_list += f"\n\n*Note: Analysis based on sample of {len(sampled_files)} files due to large number of changes*"
             
             category_prompt = f"""
-Analyze the changes in the {category} component. Use Markdown formatting and bullet points for all lists:
+Analyze the changes in the {display_name} component. Use Markdown formatting and bullet points for all lists:
 
 {file_list}
 
@@ -384,15 +476,15 @@ Provide a technical summary with the following sections, each as a Markdown bull
                     temperature=0.2
                 )
                 
-                detailed_summaries.append(f"## {category}\n\n{category_response.choices[0].message.content.strip()}\n")
+                detailed_summaries.append(f"## {display_name}\n\n{category_response.choices[0].message.content.strip()}\n")
             except Exception as e:
                 error_msg = str(e)
                 if "context_length_exceeded" in error_msg:
-                    print(f"  ❌ Token limit exceeded for {category}. Skipping detailed analysis.")
-                    detailed_summaries.append(f"## {category}\n\n*Detailed analysis skipped due to large number of changes ({len(files)} files). See brief summary above for overview.*\n")
+                    print(f"  ❌ Token limit exceeded for {display_name}. Skipping detailed analysis.")
+                    detailed_summaries.append(f"## {display_name}\n\n*Detailed analysis skipped due to large number of changes ({len(files)} files). See brief summary above for overview.*\n")
                 else:
-                    print(f"  ❌ Error processing {category} changes: {error_msg}")
-                    detailed_summaries.append(f"## {category}\n\n*Error processing changes in this category*\n")
+                    print(f"  ❌ Error processing {display_name} changes: {error_msg}")
+                    detailed_summaries.append(f"## {display_name}\n\n*Error processing changes in this subproject*\n")
         
         # Combine all detailed summaries
         detailed_summary = "\n".join(detailed_summaries)
@@ -418,8 +510,8 @@ Large-scale changes detected in commit {commit_info['hash']} ({commit_info['date
 ### Overview
 This commit contains changes across {len(changed_files)} files, making it a large-scale update.
 
-### File Distribution
-{chr(10).join([f"- **{category}**: {len(files)} files" for category, files in file_categories.items() if files])}
+### File Distribution by Subproject
+{chr(10).join([f"- **{get_subproject_display_name(key)}**: {len(files)} files" for key, files in sorted(subprojects.items(), key=lambda x: get_subproject_display_name(x[0]))])}
 
 ### Analysis Limitations
 Due to the large number of changes ({len(changed_files)} files), detailed analysis was limited to prevent API token limits. Consider:
@@ -512,6 +604,7 @@ Examples:
     
     # Categorize and display file changes
     file_categories = categorize_files_by_repo(changed_files)
+    subprojects = categorize_files_by_subproject(changed_files)
     total_files = len(changed_files)
     
     # Filter categories if specified
@@ -528,6 +621,13 @@ Examples:
     for category, files in file_categories.items():
         if files:
             print(f"   • {len(files)} in {category}")
+    
+    # Show subproject breakdown for better understanding
+    print(f"\n📁 Detailed breakdown by subproject:")
+    sorted_subprojects = sorted(subprojects.items(), key=lambda x: get_subproject_display_name(x[0]))
+    for subproject_key, files in sorted_subprojects:
+        display_name = get_subproject_display_name(subproject_key)
+        print(f"   • {len(files)} in {display_name}")
     
     # Warn about large changes and suggest options
     if total_files > 500:
@@ -553,12 +653,12 @@ Examples:
     
     if args.dry_run:
         print("\n🔍 DRY RUN MODE - No OpenAI calls will be made")
-        print("Categories that would be analyzed:")
-        for category, files in file_categories.items():
-            if files:
-                max_files = min(len(files), args.max_files)
-                print(f"   • {category}: {len(files)} files (would analyze {max_files})")
-        print(f"\nTotal files that would be analyzed: {sum(min(len(files), args.max_files) for files in file_categories.values())}")
+        print("Subprojects that would be analyzed:")
+        for subproject_key, files in sorted_subprojects:
+            display_name = get_subproject_display_name(subproject_key)
+            max_files = min(len(files), args.max_files)
+            print(f"   • {display_name}: {len(files)} files (would analyze {max_files})")
+        print(f"\nTotal files that would be analyzed: {sum(min(len(files), args.max_files) for files in subprojects.values())}")
         return
     
     print("🤖 Generating summaries with OpenAI...")

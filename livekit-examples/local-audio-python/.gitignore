@@ -1,5 +1,6 @@
-.env.local
 .env
 venv/
 .DS_Store
 *.log
+__pycache__
+.vscode/

@@ -250,8 +250,8 @@ github.com/livekit/psrpc v0.6.1-0.20250511053145-465289d72c3c h1:WwEr0YBejYbKzk8
 github.com/livekit/psrpc v0.6.1-0.20250511053145-465289d72c3c/go.mod h1:kmD+AZPkWu0MaXIMv57jhNlbiSZZ/Jx4bzlxBDVmJes=
 github.com/livekit/server-sdk-go/v2 v2.8.2-0.20250515012651-36db9bf95ff3 h1:qy6GVTk6q3p9P29Q7mVY3KyTCawkNI3nWkOaMeaUvFU=
 github.com/livekit/server-sdk-go/v2 v2.8.2-0.20250515012651-36db9bf95ff3/go.mod h1:T/8z/w3SVL6dlwNRjDDEGSFoZqNvPB/3Hg/ThX0JJ6k=
-github.com/livekit/storage v0.0.0-20250623161626-41ec47e4d043 h1:/4SCxlXD4xN2nTv17Ep2SQyQQFe+EUoUgxBeFrV1tYs=
-github.com/livekit/storage v0.0.0-20250623161626-41ec47e4d043/go.mod h1:upfKG+nj4mPaD0dBMLlAUs/I1W5p96+z6N+lfRR4N44=
+github.com/livekit/storage v0.0.0-20250625163308-9c1062d0eafc h1:Dtop+JYfmgHUNrDpnxORwpCD51P70o9v9EybmPLiT/Q=
+github.com/livekit/storage v0.0.0-20250625163308-9c1062d0eafc/go.mod h1:upfKG+nj4mPaD0dBMLlAUs/I1W5p96+z6N+lfRR4N44=
 github.com/mackerelio/go-osstat v0.2.5 h1:+MqTbZUhoIt4m8qzkVoXUJg1EuifwlAJSk4Yl2GXh+o=
 github.com/mackerelio/go-osstat v0.2.5/go.mod h1:atxwWF+POUZcdtR1wnsUcQxTytoHG4uhl2AKKzrOajY=
 github.com/magefile/mage v1.15.0 h1:BvGheCMAsG3bWUDbZ8AyXXpCNwU9u5CB6sM+HNb9HYg=
@@ -289,6 +289,8 @@ github.com/orisano/pixelmatch v0.0.0-20220722002657-fb0b55479cde h1:x0TT0RDC7UhA
 github.com/orisano/pixelmatch v0.0.0-20220722002657-fb0b55479cde/go.mod h1:nZgzbfBr3hhjoZnS66nKrHmduYNpc34ny7RK4z5/HM0=
 github.com/ory/dockertest/v3 v3.11.0 h1:OiHcxKAvSDUwsEVh2BjxQQc/5EHz9n0va9awCtNGuyA=
 github.com/ory/dockertest/v3 v3.11.0/go.mod h1:VIPxS1gwT9NpPOrfD3rACs8Y9Z7yhzO4SB194iUDnUI=
+github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58 h1:onHthvaw9LFnH4t2DcNVpwGmV9E1BkGknEliJkfwQj0=
+github.com/pbnjay/memory v0.0.0-20210728143218-7b4eea64cf58/go.mod h1:DXv8WO4yhMYhSNPKjeNKa5WY9YCIEBRbNzFFPJbWO6Y=
 github.com/pion/datachannel v1.5.10 h1:ly0Q26K1i6ZkGf42W7D4hQYR90pZwzFOjTq5AuCKk4o=
 github.com/pion/datachannel v1.5.10/go.mod h1:p/jJfC9arb29W7WrxyKbepTU20CFgyx5oLo8Rs4Py/M=
 github.com/pion/dtls/v3 v3.0.6 h1:7Hkd8WhAJNbRgq9RgdNh1aaWlZlGpYTzdqjy9x9sK2E=

@@ -1,4 +1,4 @@
-# Raspberry Pi Rover Teleop
+# Raspberry Pi Rover Teleoperations
 ![image](https://github.com/user-attachments/assets/cba39d62-a6be-4e29-939c-c5fb1ac55f4d)
 
 This project demostrates building a high performance robot tele-op system using LiveKit that enables < *200ms* latency video and controls.  Everything needed to build the rover in this project was available off the shelf, costing no more than $200.  The repo includes the source code that runs on the rover for streaming realtime video and receiving control messages via LiveKit.  It also includes a Flutter app for remote teleop user for controlling the rover with a standard gamepad.

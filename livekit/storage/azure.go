@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path"
 	"time"
 
 	"github.com/Azure/azure-storage-blob-go/azblob"
@@ -56,7 +55,7 @@ func NewAzure(conf *AzureConfig) (Storage, error) {
 		return nil, err
 	}
 
-	cUrl := path.Join(sUrl, conf.ContainerName)
+	cUrl := fmt.Sprintf("%s/%s", sUrl, conf.ContainerName)
 	containerUrl, err := url.Parse(cUrl)
 	if err != nil {
 		return nil, err

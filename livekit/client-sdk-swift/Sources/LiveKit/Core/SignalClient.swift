@@ -239,7 +239,7 @@ private extension SignalClient {
 
     func _onWebSocketMessage(message: URLSessionWebSocketTask.Message) async {
         let response: Livekit_SignalResponse? = switch message {
-        case let .data(data): try? Livekit_SignalResponse(serializedData: data)
+        case let .data(data): try? Livekit_SignalResponse(serializedBytes: data)
         case let .string(string): try? Livekit_SignalResponse(jsonString: string)
         default: nil
         }
@@ -349,6 +349,9 @@ private extension SignalClient {
 
         case let .trackSubscribed(trackSubscribed):
             _delegate.notifyDetached { await $0.signalClient(self, didSubscribeTrack: Track.Sid(from: trackSubscribed.trackSid)) }
+
+        case .roomMoved:
+            log("Received roomMoved message")
         }
     }
 }

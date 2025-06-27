@@ -48,15 +48,15 @@
       type: string
       description: "A short description of the page for SEO"
       default: "A voice assistant built with LiveKit"
-    suportsChatInput:
+    supportsChatInput:
       type: boolean
       description: "Enable chat input for the voice assistant"
       default: true
-    suportsVideoInput:
+    supportsVideoInput:
       type: boolean
       description: "Enable video input for the voice assistant"
       default: true
-    suportsScreenShare:
+    supportsScreenShare:
       type: boolean
       description: "Enable screen sharing for the voice assistant"
       default: true

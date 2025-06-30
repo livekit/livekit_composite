@@ -23279,6 +23279,7 @@ All STT providers support low-latency multilingual transcription. Support for ot
 | [OpenAI](https://docs.livekit.io/agents/integrations/stt/openai.md) | `openai` |  |
 | [Sarvam](https://docs.livekit.io/agents/integrations/stt/sarvam.md) | `sarvam` |  |
 | [Speechmatics](https://docs.livekit.io/agents/integrations/stt/speechmatics.md) | `speechmatics` |  |
+| [Spitch](https://docs.livekit.io/agents/integrations/stt/spitch.md) | `spitch` |  |
 
 Have another provider in mind? LiveKit is open source and welcomes [new plugin contributions](https://docs.livekit.io/agents/integrations.md#contribute).
 
@@ -24617,6 +24618,73 @@ The following resources provide more information about using Speechmatics with L
 
 ---
 
+---
+
+## Spitch
+
+## Overview
+
+[Spitch](https://spitch.app/) provides AI-powered speech and language solutions optimized for African languages. With LiveKit's Spitch STT integration and the Agents framework, you can build voice AI agents that understand speech in a variety of African languages.
+
+## Quick reference
+
+This section provides a quick reference for the Spitch STT plugin. For more information, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[spitch]~=1.0"
+
+```
+
+### Authentication
+
+The Spitch plugin requires a [Spitch API key](https://studio.spitch.app/api/keys).
+
+Set `SPITCH_API_KEY` in your `.env` file.
+
+### Usage
+
+Use Spitch STT in an `AgentSession` or as a standalone transcription service. For example, you can use this STT in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import spitch
+
+session = AgentSession(
+   stt=spitch.STT(
+      language="en",
+   ),
+   # ... llm, tts, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/spitch/index.html.md#livekit.plugins.spitch.STT) for a complete list of all available parameters.
+
+- **`language`** _(string)_ (optional) - Default: `en`: Language short code of the input speech. For supported values, see [Spitch languages](https://docs.spitch.app/concepts/languages).
+
+## Additional resources
+
+The following resources provide more information about using Spitch with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-spitch/)**: The `livekit-plugins-spitch` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/spitch/index.html.md#livekit.plugins.spitch.STT)**: Reference for the Spitch STT plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-spitch)**: View the source or contribute to the LiveKit Spitch STT plugin.
+
+- **[Spitch docs](https://docs.spitch.app/)**: Spitch's official documentation.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Spitch.
+
+- **[Spitch TTS](https://docs.livekit.io/agents/integrations/tts/spitch.md)**: Guide to the Spitch TTS integration with LiveKit Agents.
+
+---
+
 #### Text-to-speech (TTS)
 
 ---
@@ -24653,6 +24721,7 @@ All TTS providers support high quality, low-latency, and lifelike multilingual v
 | [Rime](https://docs.livekit.io/agents/integrations/tts/rime.md) | `rime` |  |
 | [Sarvam](https://docs.livekit.io/agents/integrations/tts/sarvam.md) | `sarvam` |  |
 | [Speechify](https://docs.livekit.io/agents/integrations/tts/speechify.md) | `speechify` |  |
+| [Spitch](https://docs.livekit.io/agents/integrations/tts/spitch.md) | `spitch` |  |
 
 Have another provider in mind? LiveKit is open source and welcomes [new plugin contributions](https://docs.livekit.io/agents/integrations.md#contribute).
 
@@ -25592,7 +25661,7 @@ Use Inworld TTS within an `AgentSession` or as a standalone speech generator. Fo
 from livekit.plugins import inworld
 
 session = AgentSession(
-   tts=inworld.TTS(voice="Pixie")
+   tts=inworld.TTS(voice="Ashley")
    # ... llm, stt, etc.
 )
 
@@ -25604,7 +25673,7 @@ This section describes some of the available parameters. See the [plugin referen
 
 - **`model`** _(string)_ (optional) - Default: `"inworld-tts-1"`: ID of the model to use for generation. See [supported models](https://docs.inworld.ai/docs/models#tts).
 
-- **`voice`** _(string)_ (optional) - Default: `"Olivia"`: ID of the voice to use for generation. Use the [List voices API endpoint](https://docs.inworld.ai/api-reference/ttsAPI/texttospeech/list-voices) for possible values.
+- **`voice`** _(string)_ (optional) - Default: `"Ashley"`: ID of the voice to use for generation. Use the [List voices API endpoint](https://docs.inworld.ai/api-reference/ttsAPI/texttospeech/list-voices) for possible values.
 
 ## Additional resources
 
@@ -26157,6 +26226,76 @@ The following resources provide more information about using Speechify with Live
 - **[Speechify docs](https://docs.sws.speechify.com/v1/docs)**: Speechify docs.
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Speechify TTS.
+
+---
+
+---
+
+## Spitch
+
+## Overview
+
+[Spitch](https://spitch.app/) provides AI-powered speech and language solutions optimized for African languages. With LiveKit's Spitch integration and the Agents framework, you can build voice AI agents that produce natural speech in a variety of African languages.
+
+## Quick reference
+
+This section provides a quick reference for the Spitch TTS plugin. For more information, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[spitch]~=1.0"
+
+```
+
+### Authentication
+
+The Spitch plugin requires a [Spitch API key](https://studio.spitch.app/api/keys).
+
+Set `SPITCH_API_KEY` in your `.env` file.
+
+### Usage
+
+Use Spitch TTS within an `AgentSession` or as a standalone speech generator. For example, you can use this TTS in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import spitch
+
+session = AgentSession(
+   tts=spitch.TTS(
+      language="en",
+      voice="lina",
+   )
+   # ... llm, stt, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/spitch/index.html.md#livekit.plugins.spitch.TTS) for a complete list of all available parameters.
+
+- **`language`** _(string)_ (optional) - Default: `en`: Language short code for the generated speech. For supported values, see [Spitch languages](https://docs.spitch.app/concepts/languages).
+
+- **`voice`** _(string)_ (optional) - Default: `lina`: Voice to use for synthesis. For supported values, see [Spitch voices](https://docs.spitch.app/concepts/voices).
+
+## Additional resources
+
+The following resources provide more information about using Spitch with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-spitch/)**: The `livekit-plugins-spitch` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/spitch/index.html.md#livekit.plugins.spitch.TTS)**: Reference for the Spitch TTS plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-spitch)**: View the source or contribute to the LiveKit Spitch TTS plugin.
+
+- **[Spitch docs](https://docs.spitch.app/)**: Spitch's official documentation.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Spitch.
+
+- **[Spitch STT](https://docs.livekit.io/agents/integrations/stt/spitch.md)**: Guide to the Spitch STT integration with LiveKit Agents.
 
 ---
 
@@ -31368,5 +31507,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-06-25T04:04:47.741Z.
+This document was rendered at 2025-06-27T14:26:37.061Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

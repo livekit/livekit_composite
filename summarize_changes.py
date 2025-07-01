@@ -341,7 +341,169 @@ def detect_large_added_dirs(changed_files, threshold=200):
     return preferred_dirs
 
 
-def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: list, stats: str, max_files_per_category: int = 50, large_added_dirs=None) -> Tuple[str, str]:
+def split_diff_into_chunks(diff_content: str, max_chunk_size: int = 8000) -> list:
+    """
+    Split a large diff into manageable chunks while preserving file boundaries.
+    
+    Args:
+        diff_content: The full diff content
+        max_chunk_size: Maximum characters per chunk
+    
+    Returns:
+        List of diff chunks
+    """
+    if len(diff_content) <= max_chunk_size:
+        return [diff_content]
+    
+    chunks = []
+    current_chunk = ""
+    lines = diff_content.split('\n')
+    
+    for line in lines:
+        # If adding this line would exceed the chunk size, start a new chunk
+        if len(current_chunk) + len(line) + 1 > max_chunk_size and current_chunk:
+            chunks.append(current_chunk.strip())
+            current_chunk = ""
+        
+        # Start a new chunk if we encounter a new file diff header
+        if line.startswith('diff --git ') and current_chunk:
+            chunks.append(current_chunk.strip())
+            current_chunk = ""
+        
+        current_chunk += line + '\n'
+    
+    # Add the last chunk
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+    
+    return chunks
+
+
+def analyze_diff_chunks(client, display_name: str, file_list: str, diff_chunks: list, max_tokens_per_chunk: int = 800) -> str:
+    """
+    Analyze multiple diff chunks and combine the results into a comprehensive summary.
+    
+    Args:
+        client: OpenAI client
+        display_name: Name of the component being analyzed
+        file_list: List of changed files
+        diff_chunks: List of diff chunks to analyze
+        max_tokens_per_chunk: Maximum tokens to use per chunk analysis
+    
+    Returns:
+        Combined analysis of all chunks
+    """
+    if len(diff_chunks) == 1:
+        # Single chunk - analyze directly
+        chunk_prompt = f"""
+Analyze the changes in the {display_name} component. Use Markdown formatting and bullet points for all lists:
+
+{file_list}
+
+Diff:
+```
+{diff_chunks[0]}
+```
+
+Provide a technical summary with the following sections, each as a Markdown bullet list (use a bullet for each item, even if a section is empty):
+- **Key functional changes**
+- **Important code modifications**
+- **New features or fixes**
+- **Breaking changes or API updates**
+"""
+        
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "You are a senior software engineer who specializes in analyzing code changes. Use Markdown bullet points for all lists and sections. Provide clear, technical analysis focusing on the most important changes."
+                    },
+                    {"role": "user", "content": chunk_prompt}
+                ],
+                max_tokens=max_tokens_per_chunk,
+                temperature=0.2
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f"*Error analyzing changes: {str(e)}*"
+    
+    # Multiple chunks - analyze each separately, then combine
+    chunk_analyses = []
+    
+    for i, chunk in enumerate(diff_chunks):
+        print(f"    📄 Analyzing chunk {i+1}/{len(diff_chunks)} ({len(chunk)} chars)...")
+        
+        chunk_prompt = f"""
+Analyze this portion of changes in the {display_name} component (chunk {i+1} of {len(diff_chunks)}). Use Markdown formatting and bullet points for all lists:
+
+{file_list}
+
+Diff chunk {i+1}/{len(diff_chunks)}:
+```
+{chunk}
+```
+
+Provide a brief technical summary focusing on the most important changes in this chunk. Use bullet points for key findings.
+"""
+        
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "You are a senior software engineer analyzing a portion of code changes. Provide concise, focused analysis of the changes in this specific chunk."
+                    },
+                    {"role": "user", "content": chunk_prompt}
+                ],
+                max_tokens=max_tokens_per_chunk,
+                temperature=0.2
+            )
+            chunk_analyses.append(response.choices[0].message.content.strip())
+        except Exception as e:
+            chunk_analyses.append(f"*Error analyzing chunk {i+1}: {str(e)}*")
+    
+    # Now combine all chunk analyses into a comprehensive summary
+    combined_prompt = f"""
+You are analyzing changes in the {display_name} component that were split into {len(diff_chunks)} chunks for processing.
+
+Here are the individual analyses of each chunk:
+
+{chr(10).join([f"**Chunk {i+1} Analysis:**\n{analysis}\n" for i, analysis in enumerate(chunk_analyses)])}
+
+{file_list}
+
+Please provide a comprehensive technical summary that combines all the chunk analyses into a coherent overview. Use Markdown formatting and organize into these sections, each as a Markdown bullet list:
+
+- **Key functional changes**
+- **Important code modifications** 
+- **New features or fixes**
+- **Breaking changes or API updates**
+
+Focus on the most important changes across all chunks and avoid redundancy.
+"""
+    
+    try:
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "You are a senior software engineer who specializes in synthesizing multiple code change analyses into comprehensive summaries. Use Markdown bullet points for all lists and sections."
+                },
+                {"role": "user", "content": combined_prompt}
+            ],
+            max_tokens=1000,  # More tokens for the combined analysis
+            temperature=0.2
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"*Error combining chunk analyses: {str(e)}*\n\n**Individual chunk analyses:**\n" + "\n\n".join(chunk_analyses)
+
+
+def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: list, stats: str, max_files_per_category: int = 50, large_added_dirs=None, max_chunk_size: int = 8000, max_tokens_per_chunk: int = 800) -> Tuple[str, str]:
     """Use OpenAI to summarize the changes and return both brief and detailed summaries."""
     
     # Check for API key
@@ -429,11 +591,8 @@ Focus on the most significant changes and their impact.
             if not category_diff:
                 continue
                 
-            # Truncate diff content if too large (more conservative limit)
-            max_diff_chars = 2000  # Reduced from 3000
-            if len(category_diff) > max_diff_chars:
-                print(f"  ⚠️  Large diff detected ({len(category_diff)} chars). Truncating to {max_diff_chars} chars.")
-                category_diff = category_diff[:max_diff_chars] + "\n\n[Diff truncated due to size...]"
+            # Split diff into chunks
+            diff_chunks = split_diff_into_chunks(category_diff, max_chunk_size)
             
             # Simplify the file list to just show count and a few examples
             file_examples = files[:5]  # Show first 5 files
@@ -445,46 +604,16 @@ Focus on the most significant changes and their impact.
             if len(files) > max_files_per_category:
                 file_list += f"\n\n*Note: Analysis based on sample of {len(sampled_files)} files due to large number of changes*"
             
-            category_prompt = f"""
-Analyze the changes in the {display_name} component. Use Markdown formatting and bullet points for all lists:
-
-{file_list}
-
-Diff:
-```
-{category_diff}
-```
-
-Provide a technical summary with the following sections, each as a Markdown bullet list (use a bullet for each item, even if a section is empty):
-- **Key functional changes**
-- **Important code modifications**
-- **New features or fixes**
-- **Breaking changes or API updates**
-"""
+            # Analyze each chunk separately
+            if len(diff_chunks) > 1:
+                print(f"  📄 Large diff detected ({len(category_diff)} chars). Splitting into {len(diff_chunks)} chunks for analysis...")
             
             try:
-                category_response = client.chat.completions.create(
-                    model="gpt-3.5-turbo",
-                    messages=[
-                        {
-                            "role": "system", 
-                            "content": "You are a senior software engineer who specializes in analyzing code changes. Use Markdown bullet points for all lists and sections. Provide clear, technical analysis focusing on the most important changes."
-                        },
-                        {"role": "user", "content": category_prompt}
-                    ],
-                    max_tokens=600,  # Further reduced token count
-                    temperature=0.2
-                )
-                
-                detailed_summaries.append(f"## {display_name}\n\n{category_response.choices[0].message.content.strip()}\n")
+                analysis_result = analyze_diff_chunks(client, display_name, file_list, diff_chunks, max_tokens_per_chunk)
+                detailed_summaries.append(f"## {display_name}\n\n{analysis_result}\n")
             except Exception as e:
-                error_msg = str(e)
-                if "context_length_exceeded" in error_msg:
-                    print(f"  ❌ Token limit exceeded for {display_name}. Skipping detailed analysis.")
-                    detailed_summaries.append(f"## {display_name}\n\n*Detailed analysis skipped due to large number of changes ({len(files)} files). See brief summary above for overview.*\n")
-                else:
-                    print(f"  ❌ Error processing {display_name} changes: {error_msg}")
-                    detailed_summaries.append(f"## {display_name}\n\n*Error processing changes in this subproject*\n")
+                print(f"  ❌ Error analyzing {display_name} changes: {str(e)}")
+                detailed_summaries.append(f"## {display_name}\n\n*Error processing changes in this subproject: {str(e)}*\n")
         
         # Combine all detailed summaries
         detailed_summary = "\n".join(detailed_summaries)
@@ -551,7 +680,15 @@ Examples:
   python summarize_changes.py HEAD~3 HEAD       # Summarize last 3 commits
   python summarize_changes.py --categories "Server/Core,Client"  # Only analyze specific categories
   python summarize_changes.py --max-files 20    # Limit to 20 files per category
+  python summarize_changes.py --max-chunk-size 6000  # Use smaller chunks for large diffs
+  python summarize_changes.py --max-tokens-per-chunk 600  # Use fewer tokens per chunk
   python summarize_changes.py --dry-run         # Show what would be analyzed without calling OpenAI
+
+Chunking Behavior:
+  Large diffs are automatically split into chunks to preserve all changes:
+  - Default chunk size: 8000 characters
+  - Each chunk is analyzed separately, then combined
+  - This ensures no changes are lost due to truncation
         """
     )
     
@@ -560,6 +697,8 @@ Examples:
     parser.add_argument('--model', default='gpt-3.5-turbo', help='OpenAI model to use')
     parser.add_argument('--categories', help='Comma-separated list of categories to analyze (e.g., "Server/Core,Client,Agents")')
     parser.add_argument('--max-files', type=int, default=50, help='Maximum files to analyze per category (default: 50)')
+    parser.add_argument('--max-chunk-size', type=int, default=8000, help='Maximum characters per diff chunk (default: 8000)')
+    parser.add_argument('--max-tokens-per-chunk', type=int, default=800, help='Maximum tokens per chunk analysis (default: 800)')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be analyzed without calling OpenAI')
     
     args = parser.parse_args()
@@ -663,9 +802,11 @@ Examples:
     
     print("🤖 Generating summaries with OpenAI...")
     
-    # Generate summaries with custom max_files parameter
+    # Generate summaries with custom parameters
     brief_summary, detailed_summary = summarize_with_openai(
-        diff_content, commit_info, changed_files, diff_stats, args.max_files, large_added_dirs=large_added_dirs)
+        diff_content, commit_info, changed_files, diff_stats, args.max_files, 
+        large_added_dirs=large_added_dirs, max_chunk_size=args.max_chunk_size, 
+        max_tokens_per_chunk=args.max_tokens_per_chunk)
     
     # Create output directory if it doesn't exist
     os.makedirs('output', exist_ok=True)
@@ -711,6 +852,8 @@ Examples:
     print("Brief summary saved to: output/summary.md")
     print("Detailed summary saved to: output/details.md")
     print("-"*3)
+    print("\n💡 Tip: Large diffs are now automatically chunked to preserve all changes.")
+    print("   Use --max-chunk-size and --max-tokens-per-chunk to fine-tune the analysis.")
 
 
 if __name__ == '__main__':

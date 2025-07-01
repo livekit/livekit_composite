@@ -1,8 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { type ReceivedChatMessage } from '@livekit/components-react';
+import {
+  type AgentState,
+  type ReceivedChatMessage,
+  useRoomContext,
+  useVoiceAssistant,
+} from '@livekit/components-react';
+import { toastAlert } from '@/components/alert-toast';
 import { AgentControlBar } from '@/components/livekit/agent-control-bar/agent-control-bar';
 import { ChatEntry } from '@/components/livekit/chat/chat-entry';
 import { ChatMessageView } from '@/components/livekit/chat/chat-message-view';
@@ -10,6 +16,10 @@ import { MediaTiles } from '@/components/livekit/media-tiles';
 import useChatAndTranscription from '@/hooks/useChatAndTranscription';
 import { useDebugMode } from '@/hooks/useDebug';
 import { cn } from '@/lib/utils';
+
+function isAgentAvailable(agentState: AgentState) {
+  return agentState == 'listening' || agentState == 'thinking' || agentState == 'speaking';
+}
 
 interface SessionViewProps {
   disabled: boolean;
@@ -27,14 +37,50 @@ export const SessionView = ({
   sessionStarted,
   ref,
 }: React.ComponentProps<'div'> & SessionViewProps) => {
+  const { state: agentState } = useVoiceAssistant();
   const [chatOpen, setChatOpen] = useState(false);
   const { messages, send } = useChatAndTranscription();
+  const room = useRoomContext();
 
   useDebugMode();
 
   async function handleSendMessage(message: string) {
     await send(message);
   }
+
+  useEffect(() => {
+    if (sessionStarted) {
+      const timeout = setTimeout(() => {
+        if (!isAgentAvailable(agentState)) {
+          const reason =
+            agentState === 'connecting'
+              ? 'Agent did not join the room. '
+              : 'Agent connected but did not complete initializing. ';
+
+          toastAlert({
+            title: 'Session ended',
+            description: (
+              <p className="w-full">
+                {reason}
+                <a
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://docs.livekit.io/agents/start/voice-ai/"
+                  className="whitespace-nowrap underline"
+                >
+                  See quickstart guide
+                </a>
+                .
+              </p>
+            ),
+          });
+          room.disconnect();
+        }
+      }, 10_000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [agentState, sessionStarted, room]);
 
   return (
     <main

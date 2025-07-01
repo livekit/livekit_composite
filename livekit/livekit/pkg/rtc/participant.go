@@ -993,6 +993,10 @@ func (p *ParticipantImpl) synthesizeAddTrackRequests(offer webrtc.SessionDescrip
 }
 
 func (p *ParticipantImpl) updateRidsFromSDP(offer *webrtc.SessionDescription) {
+	if !p.params.UseOneShotSignallingMode {
+		return
+	}
+
 	if offer == nil {
 		return
 	}
@@ -1011,6 +1015,8 @@ func (p *ParticipantImpl) updateRidsFromSDP(offer *webrtc.SessionDescription) {
 		if mst == "" {
 			continue
 		}
+
+		// SIMULCAST-CODEC-TODO - have to update published track's TrackInfo when backup codec starts publishing
 
 		p.pendingTracksLock.Lock()
 		pti := p.pendingTracks[mst]
@@ -2845,10 +2851,6 @@ func (p *ParticipantImpl) mediaTrackReceived(track sfu.TrackRemote, rtpReceiver 
 		}
 
 		for _, codec := range ti.Codecs {
-			if !mime.IsMimeTypeStringEqual(codec.MimeType, track.Codec().MimeType) {
-				continue
-			}
-
 			for _, layer := range codec.Layers {
 				layer.SpatialLayer = buffer.VideoQualityToSpatialLayer(layer.Quality, ti)
 				layer.Rid = buffer.VideoQualityToRid(layer.Quality, ti, sdpRids)

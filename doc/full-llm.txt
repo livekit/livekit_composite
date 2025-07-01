@@ -5469,7 +5469,7 @@ To build your first voice AI app for Next.js, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Next.js Voice Assistant](https://github.com/livekit-examples/voice-assistant-frontend)**: A web voice AI assistant built with React and Next.js.
+- **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
 
 ## Getting started guide
 
@@ -5705,7 +5705,7 @@ To build your first voice AI app for Next.js, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Next.js Voice Assistant](https://github.com/livekit-examples/voice-assistant-frontend)**: A web voice AI assistant built with React and Next.js.
+- **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
 
 ## Getting started guide
 
@@ -5849,7 +5849,7 @@ To build your first voice AI app for web, use the following quickstart and the s
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Next.js Voice Assistant](https://github.com/livekit-examples/voice-assistant-frontend)**: A web voice AI assistant built with React and Next.js.
+- **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
 
 ## Getting started guide
 
@@ -5993,7 +5993,7 @@ To build your first voice AI app for SwiftUI, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[SwiftUI Voice Assistant](https://github.com/livekit-examples/voice-assistant-swift)**: A native iOS, macOS, and visionOS voice AI assistant built in SwiftUI.
+- **[SwiftUI Voice Agent](https://github.com/livekit-examples/agent-starter-swift)**: A native iOS, macOS, and visionOS voice AI assistant built in SwiftUI.
 
 ## Getting started guide
 
@@ -6160,7 +6160,7 @@ To build your first voice AI app for Android, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Android Voice Assistant](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
+- **[Android Voice Agent](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
 
 ## Getting started guide
 
@@ -6323,7 +6323,7 @@ To build your first voice AI app for Android, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Android Voice Assistant](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
+- **[Android Voice Agent](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
 
 ## Getting started guide
 
@@ -6501,7 +6501,7 @@ To build your first voice AI app for Flutter, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Flutter Voice Assistant](https://github.com/livekit-examples/voice-assistant-flutter)**: A cross-platform voice AI assistant app built with Flutter.
+- **[Flutter Voice Agent](https://github.com/livekit-examples/voice-assistant-flutter)**: A cross-platform voice AI assistant app built with Flutter.
 
 ## Getting started guide
 
@@ -6673,7 +6673,7 @@ To build your first voice AI app for React Native, use the following quickstart 
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[React Native Voice Assistant](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
+- **[React Native Voice Agent](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
 
 ## Getting started guide
 
@@ -6874,7 +6874,7 @@ To build your first voice AI app for Expo, use the following quickstart and the 
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[React Native Voice Assistant](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
+- **[React Native Voice Agent](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
 
 ## Getting started guide
 
@@ -14803,15 +14803,15 @@ In all of these cases, the LiveKit SDKs are production grade and easy to use so 
 
 LiveKit recommends using one of the following starter apps to get up and running quickly on your preferred platform. Each app is open source under the MIT License so you can freely modify it to your own needs. The mobile apps require a hosted token server, but include a [LiveKit Cloud Sandbox](https://cloud.livekit.io/projects/p_/sandbox/templates/token-server) for development purposes.
 
-- **[SwiftUI Voice Assistant](https://github.com/livekit-examples/voice-assistant-swift)**: A native iOS, macOS, and visionOS voice AI assistant built in SwiftUI.
+- **[SwiftUI Voice Agent](https://github.com/livekit-examples/agent-starter-swift)**: A native iOS, macOS, and visionOS voice AI assistant built in SwiftUI.
 
-- **[Next.js Voice Assistant](https://github.com/livekit-examples/voice-assistant-frontend)**: A web voice AI assistant built with React and Next.js.
+- **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
 
-- **[Flutter Voice Assistant](https://github.com/livekit-examples/voice-assistant-flutter)**: A cross-platform voice AI assistant app built with Flutter.
+- **[Flutter Voice Agent](https://github.com/livekit-examples/voice-assistant-flutter)**: A cross-platform voice AI assistant app built with Flutter.
 
-- **[React Native Voice Assistant](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
+- **[React Native Voice Agent](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
 
-- **[Android Voice Assistant](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
+- **[Android Voice Agent](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
 
 ## Media and text
 
@@ -24714,6 +24714,7 @@ All TTS providers support high quality, low-latency, and lifelike multilingual v
 | [Groq](https://docs.livekit.io/agents/integrations/tts/groq.md) | `groq` |  |
 | [Hume](https://docs.livekit.io/agents/integrations/tts/hume.md) | `hume` |  |
 | [Inworld](https://docs.livekit.io/agents/integrations/tts/inworld.md) | `inworld` |  |
+| [LMNT](https://docs.livekit.io/agents/integrations/tts/lmnt.md) | `lmnt` |  |
 | [Neuphonic](https://docs.livekit.io/agents/integrations/tts/neuphonic.md) | `neuphonic` |  |
 | [OpenAI](https://docs.livekit.io/agents/integrations/tts/openai.md) | `openai` |  |
 | [PlayHT](https://docs.livekit.io/agents/integrations/tts/playai.md) | `playai` |  |
@@ -25686,6 +25687,85 @@ The following resources provide more information about using Inworld with LiveKi
 - **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-inworld)**: View the source or contribute to the LiveKit Inworld TTS plugin.
 
 - **[Inworld docs](https://docs.inworld.ai/docs/introduction)**: Inworld TTS docs.
+
+---
+
+---
+
+## LMNT
+
+## Overview
+
+[LMNT](https://lmnt.com/) provides a fast text-to-speech service optimized for realtime voice AI. With LiveKit's LMNT integration and the Agents framework, you can build high-performance and lifelike voice AI at scale.
+
+## Quick reference
+
+This section provides a quick reference for the LMNT TTS plugin. For more information, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[lmnt]~=1.0"
+
+```
+
+### Authentication
+
+The LMNT plugin requires an [LMNT API key](https://app.lmnt.com/account).
+
+Set `LMNT_API_KEY` in your `.env` file.
+
+### Usage
+
+Use LMNT TTS within an `AgentSession` or as a standalone speech generator. For example, you can use this TTS in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import lmnt
+
+session = AgentSession(
+   tts=lmnt.TTS(
+      voice="leah",
+   )
+   # ... llm, stt, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the parameters you can set when you create an LMNT TTS. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/lmnt/index.html.md#livekit.plugins.lmnt.TTS) for a complete list of all available parameters.
+
+- **`model`** _(string)_ (optional) - Default: `blizzard`: The model to use for synthesis. Refer to the [LMNT models guide](https://docs.lmnt.com/guides/models) for possible values.
+
+- **`voice`** _(string)_ (optional) - Default: `leah`: The voice ID to use. Find or create new voices in the [LMNT voice library](https://app.lmnt.com/voice-library).
+
+- **`language`** _(string)_ (optional): Two-letter ISO 639-1 language code. See the [LMNT API documentation](https://docs.lmnt.com/api-reference/speech/synthesize-speech-bytes#body-language) for supported languages.
+
+- **`temperature`** _(float)_ (optional): Influences how expressive and emotionally varied the speech becomes. Lower values (like 0.3) create more neutral, consistent speaking styles. Higher values (like 1.0) allow for more dynamic emotional range and speaking styles.
+
+- **`top_p`** _(float)_ (optional): Controls the stability of the generated speech. A lower value (like 0.3) produces more consistent, reliable speech. A higher value (like 0.9) gives more flexibility in how words are spoken, but might occasionally produce unusual intonations or speech patterns.
+
+## Advanced configuration
+
+### Custom pronunciation
+
+LMNT supports custom pronunciation based on [ARPABET](https://en.wikipedia.org/wiki/ARPABET). For more information, see the [pronunciation override guide](https://docs.lmnt.com/guides/pronunciations-overriding).
+
+## Additional resources
+
+The following resources provide more information about using LMNT with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-lmnt/)**: The `livekit-plugins-lmnt` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/lmnt/index.html.md#livekit.plugins.lmnt.TTS)**: Reference for the LMNT TTS plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-lmnt)**: View the source or contribute to the LiveKit LMNT TTS plugin.
+
+- **[LMNT docs](https://docs.lmnt.com/)**: LMNT API documentation.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and LMNT TTS.
 
 ---
 
@@ -31507,5 +31587,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-06-27T14:26:37.061Z.
+This document was rendered at 2025-06-30T18:44:02.043Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

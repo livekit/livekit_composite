@@ -110,7 +110,7 @@ func goBusSyncHandler(bus *C.GstBus, cMsg *C.GstMessage, userData C.gpointer) C.
 //export goBusFunc
 func goBusFunc(bus *C.GstBus, cMsg *C.GstMessage, userData C.gpointer) C.gboolean {
 	// wrap the message
-	msg := wrapMessage(cMsg)
+	msg := FromGstMessageUnsafeNone(unsafe.Pointer(cMsg))
 
 	// retrieve the ptr to the function
 	ptr := unsafe.Pointer(userData)

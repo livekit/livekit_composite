@@ -20865,6 +20865,7 @@ Amazon's [AWS AI](https://aws.amazon.com/ai/) is a comprehensive collection of p
 - **Amazon Bedrock**: Access to foundation models from leading AI companies.
 - **Amazon Polly**: Text-to-speech service with lifelike voices.
 - **Amazon Transcribe**: Speech-to-text service with high accuracy.
+- **Amazon Nova Sonic**: Realtime, speech-to-speech model that uses a bidirectional streaming API for streaming events.
 
 The LiveKit Agents AWS plugin supports these services for building voice AI applications.
 
@@ -20920,6 +20921,27 @@ session = AgentSession(
 
 ```
 
+Or use Amazon Nova Sonic, a state of the art speech-to-speech model:
+
+```bash
+pip install "livekit-agents-aws[realtime]~=1.0"
+
+```
+
+** Filename: `agent.py`**
+
+```python
+from livekit.plugins import aws
+
+# ...
+
+# in your entrypoint function
+session = AgentSession(
+    llm=aws.realtime.RealtimeModel()
+)
+
+```
+
 ## AWS plugin documentation
 
 - **[Amazon Bedrock LLM](https://docs.livekit.io/agents/integrations/llm/aws.md)**: LiveKit Agents docs for Amazon Bedrock LLM.
@@ -20927,6 +20949,8 @@ session = AgentSession(
 - **[Amazon Polly TTS](https://docs.livekit.io/agents/integrations/tts/aws.md)**: LiveKit Agents docs for Amazon Polly TTS.
 
 - **[Amazon Transcribe STT](https://docs.livekit.io/agents/integrations/stt/aws.md)**: LiveKit Agents docs for Amazon Transcribe STT.
+
+- **[Amazon Nova Sonic](https://docs.livekit.io/agents/integrations/realtime/nova-sonic.md)**: LiveKit Agents docs for the Amazon Nova Sonic speech-to-speech model.
 
 ---
 
@@ -20989,6 +21013,12 @@ This section describes some of the available parameters. For a complete referenc
 - **`temperature`** _(float)_ (optional): Default values vary depending on the model you select. To learn more, see [Inference request parameters and response fields for foundation models](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
 
 - **`tool_choice`** _([ToolChoice | Literal['auto', 'required', 'none']])_ (optional) - Default: `auto`: 
+
+## Amazon Nova Sonic
+
+To use Amazon Nova Sonic on AWS Bedrock, refer to the following integration guide:
+
+- **[Amazon Nova Sonic](https://docs.livekit.io/agents/integrations/realtime/nova-sonic.md)**: Integration guide for the Amazon Nova Sonic speech-to-speech model on AWS Bedrock.
 
 ## Additional resources
 
@@ -21171,6 +21201,82 @@ The following resources provide more information about using Amazon Transcribe w
 - **[AWS docs](https://docs.aws.amazon.com/transcribe/latest/dg/what-is.html)**: Amazon Transcribe's full docs site.
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Amazon Transcribe.
+
+---
+
+---
+
+## Amazon Nova Sonic
+
+## Overview
+
+Amazon [Nova Sonic](https://aws.amazon.com/ai/generative-ai/nova/speech/) is a state of the art speech-to-speech model with a bidirectional audio streaming API. Nova Sonic processes and responds to realtime speech as it occurs, enabling natural, human-like conversational experiences. LiveKit's AWS plugin includes support for Nova Sonic on AWS Bedrock, allowing you to use this model to create true realtime conversational agents.
+
+## Quick reference
+
+This section includes a basic usage example and some reference material. For links to more detailed documentation, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the AWS plugin from PyPI with the `realtime` extra:
+
+```bash
+pip install "livekit-plugins-aws[realtime]"
+
+
+```
+
+### Authentication
+
+The AWS plugin requires AWS credentials. Set the following environment variables in your `.env` file:
+
+```shell
+AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
+AWS_SECRET_ACCESS_KEY=<your-aws-secret-access-key>
+
+```
+
+### Usage
+
+Use the Nova Sonic API within an `AgentSession`. For example, you can use it in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import aws
+
+session = AgentSession(
+    llm=aws.realtime.RealtimeModel(),
+)
+
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. For a complete reference of all available parameters, see the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/aws/experimental/realtime/index.html.md).
+
+- **`voice`** _(string)_ (optional): Name of the Nova Sonic API voice. For a full list, see [Voices](https://docs.aws.amazon.com/nova/latest/userguide/available-voices.html).
+
+- **`region`** _(string)_ (optional): AWS region of the Bedrock runtime endpoint.
+
+## Turn detection
+
+The Nova Sonic API includes built-in VAD-based turn detection, which is currently the only supported turn detection method.
+
+## Additional resources
+
+The following resources provide more information about using Nova Sonic with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-aws/)**: The `livekit-plugins-aws` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/aws/experimental/realtime/index.html.md)**: Reference for the Nova Sonic integration.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-aws/livekit/plugins/aws/)**: View the source or contribute to the LiveKit AWS plugin.
+
+- **[Nova Sonic docs](https://docs.aws.amazon.com/nova/latest/userguide/speech.html)**: Nova Sonic API documentation.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Amazon Nova Sonic.
+
+- **[AWS AI ecosystem guide](https://docs.livekit.io/agents/integrations/aws.md)**: Overview of the entire AWS AI and LiveKit Agents integration.
 
 ---
 
@@ -21701,6 +21807,7 @@ The following table lists the available realtime model providers. All providers 
 | Provider | Plugin | Notes |
 | -------- | ------ | ----- |
 | [Gemini Live API](https://docs.livekit.io/agents/integrations/realtime/gemini.md) | `google` |  |
+| [Amazon Nova Sonic](https://docs.livekit.io/agents/integrations/realtime/nova-sonic.md) | `aws` |  |
 | [OpenAI Realtime API](https://docs.livekit.io/agents/integrations/realtime/openai.md) | `openai` |  |
 | [Azure OpenAI Realtime API](https://docs.livekit.io/agents/integrations/realtime/azure-openai.md) | `openai` |  |
 
@@ -21809,6 +21916,82 @@ The following resources provide more information about using Gemini with LiveKit
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Gemini Live API.
 
 - **[Google AI ecosystem guide](https://docs.livekit.io/agents/integrations/google.md)**: Overview of the entire Google AI and LiveKit Agents integration.
+
+---
+
+---
+
+## Amazon Nova Sonic
+
+## Overview
+
+Amazon [Nova Sonic](https://aws.amazon.com/ai/generative-ai/nova/speech/) is a state of the art speech-to-speech model with a bidirectional audio streaming API. Nova Sonic processes and responds to realtime speech as it occurs, enabling natural, human-like conversational experiences. LiveKit's AWS plugin includes support for Nova Sonic on AWS Bedrock, allowing you to use this model to create true realtime conversational agents.
+
+## Quick reference
+
+This section includes a basic usage example and some reference material. For links to more detailed documentation, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the AWS plugin from PyPI with the `realtime` extra:
+
+```bash
+pip install "livekit-plugins-aws[realtime]"
+
+
+```
+
+### Authentication
+
+The AWS plugin requires AWS credentials. Set the following environment variables in your `.env` file:
+
+```shell
+AWS_ACCESS_KEY_ID=<your-aws-access-key-id>
+AWS_SECRET_ACCESS_KEY=<your-aws-secret-access-key>
+
+```
+
+### Usage
+
+Use the Nova Sonic API within an `AgentSession`. For example, you can use it in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import aws
+
+session = AgentSession(
+    llm=aws.realtime.RealtimeModel(),
+)
+
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. For a complete reference of all available parameters, see the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/aws/experimental/realtime/index.html.md).
+
+- **`voice`** _(string)_ (optional): Name of the Nova Sonic API voice. For a full list, see [Voices](https://docs.aws.amazon.com/nova/latest/userguide/available-voices.html).
+
+- **`region`** _(string)_ (optional): AWS region of the Bedrock runtime endpoint.
+
+## Turn detection
+
+The Nova Sonic API includes built-in VAD-based turn detection, which is currently the only supported turn detection method.
+
+## Additional resources
+
+The following resources provide more information about using Nova Sonic with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-aws/)**: The `livekit-plugins-aws` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/aws/experimental/realtime/index.html.md)**: Reference for the Nova Sonic integration.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-aws/livekit/plugins/aws/)**: View the source or contribute to the LiveKit AWS plugin.
+
+- **[Nova Sonic docs](https://docs.aws.amazon.com/nova/latest/userguide/speech.html)**: Nova Sonic API documentation.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Amazon Nova Sonic.
+
+- **[AWS AI ecosystem guide](https://docs.livekit.io/agents/integrations/aws.md)**: Overview of the entire AWS AI and LiveKit Agents integration.
 
 ---
 
@@ -22119,7 +22302,7 @@ Have another provider in mind? LiveKit is open source and welcomes [new plugin c
 
 > ℹ️ **Realtime models**
 > 
-> Realtime models like the OpenAI Realtime API and Gemini Live API are capable of consuming and producing speech directly. LiveKit Agents supports them as an alternative to using an LLM plugin, without the need for STT and TTS. To learn more, see [Realtime models](https://docs.livekit.io/agents/integrations/realtime.md).
+> Realtime models like the OpenAI Realtime API, Gemini Live, and Amazon Nova Sonic are capable of consuming and producing speech directly. LiveKit Agents supports them as an alternative to using an LLM plugin, without the need for STT and TTS. To learn more, see [Realtime models](https://docs.livekit.io/agents/integrations/realtime.md).
 
 ## How to use
 
@@ -22311,6 +22494,12 @@ This section describes some of the available parameters. For a complete referenc
 - **`temperature`** _(float)_ (optional): Default values vary depending on the model you select. To learn more, see [Inference request parameters and response fields for foundation models](https://docs.aws.amazon.com/bedrock/latest/userguide/model-parameters.html).
 
 - **`tool_choice`** _([ToolChoice | Literal['auto', 'required', 'none']])_ (optional) - Default: `auto`: 
+
+## Amazon Nova Sonic
+
+To use Amazon Nova Sonic on AWS Bedrock, refer to the following integration guide:
+
+- **[Amazon Nova Sonic](https://docs.livekit.io/agents/integrations/realtime/nova-sonic.md)**: Integration guide for the Amazon Nova Sonic speech-to-speech model on AWS Bedrock.
 
 ## Additional resources
 
@@ -25746,12 +25935,6 @@ This section describes some of the parameters you can set when you create an LMN
 - **`temperature`** _(float)_ (optional): Influences how expressive and emotionally varied the speech becomes. Lower values (like 0.3) create more neutral, consistent speaking styles. Higher values (like 1.0) allow for more dynamic emotional range and speaking styles.
 
 - **`top_p`** _(float)_ (optional): Controls the stability of the generated speech. A lower value (like 0.3) produces more consistent, reliable speech. A higher value (like 0.9) gives more flexibility in how words are spoken, but might occasionally produce unusual intonations or speech patterns.
-
-## Advanced configuration
-
-### Custom pronunciation
-
-LMNT supports custom pronunciation based on [ARPABET](https://en.wikipedia.org/wiki/ARPABET). For more information, see the [pronunciation override guide](https://docs.lmnt.com/guides/pronunciations-overriding).
 
 ## Additional resources
 
@@ -31587,5 +31770,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-06-30T18:44:02.043Z.
+This document was rendered at 2025-07-02T00:27:43.576Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

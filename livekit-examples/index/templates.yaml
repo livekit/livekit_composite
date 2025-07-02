@@ -16,7 +16,6 @@
     Tools: "Next.js, TypeScript"
     License: "Apache-2.0"
 
-
 - name: "voice-assistant-frontend"
   display_name: "Voice assistant"
   desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
@@ -43,11 +42,11 @@
     pageTitle:
       type: string
       description: "The title of the page"
-      default: "Voice Assistant"
+      default: "LiveKit Voice Agent"
     pageDescription:
       type: string
       description: "A short description of the page for SEO"
-      default: "A voice assistant built with LiveKit"
+      default: "A voice agent built with LiveKit"
     supportsChatInput:
       type: boolean
       description: "Enable chat input for the voice assistant"
@@ -59,6 +58,10 @@
     supportsScreenShare:
       type: boolean
       description: "Enable screen sharing for the voice assistant"
+      default: true
+    isPreConnectBufferEnabled:
+      type: boolean
+      description: "Buffer local audio while the agent is connecting for a faster startup experience"
       default: true
     logo:
       type: string
@@ -79,7 +82,6 @@
       description: "Text to display on the start button for the voice assistant"
       default: "Start call"
 
-
 - name: "transcription-frontend"
   display_name: "Voice transcription"
   desc: "An application demonstrating realtime speech-to-text"
@@ -99,7 +101,6 @@
     tools: "Next.js, TypeScript"
     license: "Apache-2.0"
 
-
 - name: "token-server"
   display_name: "Token server"
   desc: "A hosted token server to help you prototype your mobile applications faster"
@@ -117,7 +118,6 @@
     Type: "Backend"
     Tools: "Go"
     License: "Apache-2.0"
-
 
 - name: "multi-agent-python"
   display_name: "Python multi-agent workflow"
@@ -138,7 +138,6 @@
     Type: "Agent"
     Tools: "Python >=3.9"
     License: "Apache-2.0"
-
 
 - name: "multimodal-agent-python"
   display_name: "Python multimodal agent"
@@ -161,7 +160,6 @@
     Tools: "Python >=3.9"
     License: "Apache-2.0"
 
-
 - name: "multimodal-agent-node"
   display_name: "Node multimodal agent"
   desc: "A voice assistant using S2S and multimodal capabilities"
@@ -183,7 +181,6 @@
     Tools: "Node.js"
     License: "Apache-2.0"
 
-
 - name: "voice-pipeline-agent-python"
   display_name: "Python voice pipeline agent"
   desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
@@ -203,7 +200,6 @@
     Type: "Agent"
     Tools: "Python >=3.9"
     License: "Apache-2.0"
-
 
 - name: "voice-pipeline-agent-node"
   display_name: "Node voice pipeline agent"
@@ -225,7 +221,6 @@
     Tools: "Node.js"
     License: "Apache-2.0"
 
-
 - name: "android-voice-assistant"
   display_name: "Android voice assistant"
   desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
@@ -244,7 +239,6 @@
     Type: "Mobile app"
     Tools: "Android, Kotlin, Jetpack Compose"
     License: "Apache-2.0"
-
 
 - name: "voice-assistant-swift"
   display_name: "Swift voice assistant"
@@ -281,7 +275,6 @@
     Type: "Mobile app"
     Tools: "Flutter"
     License: "Apache-2.0"
-
 
 - name: "outbound-caller-python"
   display_name: "Python outbound caller agent"

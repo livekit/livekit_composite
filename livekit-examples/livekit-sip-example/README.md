@@ -85,7 +85,7 @@ You can customize the application by modifying:
 The application consists of:
 
 - **Frontend**: Next.js app with LiveKit React components
-- **API Routes**: 
+- **API Routes**:
   - `/api/connection-details` - Creates rooms and SIP participants
   - `/api/delete-room` - Cleans up rooms after calls
 - **LiveKit Integration**: Uses LiveKit's SIP API to create phone call participants

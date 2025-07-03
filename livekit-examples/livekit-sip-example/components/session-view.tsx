@@ -23,7 +23,7 @@ export const SessionView = ({
   const [hasHadSipParticipant, setHasHadSipParticipant] = useState(false);
   const remoteParticipants = useRemoteParticipants();
 
-  // Get all microphone tracks in the room
+  // Get only remote microphone tracks (exclude local participant)
   const microphoneTracks = useTracks([Track.Source.Microphone], {
     updateOnlyOn: [
       RoomEvent.TrackSubscribed,
@@ -31,7 +31,8 @@ export const SessionView = ({
       RoomEvent.TrackMuted,
       RoomEvent.TrackUnmuted,
     ],
-  });
+    onlySubscribed: true,
+  }).filter((track) => track.participant.isLocal === false);
 
   useDebugMode();
 

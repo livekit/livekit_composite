@@ -1,4 +1,5 @@
-livekit-agents[openai,silero,turn-detector,deepgram,google,anthropic,cartesia,elevenlabs,rime,playai,groq,tavus,gladia]~=1.1
+livekit-agents[openai,silero,turn-detector,deepgram,google,anthropic,cartesia,elevenlabs,rime,playai,groq,tavus,gladia]
+livekit-plugins-aws[realtime]
 livekit-plugins-noise-cancellation
 python-dotenv
 requests>=2.32.0

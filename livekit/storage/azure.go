@@ -156,13 +156,13 @@ func (s *azureBLOBStorage) DownloadFile(filepath, storagePath string) (int64, er
 	return stat.Size(), nil
 }
 
-func (s *azureBLOBStorage) GeneratePresignedUrl(storagePath string) (string, error) {
+func (s *azureBLOBStorage) GeneratePresignedUrl(storagePath string, expiration time.Duration) (string, error) {
 	if s.conf.TokenCredential == nil {
 		return "", errors.New("OAuth required")
 	}
 
 	now := time.Now()
-	exp := now.Add(time.Hour * 24 * 7)
+	exp := now.Add(expiration)
 
 	serviceUrl := s.serviceUrl.WithPipeline(azblob.NewPipeline(s.conf.TokenCredential, azblob.PipelineOptions{}))
 	udc, err := serviceUrl.GetUserDelegationCredential(

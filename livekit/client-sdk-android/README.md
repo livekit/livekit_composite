@@ -47,7 +47,7 @@ LiveKit for Android is available as a Maven package.
 ```groovy title="build.gradle"
 ...
 dependencies {
-  def livekit_version = "2.18.2"
+  def livekit_version = "2.18.3"
 
   implementation "io.livekit:livekit-android:$livekit_version"
 
@@ -58,7 +58,7 @@ dependencies {
   implementation "io.livekit:livekit-android-track-processors:$livekit_version"
 
   // Snapshots of the latest development version are available at:
-  // implementation "io.livekit:livekit-android:2.18.3-SNAPSHOT"
+  // implementation "io.livekit:livekit-android:2.18.4-SNAPSHOT"
 }
 ```
 
@@ -75,7 +75,7 @@ dependencyResolutionManagement {
         maven { url 'https://jitpack.io' }
 
         // For SNAPSHOT access
-        // maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/' }
+        // maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }
     }
 }
 ```

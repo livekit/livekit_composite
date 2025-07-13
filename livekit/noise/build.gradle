@@ -1,0 +1,93 @@
+buildscript {
+    ext {
+        min_sdk = 21
+        compile_sdk = 35
+        target_sdk = 35
+        kotlin_version = '1.9.25'
+        java_version = JavaVersion.VERSION_11
+    }
+
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:8.7.3'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+plugins {
+    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}
+
+tasks.register('readme') {
+    doLast {
+        def input = new File("./README_TEMPLATE.md")
+        def output = new File("./README.md")
+
+        def reader = new DataInputStream(new BufferedInputStream(new FileInputStream(input))).newReader()
+        def builder = new StringBuilder()
+        def next
+
+        while ((next = reader.readLine()) != null) {
+            builder.append(next).append("\n")
+        }
+
+        def version = project(':noise').version
+        def template = builder.toString().replace("{{version}}", version)
+
+        def writer = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(output))).newWriter()
+
+        writer.write(template)
+        writer.flush()
+
+        println("README.md generated from template")
+    }
+}
+
+tasks.register('release') {
+    dependsOn[":readme"]
+    doLast {
+        exec {
+            executable 'git'
+            args 'tag', '-a', "${project(':noise').version}", '-m', "Release ${project(':noise').version}"
+        }
+
+        println("Successfully tagged new release (${project(':noise').version}).")
+        println("Push manually!")
+    }
+}
+
+
+def getRepositoryUsername() {
+    return hasProperty('nexusUsername') ? nexusUsername : ""
+}
+
+def getRepositoryPassword() {
+    return hasProperty('nexusPassword') ? nexusPassword : ""
+}
+
+nexusPublishing {
+    packageGroup = GROUP
+    repositories {
+        maven {
+            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
+            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
+            username = getRepositoryUsername()
+            password = getRepositoryPassword()
+            stagingProfileId = STAGING_PROFILE_ID
+        }
+    }
+}

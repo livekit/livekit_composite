@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/aliyun/aliyun-oss-go-sdk/oss"
 )
@@ -90,8 +91,8 @@ func (s *aliOSSStorage) DownloadFile(filepath, storagePath string) (int64, error
 	return info.Size(), nil
 }
 
-func (s *aliOSSStorage) GeneratePresignedUrl(storagePath string) (string, error) {
-	return s.bucket.SignURL(storagePath, oss.HTTPGet, 7*24*60*60)
+func (s *aliOSSStorage) GeneratePresignedUrl(storagePath string, expiration time.Duration) (string, error) {
+	return s.bucket.SignURL(storagePath, oss.HTTPGet, int64(expiration.Seconds()))
 }
 
 func (s *aliOSSStorage) Delete(storagePath string) error {

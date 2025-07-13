@@ -179,10 +179,10 @@ func (s *gcpStorage) download(storagePath string) (*storage.Reader, error) {
 	).NewReader(ctx)
 }
 
-func (s *gcpStorage) GeneratePresignedUrl(storagePath string) (string, error) {
+func (s *gcpStorage) GeneratePresignedUrl(storagePath string, expiration time.Duration) (string, error) {
 	return s.client.Bucket(s.conf.Bucket).SignedURL(storagePath, &storage.SignedURLOptions{
 		Method:  "GET",
-		Expires: time.Now().Add(time.Hour * 24 * 7),
+		Expires: time.Now().Add(expiration),
 	})
 }
 

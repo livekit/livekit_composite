@@ -21,14 +21,16 @@ import (
 )
 
 type S3Config struct {
-	AccessKey      string       `yaml:"access_key"`
-	Secret         string       `yaml:"secret"`
-	SessionToken   string       `yaml:"session_token"`
-	Region         string       `yaml:"region"`
-	Endpoint       string       `yaml:"endpoint"`
-	Bucket         string       `yaml:"bucket"`
-	ForcePathStyle bool         `yaml:"force_path_style"`
-	ProxyConfig    *ProxyConfig `yaml:"proxy_config"`
+	AccessKey            string       `yaml:"access_key"`
+	Secret               string       `yaml:"secret"`
+	SessionToken         string       `yaml:"session_token"`
+	AssumeRoleArn        string       `yaml:"assume_role_arn"`         // ARN of the role to assume for file upload. Egress will make an AssumeRole API call using the provided access_key and secret to assume that role
+	AssumeRoleExternalId string       `yaml:"assume_role_external_id"` // ExternalID to use when assuming role for upload
+	Region               string       `yaml:"region"`
+	Endpoint             string       `yaml:"endpoint"`
+	Bucket               string       `yaml:"bucket"`
+	ForcePathStyle       bool         `yaml:"force_path_style"`
+	ProxyConfig          *ProxyConfig `yaml:"proxy_config"`
 
 	MaxRetries    int           `yaml:"max_retries"`
 	MaxRetryDelay time.Duration `yaml:"max_retry_delay"`

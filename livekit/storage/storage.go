@@ -14,6 +14,8 @@
 
 package storage
 
+import "time"
+
 type Storage interface {
 	UploadData(data []byte, storagePath, contentType string) (location string, size int64, err error)
 	UploadFile(filepath, storagePath, contentType string) (location string, size int64, err error)
@@ -21,7 +23,7 @@ type Storage interface {
 	DownloadData(storagePath string) (data []byte, err error)
 	DownloadFile(filepath, storagePath string) (size int64, err error)
 
-	GeneratePresignedUrl(storagePath string) (url string, err error)
+	GeneratePresignedUrl(storagePath string, expiration time.Duration) (url string, err error)
 
 	Delete(storagePath string) error
 }

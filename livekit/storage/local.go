@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"time"
 )
 
 type localUploader struct {
@@ -94,7 +95,7 @@ func (u *localUploader) DownloadFile(localPath, storagePath string) (int64, erro
 	return size, err
 }
 
-func (u *localUploader) GeneratePresignedUrl(storagePath string) (string, error) {
+func (u *localUploader) GeneratePresignedUrl(storagePath string, _ time.Duration) (string, error) {
 	abs, err := filepath.Abs(storagePath)
 	if err != nil {
 		return "", err

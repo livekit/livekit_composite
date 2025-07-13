@@ -24,20 +24,21 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
 
-const (
-	defaultBucketLocation = "us-east-1"
-)
+const defaultBucketLocation = "us-east-1"
 
 type s3Storage struct {
 	conf    *S3Config
@@ -45,6 +46,49 @@ type s3Storage struct {
 }
 
 func NewS3(conf *S3Config) (Storage, error) {
+	var cp aws.CredentialsProvider
+
+	if conf.AccessKey != "" && conf.Secret != "" {
+		cp = credentials.StaticCredentialsProvider{
+			Value: aws.Credentials{
+				AccessKeyID:     conf.AccessKey,
+				SecretAccessKey: conf.Secret,
+				SessionToken:    conf.SessionToken,
+			},
+		}
+	}
+
+	awsConf, err := getConf(conf, cp)
+	if err != nil {
+		return nil, err
+	}
+
+	if conf.AssumeRoleArn != "" {
+		stsSvc := sts.NewFromConfig(*awsConf)
+		cp = stscreds.NewAssumeRoleProvider(stsSvc, conf.AssumeRoleArn, func(o *stscreds.AssumeRoleOptions) {
+			if conf.AssumeRoleExternalId != "" {
+				o.ExternalID = aws.String(conf.AssumeRoleExternalId)
+			}
+		})
+		awsConf, err = getConf(conf, cp)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if conf.Region == "" && conf.Endpoint == "" {
+		if err = updateRegion(awsConf, conf.Bucket); err != nil {
+			return nil, err
+		}
+	}
+
+	return &s3Storage{
+		conf:    conf,
+		awsConf: awsConf,
+	}, nil
+}
+
+func getConf(conf *S3Config, cp aws.CredentialsProvider) (*aws.Config, error) {
 	opts := func(o *config.LoadOptions) error {
 		if conf.Region != "" {
 			o.Region = conf.Region
@@ -52,16 +96,7 @@ func NewS3(conf *S3Config) (Storage, error) {
 			o.Region = defaultBucketLocation
 		}
 
-		if conf.AccessKey != "" && conf.Secret != "" {
-			o.Credentials = credentials.StaticCredentialsProvider{
-				Value: aws.Credentials{
-					AccessKeyID:     conf.AccessKey,
-					SecretAccessKey: conf.Secret,
-					SessionToken:    conf.SessionToken,
-				},
-			}
-		}
-
+		o.Credentials = cp
 		o.Retryer = func() aws.Retryer {
 			return retry.NewStandard(func(o *retry.StandardOptions) {
 				o.MaxAttempts = conf.MaxRetries
@@ -95,16 +130,9 @@ func NewS3(conf *S3Config) (Storage, error) {
 
 	if conf.Endpoint != "" {
 		awsConf.BaseEndpoint = &conf.Endpoint
-	} else if conf.Region == "" {
-		if err = updateRegion(&awsConf, conf.Bucket); err != nil {
-			return nil, err
-		}
 	}
 
-	return &s3Storage{
-		conf:    conf,
-		awsConf: &awsConf,
-	}, nil
+	return &awsConf, nil
 }
 
 func updateRegion(awsConf *aws.Config, bucket string) error {
@@ -246,7 +274,7 @@ func (s *s3Storage) download(w io.WriterAt, storagePath string) (int64, error) {
 	)
 }
 
-func (s *s3Storage) GeneratePresignedUrl(storagePath string) (string, error) {
+func (s *s3Storage) GeneratePresignedUrl(storagePath string, expiration time.Duration) (string, error) {
 	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
 		o.UsePathStyle = s.conf.ForcePathStyle
 	})
@@ -254,7 +282,7 @@ func (s *s3Storage) GeneratePresignedUrl(storagePath string) (string, error) {
 	res, err := s3.NewPresignClient(client).PresignGetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(s.conf.Bucket),
 		Key:    aws.String(storagePath),
-	})
+	}, s3.WithPresignExpires(expiration))
 	if err != nil {
 		return "", err
 	}

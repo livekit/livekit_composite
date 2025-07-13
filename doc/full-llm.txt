@@ -2301,14 +2301,14 @@ export const MyComponent = ({ participant }) => {
 
 ```swift
 extension MyRoomHandler : RoomDelegate {
-  func activeSpeakersDidChange(speakers: [Participant], room _: Room) {
+  func didUpdateSpeakingParticipants(speakers: [Participant], room _: Room) {
     // Do something with the active speakers
   }
 }
 
 extension ParticipantHandler : ParticipantDelegate {
   /// The isSpeaking status of the participant has changed
-  func isSpeakingDidChange(participant: Participant) {
+  func didUpdateIsSpeaking(participant: Participant) {
     print("\(participant.identity) is now speaking: \(participant.isSpeaking), audioLevel: \(participant.audioLevel)")
   }
 }
@@ -11938,15 +11938,17 @@ When these limits are reached, new connections of the same type fail.
 
 ### Scale plan
 
-Projects on the `Scale` plan have the following limits:
+Projects on the `Scale` plan have the following default limits:
 
-- Unlimited concurrent participants.
+- 5,000 concurrent participants.
 - 100 concurrent egress requests.
 - 100 concurrent ingress requests.
 
 When these limits are reached, new connections of the same type fail.
 
-An admin for your project can request an increase for a particular limit in your [project settings](https://cloud.livekit.io/projects/p_/settings/project).
+> 💡 **Tip**
+> 
+> Your project admin can request an increase for specific limits in your [project settings](https://cloud.livekit.io/projects/p_/settings/project).
 
 ### Custom plan
 
@@ -12084,6 +12086,8 @@ If wildcard hostnames are not allowed by your firewall or security policy, the f
 | `<your-subdomain>.osingapore1b.production.livekit.cloud` | TCP 443 |
 | `<your-subdomain>.odubai1a.production.livekit.cloud` | TCP 443 |
 | `<your-subdomain>.odubai1b.production.livekit.cloud` | TCP 443 |
+| `<your-subdomain>.ohyderabad1a.production.livekit.cloud` | TCP 443 |
+| `<your-subdomain>.ohyderabad1b.production.livekit.cloud` | TCP 443 |
 | `<your-subdomain>.ojohannesburg1a.production.livekit.cloud` | TCP 443 |
 | `<your-subdomain>.ojohannesburg1b.production.livekit.cloud` | TCP 443 |
 | `<your-subdomain>.omumbai1a.production.livekit.cloud` | TCP 443 |
@@ -12092,6 +12096,10 @@ If wildcard hostnames are not allowed by your firewall or security policy, the f
 | `<your-subdomain>.ofrankfurt1b.production.livekit.cloud` | TCP 443 |
 | `<your-subdomain>.ojerusalem1a.production.livekit.cloud` | TCP 443 |
 | `<your-subdomain>.ojerusalem1b.production.livekit.cloud` | TCP 443 |
+| `<your-subdomain>.osydney1a.production.livekit.cloud` | TCP 443 |
+| `<your-subdomain>.osydney1b.production.livekit.cloud` | TCP 443 |
+| `<your-subdomain>.ozurich1a.production.livekit.cloud` | TCP 443 |
+| `<your-subdomain>.ozurich1b.production.livekit.cloud` | TCP 443 |
 | `<your-subdomain>.turn.livekit.cloud` | TCP 443 |
 | `sfo3.turn.livekit.cloud` | TCP 443 |
 | `dsfo3a.turn.livekit.cloud` | TCP 443 |
@@ -12122,6 +12130,8 @@ If wildcard hostnames are not allowed by your firewall or security policy, the f
 | `osingapore1b.turn.livekit.cloud` | TCP 443 |
 | `odubai1a.turn.livekit.cloud` | TCP 443 |
 | `odubai1b.turn.livekit.cloud` | TCP 443 |
+| `ohyderabad1a.turn.livekit.cloud` | TCP 443 |
+| `ohyderabad1b.turn.livekit.cloud` | TCP 443 |
 | `ojohannesburg1a.turn.livekit.cloud` | TCP 443 |
 | `ojohannesburg1b.turn.livekit.cloud` | TCP 443 |
 | `omumbai1a.turn.livekit.cloud` | TCP 443 |
@@ -12130,10 +12140,14 @@ If wildcard hostnames are not allowed by your firewall or security policy, the f
 | `ofrankfurt1b.turn.livekit.cloud` | TCP 443 |
 | `ojerusalem1a.turn.livekit.cloud` | TCP 443 |
 | `ojerusalem1b.turn.livekit.cloud` | TCP 443 |
+| `osydney1a.turn.livekit.cloud` | TCP 443 |
+| `osydney1b.turn.livekit.cloud` | TCP 443 |
+| `ozurich1a.turn.livekit.cloud` | TCP 443 |
+| `ozurich1b.turn.livekit.cloud` | TCP 443 |
 
 > ℹ️ **Note**
 > 
-> This list of domains is subject to change. Last updated 2025-02-27.
+> This list of domains is subject to change. Last updated 2025-06-27.
 
 ---
 
@@ -12825,7 +12839,7 @@ Include `krisp_enabled: true` in the trunk configuration.
 
 ```
 
-See the full [inbound trunk docs](https://docs.livekit.io/sip/trunk-background.md) for more information.
+See the full [inbound trunk docs](https://docs.livekit.io/sip/trunk-inbound.md) for more information.
 
 #### Outbound calls
 
@@ -14803,6 +14817,8 @@ In all of these cases, the LiveKit SDKs are production grade and easy to use so 
 
 LiveKit recommends using one of the following starter apps to get up and running quickly on your preferred platform. Each app is open source under the MIT License so you can freely modify it to your own needs. The mobile apps require a hosted token server, but include a [LiveKit Cloud Sandbox](https://cloud.livekit.io/projects/p_/sandbox/templates/token-server) for development purposes.
 
+![undefined](/images/agents/start/frontend/agent-starter-react-screenshot-dark.png)
+
 - **[SwiftUI Voice Agent](https://github.com/livekit-examples/agent-starter-swift)**: A native iOS, macOS, and visionOS voice AI assistant built in SwiftUI.
 
 - **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
@@ -16646,13 +16662,13 @@ Use `agent.update_tools()` to update available tools after creating an agent. Th
 
 ```python
 # add a tool
-agent.update_tools(agent.tools + [tool_a]) 
+await agent.update_tools(agent.tools + [tool_a])
 
 # remove a tool
-agent.update_tools(agent.tools - [tool_a]) 
+await agent.update_tools(agent.tools - [tool_a]) 
 
 # replace all tools
-agent.update_tools([tool_a, tool_b]) 
+await agent.update_tools([tool_a, tool_b]) 
 
 ```
 
@@ -17325,7 +17341,7 @@ room.registerTextStreamHandler('lk.transcription', async (reader, participantInf
 **Swift**:
 
 ```swift
-try await room.localParticipant.registerTextStreamHandler(for: "lk.transcription") { reader, participantIdentity in
+try await room.registerTextStreamHandler(for: "lk.transcription") { reader, participantIdentity in
     let message = try await reader.readAll()
     if let transcribedTrackId = reader.info.attributes["lk.transcribed_track_id"] {
         print("New transcription from \(participantIdentity): \(message)")
@@ -18813,6 +18829,23 @@ For more LiveKit Agents examples, see the [GitHub repository](https://github.com
 
 - **[Realtime text and data](https://docs.livekit.io/home/client/data.md)**: Use text and data channels to communicate with your agent.
 
+## Adding custom fields to agent logs
+
+Each job outputs JSON-formatted logs that include the user transcript, turn detection data, job ID, process ID, and more. You can include custom fields in the logs using `ctx.log_fields_context` for additional diagnostic context.
+
+The following example adds worker ID and room name to the logs:
+
+```python
+async def entrypoint(ctx: JobContext):
+    ctx.log_context_fields = {
+      "worker_id": ctx.worker_id,
+      "room_name": ctx.room.name,
+    }
+
+```
+
+To learn more, see the reference documentation for [JobContext.log_context_fields](https://docs.livekit.io/reference/python/v1/livekit/agents/index.html.md#livekit.agents.JobContext.log_context_fields).
+
 ## Passing data to a job
 
 You can customize a job with user or job-specific data using either job metadata, room metadata, or participant attributes.
@@ -19935,7 +19968,27 @@ This section describes some of the available parameters. For a complete referenc
 
 - **`location`** _(string)_ (optional) - Environment: `GOOGLE_CLOUD_LOCATION`: Google Cloud location to use for the API (if `vertextai=True`). By default, it uses the location from the service account key file or `us-central1`.
 
-- **`temperature`** _(float)_ (optional): A measure of randomness of completions. A lower temperature is more deterministic. To learn more, see [Temperature](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/prompts/adjust-parameter-values#temperature).
+- **`_gemini_tools`** _(list[GeminiTool])_ (optional): List of built-in Google tools, such as Google Search. For more information, see [Gemini tools](#gemini-tools).
+
+### Gemini tools
+
+> 🔥 **Experimental feature**
+> 
+> This integration is experimental and may change in a future SDK release.
+
+The `_gemini_tools` parameter allows you to use built-in Google tools with the Gemini model. For example, you can use this feature to implement [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/live-tools#google-search):
+
+```python
+from google.genai import types
+
+session = AgentSession(
+    llm=google.beta.realtime.RealtimeModel(
+        model="gemini-2.0-flash-exp",
+        _gemini_tools=[types.GoogleSearch()],
+    )
+)
+
+```
 
 ## Turn detection
 
@@ -20018,11 +20071,33 @@ This section describes some of the available parameters. For a complete referenc
 
 - **`location`** _(str)_ (optional) - Default: `` - Environment: `GOOGLE_CLOUD_LOCATION`: Google Cloud location to use (only if using Vertex AI). Required if using Vertex AI and the environment variable isn't set.
 
-- **`temperature`** _(float)_ (optional) - Default: `0.8`: To learn more, see [Model parameters](https://ai.google.dev/gemini-api/docs/models/generative-models#model-parameters).
+- **`gemini_tools`** _(List[GeminiTool])_ (optional): List of built-in Google tools, such as Google Search. For more information, see [Gemini tools](#gemini-tools).
 
-- **`max_output_tokens`** _(int)_ (optional): Maximum number of tokens that can be generated in the response. To learn more, see [Model parameters](https://ai.google.dev/gemini-api/docs/models/generative-models#model-parameters).
+### Gemini tools
 
-- **`tool_choice`** _(ToolChoice | Literal['auto', 'required', 'none'])_ (optional) - Default: `auto`: 
+The `gemini_tools` parameter allows you to use built-in Google tools with the Gemini model. For example, you can use this feature to implement [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search):
+
+```python
+from livekit.plugins import google
+from google.genai import types
+
+session = AgentSession(
+    llm=google.LLM(
+        model="gemini-2.0-flash-exp",
+        gemini_tools=[types.GoogleSearch()],
+    ),
+    # ... tts, stt, vad, turn_detection, etc.
+)
+
+```
+
+The full list of supported tools, depending on the model, is:
+
+- `google.genai.types.GoogleSearchRetrieval()`
+- `google.genai.types.ToolCodeExecution()`
+- `google.genai.types.GoogleSearch()`
+- `google.genai.types.UrlContext()`
+- `google.genai.types.GoogleMaps()`
 
 ## Additional resources
 
@@ -21895,7 +21970,27 @@ This section describes some of the available parameters. For a complete referenc
 
 - **`location`** _(string)_ (optional) - Environment: `GOOGLE_CLOUD_LOCATION`: Google Cloud location to use for the API (if `vertextai=True`). By default, it uses the location from the service account key file or `us-central1`.
 
-- **`temperature`** _(float)_ (optional): A measure of randomness of completions. A lower temperature is more deterministic. To learn more, see [Temperature](https://cloud.google.com/vertex-ai/generative-ai/docs/learn/prompts/adjust-parameter-values#temperature).
+- **`_gemini_tools`** _(list[GeminiTool])_ (optional): List of built-in Google tools, such as Google Search. For more information, see [Gemini tools](#gemini-tools).
+
+### Gemini tools
+
+> 🔥 **Experimental feature**
+> 
+> This integration is experimental and may change in a future SDK release.
+
+The `_gemini_tools` parameter allows you to use built-in Google tools with the Gemini model. For example, you can use this feature to implement [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/live-tools#google-search):
+
+```python
+from google.genai import types
+
+session = AgentSession(
+    llm=google.beta.realtime.RealtimeModel(
+        model="gemini-2.0-flash-exp",
+        _gemini_tools=[types.GoogleSearch()],
+    )
+)
+
+```
 
 ## Turn detection
 
@@ -22289,6 +22384,7 @@ The agents framework includes plugins for the following LLM providers out-of-the
 | [Fireworks](https://docs.livekit.io/agents/integrations/llm/fireworks.md) | `openai` | Wide range of models from Llama, DeepSeek, Mistral, and more. |
 | [Google Gemini](https://docs.livekit.io/agents/integrations/llm/gemini.md) | `google` |  |
 | [Groq](https://docs.livekit.io/agents/integrations/llm/groq.md) | `groq` | Models from Llama, DeepSeek, and more. |
+| [LangChain](https://docs.livekit.io/agents/integrations/llm/langchain.md) | `langchain` | Use a LangGraph workflow for your agent LLM. |
 | [Letta](https://docs.livekit.io/agents/integrations/llm/letta.md) | `openai` | Stateful API with memory features. |
 | [Ollama](https://docs.livekit.io/agents/integrations/llm/ollama.md) | `openai` | Self-hosted models from Llama, DeepSeek, and more. |
 | [OpenAI](https://docs.livekit.io/agents/integrations/llm/openai.md) | `openai` |  |
@@ -22782,11 +22878,33 @@ This section describes some of the available parameters. For a complete referenc
 
 - **`location`** _(str)_ (optional) - Default: `` - Environment: `GOOGLE_CLOUD_LOCATION`: Google Cloud location to use (only if using Vertex AI). Required if using Vertex AI and the environment variable isn't set.
 
-- **`temperature`** _(float)_ (optional) - Default: `0.8`: To learn more, see [Model parameters](https://ai.google.dev/gemini-api/docs/models/generative-models#model-parameters).
+- **`gemini_tools`** _(List[GeminiTool])_ (optional): List of built-in Google tools, such as Google Search. For more information, see [Gemini tools](#gemini-tools).
 
-- **`max_output_tokens`** _(int)_ (optional): Maximum number of tokens that can be generated in the response. To learn more, see [Model parameters](https://ai.google.dev/gemini-api/docs/models/generative-models#model-parameters).
+### Gemini tools
 
-- **`tool_choice`** _(ToolChoice | Literal['auto', 'required', 'none'])_ (optional) - Default: `auto`: 
+The `gemini_tools` parameter allows you to use built-in Google tools with the Gemini model. For example, you can use this feature to implement [Grounding with Google Search](https://ai.google.dev/gemini-api/docs/google-search):
+
+```python
+from livekit.plugins import google
+from google.genai import types
+
+session = AgentSession(
+    llm=google.LLM(
+        model="gemini-2.0-flash-exp",
+        gemini_tools=[types.GoogleSearch()],
+    ),
+    # ... tts, stt, vad, turn_detection, etc.
+)
+
+```
+
+The full list of supported tools, depending on the model, is:
+
+- `google.genai.types.GoogleSearchRetrieval()`
+- `google.genai.types.ToolCodeExecution()`
+- `google.genai.types.GoogleSearch()`
+- `google.genai.types.UrlContext()`
+- `google.genai.types.GoogleMaps()`
 
 ## Additional resources
 
@@ -22876,6 +22994,84 @@ The following resources provide more information about using Groq with LiveKit A
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Groq.
 
 - **[Groq ecosystem overview](https://docs.livekit.io/agents/integrations/groq.md)**: Overview of the entire Groq and LiveKit Agents integration.
+
+---
+
+---
+
+## LangChain
+
+## Overview
+
+[LangChain](https://www.langchain.com/) is a framework for developing applications powered by large language models. The LiveKit LangChain plugin allows you to integrate existing LangGraph workflows as LLMs in your voice AI applications.
+
+## Quick reference
+
+This section includes a basic usage example and some reference material. For links to more detailed documentation, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the LiveKit LangChain plugin from PyPI:
+
+```bash
+pip install "livekit-plugins-langchain~=1.1"
+
+```
+
+### Usage
+
+Use LangGraph workflows within an `AgentSession` by wrapping them with the `LLMAdapter`. For example, you can use this LLM in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from langgraph.graph import StateGraph
+from livekit.agents import AgentSession, Agent
+from livekit.plugins import langchain
+
+# Define your LangGraph workflow
+def create_workflow():
+    workflow = StateGraph(...)
+    # Add your nodes and edges
+    return workflow.compile()
+
+# Use the workflow as an LLM
+session = AgentSession(
+    llm=langchain.LLMAdapter(
+        graph=create_workflow()
+    ),
+    # ... stt, tts, vad, turn_detection, etc.
+)
+
+```
+
+The `LLMAdapter` automatically converts the LiveKit chat context to [LangChain messages](https://python.langchain.com/docs/concepts/messages/#langchain-messages). The mapping is as follows:
+
+- `system` and `developer` messages to `SystemMessage`
+- `user` messages to `HumanMessage`
+- `assistant` messages to `AIMessage`
+
+### Parameters
+
+This section describes the available parameters for the `LLMAdapter`. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/langchain/index.html.md#livekit.plugins.langchain.LLMAdapter) for a complete list of all available parameters.
+
+- **`graph`** _(PregelProtocol)_: The LangGraph workflow to use as an LLM. Must be a locally compiled graph. To learn more, see  [Graph Definitions](https://langchain-ai.github.io/langgraph/reference/graphs/).
+
+- **`config`** _(RunnableConfig | None)_ (optional) - Default: `None`: Configuration options for the LangGraph workflow execution. This can include runtime configuration, callbacks, and other LangGraph-specific options. To learn more, see [RunnableConfig](https://python.langchain.com/docs/concepts/runnables/#runnableconfig).
+
+## Additional resources
+
+The following resources provide more information about using LangChain with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-langchain/)**: The `livekit-plugins-langchain` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/langchain/index.html.md#livekit.plugins.langchain.LLMAdapter)**: Reference for the LangChain LLM adapter.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-langchain)**: View the source or contribute to the LiveKit LangChain plugin.
+
+- **[LangChain docs](https://python.langchain.com/docs/)**: LangChain documentation and tutorials.
+
+- **[LangGraph docs](https://python.langchain.com/docs/langgraph)**: LangGraph documentation for building stateful workflows.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and LangChain.
 
 ---
 
@@ -25822,7 +26018,7 @@ The following resources provide more information about using Hume with LiveKit A
 
 ## Overview
 
-[Inworld](https://inworld.ai/) is a leading AI platform for consumer applications which includes a text-to-speech service optimized for bringing lifelike voices to characters in games. With LiveKit's Inworld TTS integration and the Agents framework, you can build engaging and immersive voice AI experiences.
+[Inworld](https://inworld.ai/) develops AI products for builders of consumer applications, including an accessible, high quality text-to-speech service for developers. With LiveKit's Inworld TTS integration and the Agents framework, you can build engaging and immersive voice AI experiences.
 
 ## Quick reference
 
@@ -25839,7 +26035,7 @@ pip install "livekit-agents[inworld]~=1.0"
 
 ### Authentication
 
-The Inworld plugin requires a [Inworld API key](https://studio.inworld.ai/login).
+The Inworld plugin requires Base64 [Inworld API key](https://platform.inworld.ai/login).
 
 Set `INWORLD_API_KEY` in your `.env` file.
 
@@ -25851,7 +26047,7 @@ Use Inworld TTS within an `AgentSession` or as a standalone speech generator. Fo
 from livekit.plugins import inworld
 
 session = AgentSession(
-   tts=inworld.TTS(voice="Ashley")
+   tts=inworld.TTS(voice="Hades")
    # ... llm, stt, etc.
 )
 
@@ -27252,58 +27448,54 @@ The following steps are common to all SIP trunking providers.
 
 > ℹ️ **LiveKit CLI**
 > 
-> These examples use the [LiveKit CLI](https://docs.livekit.io/home/cli/cli-setup.md). For additional examples and full documentation, see the linked documentation for each component.
+> These examples use the [LiveKit Cloud](https://cloud.livekit.io/). For additional examples and full documentation, see the linked documentation for each component.
 
 ### Inbound trunk setup
 
 An [inbound trunk](https://docs.livekit.io/sip/trunk-inbound.md) allows you to accept incoming phone calls.
 
-Create a temporary JSON file with your inbound trunk configuration, including the phone number you purchased from your SIP trunking provider.
+Create an inbound trunk using the LiveKit Cloud dashboard.
 
-** Filename: `inbound-trunk.json`**
+1. Sign in to the **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config) page.
+2. Select **Create new** → **Trunk**.
+3. Select the **JSON editor** tab.
+4. Select **Inbound** for **Trunk direction**.
+5. Copy and paste the following text into the editor, replacing the phone number with the number you purchased from your SIP trunk provider:
 
-```shell
+```json
 {
   "trunk": {
-    "name": "My inbound trunk",
-    "numbers": ["+15105550123"]
+     "name": "My inbound trunk",
+     "numbers": ["+15105550123"]
   }
 }
 
 ```
-
-Use the LiveKit CLI to register the inbound trunk to your project.
-
-```shell
-lk sip inbound create inbound-trunk.json
-
-```
+6. Select **Create**.
 
 ### Create a dispatch rule
 
 You must set up at least one [dispatch rule](https://docs.livekit.io/sip/dispatch-rule.md) to accept incoming calls into a LiveKit room.
 
-Create a temporary JSON file with your dispatch rule configuration. This example creates a dispatch rule that puts each caller into a randomly generated unique room using the name prefix `call-`. For many applications, this is the only configuration you need.
+This example creates a dispatch rule that puts each caller into a randomly generated unique room using the name prefix `call-`. For many applications, this is the only configuration you need.
 
-** Filename: `dispatch-rule.json`**
+1. Sign to the **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config) page.
+2. Select **Create new** → **Dispatch rule**.
+3. Select the **JSON editor** tab.
+4. Copy and paste the following text into the editor:
 
-```shell
+```json
 {
-  "rule": {
-    "dispatchRuleIndividual": {
-      "roomPrefix": "call-"
-    }
-  }
+   "name": "My dispatch rule",
+   "rule": {
+      "dispatchRuleIndividual": {
+         "roomPrefix": "call-"
+      }
+   }
 }
 
 ```
-
-Use the LiveKit CLI to create the dispatch rule.
-
-```shell
-lk sip dispatch create dispatch-rule.json
-
-```
+5. Select **Create**.
 
 After you create an inbound trunk and dispatch rule, you can create an agent to answer incoming calls. To learn more, see the resources in the [Next steps](#next-steps) section.
 
@@ -27311,29 +27503,27 @@ After you create an inbound trunk and dispatch rule, you can create an agent to 
 
 Create an [outbound trunk](https://docs.livekit.io/sip/trunk-outbound.md) to make outgoing phone calls with LiveKit.
 
-Create a temporary JSON file with your outbound trunk configuration. This example creates an outbound trunk with the phone number `+55512345678` and the trunk domain name `my-trunk-domain-name`.
+This example creates an username and password authenticated outbound trunk with the phone number `+15105550123` and the trunk domain name `my-trunk-domain-name`.
 
-** Filename: `outbound-trunk.json`**
+1. Sign in to the **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config) page.
+2. Select **Create new** → **Trunk**.
+3. Select the **JSON editor** tab.
+4. Select **Outbound** for **Trunk direction**.
+5. Copy and paste the following text into the editor:
 
-```shell
+```json
 {
-  "trunk": {
-    "name": "My outbound trunk",
-    "address": "<my-trunk-domain-name>",
-    "numbers": ["+15105550123"],
-    "auth_username": "<username>",
-    "auth_password": "<password>"
-  }
+  "name": "My outbound trunk",
+  "address": "<my-trunk-domain-name>",
+  "numbers": [
+    "+15105550123"
+  ],
+  "authUsername": "<username>",
+  "authPassword": "<password>"
 }
 
 ```
-
-Use the LiveKit CLI to create the outbound trunk.
-
-```shell
-lk sip outbound create outbound-trunk.json
-
-```
+6. Select **Create**.
 
 Now you are ready to [place outgoing calls](https://docs.livekit.io/sip/outbound-calls.md).
 
@@ -27842,16 +28032,16 @@ The following examples create an inbound trunk that accepts calls made to the nu
 
 **LiveKit CLI**:
 
-Create a file named `inbound-trunk.json` with the following content:
-
-**Twilio**:
+1. Create a file named `inbound-trunk.json` with the following content:
 
 ```json
 {
   "trunk": {
     "name": "My trunk",
-    "numbers": ["+15105550100"],
-    "krisp_enabled": true
+    "numbers": [
+      "+15105550100"
+    ],
+    "krispEnabled": true
   }
 }
 
@@ -27859,28 +28049,8 @@ Create a file named `inbound-trunk.json` with the following content:
 
 > ❗ **Important**
 > 
-> Twilio numbers must start with a leading `+`.
-
----
-
-**Telnyx**:
-
-```json
-{
-  "trunk": {
-    "name": "My trunk",
-    "numbers": ["+15105550100"],
-    "krisp_enabled": true
-  }
-}
-
-```
-
-> ❗ **Important**
-> 
-> The leading `+` in the phone number assumes the `Destination Number Format` is set to `+E.164` for your Telnyx number.
-
-Then create the inbound trunk using `lk`:
+> If you're using Telnyx, the leading `+` in the phone number assumes the `Destination Number Format` is set to `+E.164` for your number.
+2. Create the inbound trunk using `lk`:
 
 ```shell
 lk sip inbound create inbound-trunk.json
@@ -28020,6 +28190,33 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select **Create new** → **Trunk**.
+4. Select the **JSON editor** tab.
+
+> ℹ️ **Note**
+> 
+> You can also use the **Trunk details** tab to create a basic trunk. However, the JSON editor allows you to configure all available [parameters](https://docs.livekit.io/sip/api.md#createsipinboundtrunk). For example, the `krispEnabled` parameter is only available in the JSON editor.
+5. Select **Inbound** for **Trunk direction**.
+6. Copy and paste the following text into the editor:
+
+```json
+{
+  "name": "My trunk",
+  "numbers": [
+    "+15105550100"
+  ],
+  "krispEnabled": true
+}
+
+```
+7. Select **Create**.
+
 ## Accepting calls from specific phone numbers
 
 The configuration for inbound trunk accepts inbound calls to number `+1-510-555-0100` from caller numbers `+1-310-555-1100` and `+1-714-555-0100`.
@@ -28028,47 +28225,39 @@ The configuration for inbound trunk accepts inbound calls to number `+1-510-555-
 > 
 > Remember to replace the numbers in the example with actual phone numbers when creating your trunks.
 
-**LiveKit CLI**:
-
-**Twilio**:
-
-```json
-{
-  "trunk": {
-    "name": "My trunk",
-    "numbers": ["+15105550100"],
-    "allowed_numbers": ["+13105550100", "+17145550100"]
-  }
-}
-
-```
-
-> ❗ **Important**
-> 
-> Twilio numbers must start with a leading `+`.
-
----
-
-**Telnyx**:
-
-```json
-{
-  "trunk": {
-    "name": "My trunk",
-    "numbers": ["+15105550100"],
-    "allowed_numbers": ["+13105550100", "+17145550100"]
-  }
-}
-
-```
-
-> ❗ **Important**
-> 
-> The leading `+` in the phone number assumes the `Destination Number Format` is set to `+E.164` for your Telnyx number.
-
 > 💡 **Tip**
 > 
-> Allowed caller numbers can also be filtered with a [Dispatch Rule](https://docs.livekit.io/sip/dispatch-rule.md).
+> You can also filter allowed caller numbers with a [Dispatch Rule](https://docs.livekit.io/sip/dispatch-rule.md).
+
+**LiveKit CLI**:
+
+1. Create a file named `inbound-trunk.json` with the following content:
+
+```json
+{
+   "trunk": {
+     "name": "My trunk",
+     "numbers": [
+       "+15105550100"
+     ],
+     "allowedNumbers": [
+       "+13105550100",
+       "+17145550100"
+     ]
+   }
+}
+
+```
+
+> ❗ **Important**
+> 
+> If you're using Telnyx, the leading `+` in the phone number assumes the `Destination Number Format` is set to `+E.164` for your number.
+2. Create the inbound trunk using `lk`:
+
+```shell
+lk sip inbound create inbound-trunk.json
+
+```
 
 ---
 
@@ -28136,6 +28325,37 @@ trunkInfo := &livekit.SIPInboundTrunkInfo{
 }
 
 ```
+
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select **Create new** → **Trunk**.
+4. Select the **JSON editor** tab.
+
+> ℹ️ **Note**
+> 
+> The `krispEnabled` and `allowedNumbers` parameters are only available in the **JSON editor** tab.
+5. Select **Inbound** for **Trunk direction**.
+6. Copy and paste the following text into the editor:
+
+```json
+{
+  "name": "My trunk",
+  "numbers": [
+    "+15105550100"
+  ],
+  "krispEnabled": true,
+  "allowedNumbers": [
+    "+13105550100",
+    "+17145550100"
+  ]
+}
+
+```
+7. Select **Create**.
 
 ## List inbound trunks
 
@@ -28243,6 +28463,14 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. The **Inbound** section lists all inbound trunks.
+
 ## Update inbound trunk
 
 Use the [`UpdateSIPInboundTrunk`](https://docs.livekit.io/sip/api.md#updatesipinboundtrunk) API to update specific fields of an inbound trunk or [replace](#replace-inbound-trunk) an inbound trunk with a new one.
@@ -28253,37 +28481,21 @@ The `UpdateSIPInboundTrunkFields` API allows you to update specific fields of an
 
 **LiveKit CLI**:
 
-Create a file named `inbound-trunk.json` with the following content:
-
-**Twilio**:
+1. Create a file named `inbound-trunk.json` with the following content:
 
 ```json
 {
   "name": "My trunk",
-  "numbers": ["+15105550100"]
+  "numbers": [
+    "+15105550100"
+  ]
 }
 
 ```
 
 > ❗ **Important**
 > 
-> Twilio numbers must start with a leading `+`.
-
----
-
-**Telnyx**:
-
-```json
-{
-  "name": "My trunk",
-  "numbers": ["+15105550100"]
-}
-
-```
-
-> ❗ **Important**
-> 
-> The leading `+` in the phone number assumes the `Destination Number Format` is set to `+E.164` for your Telnyx number.
+> If you're using Telnyx, the leading `+` in the phone number assumes the `Destination Number Format` is set to `+E.164` for your number.
 
 Update the inbound trunk using `lk`:
 
@@ -28412,13 +28624,19 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+Update and replace functions are the same in the LiveKit Cloud dashboard. For an example, see the [replace inbound trunk](#replace-inbound-trunk) section.
+
 ### Replace inbound trunk
 
 The `UpdateSIPInboundTrunk` API allows you to replace an existing inbound trunk with a new one using the same trunk ID.
 
 **LiveKit CLI**:
 
-The instructions for replacing an inbound trunk are the same as for [updating a trunk](#update-inbound-trunk).
+The CLI doesn't support replacing inbound trunks.
 
 ---
 
@@ -28511,6 +28729,33 @@ To replace the trunk, update the previous example with the following `trunkInfo`
 
 ---
 
+**LiveKit Cloud**:
+
+1. Sign in to the **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config) page.
+2. Navigate to the **Inbound** section.
+3. Find the inbound trunk you want to replace → select the more (**⋮**) menu → select **Configure trunk**.
+4. Copy and paste the following text into the editor:
+
+```json
+{
+  "name": "My replaced trunk",
+  "numbers": [
+    "+17025550100"
+  ],
+  "metadata": "Replaced metadata",
+  "allowedAddresses": ["192.168.254.10"],
+  "allowedNumbers": [
+    "+14155550100",
+    "+17145550100"
+  ],
+  "krispEnabled": true
+}
+
+```
+5. Select **Update**.
+
+---
+
 ---
 
 ## Dispatch rule
@@ -28536,6 +28781,7 @@ The following examples dispatch callers into individual rooms prefixed with `cal
       "roomPrefix": "call-"
     }
   },
+  "name": "My dispatch rule",
   "roomConfig": {
     "agents": [{
       "agentName": "inbound-agent",
@@ -28556,7 +28802,7 @@ const rule: SipDispatchRuleIndividual = {
   type: 'individual',
 };
 const options: CreateSipDispatchRuleOptions = {
-  name: 'my dispatch rule',
+  name: 'My dispatch rule',
   roomConfig: new RoomConfiguration({
     agents: [
       new RoomAgentDispatch({
@@ -28642,7 +28888,7 @@ puts resp.data
 ```go
 func main() {
 	request := &livekit.CreateSIPDispatchRuleRequest{
-		Name: "my dispatch rule",
+		Name: "My dispatch rule",
 		Rule: &livekit.SIPDispatchRule{
 			Rule: &livekit.SIPDispatchRule_DispatchRuleIndividual{
 				DispatchRuleIndividual: &livekit.SIPDispatchRuleIndividual{
@@ -28675,6 +28921,39 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select **Create new** → **Dispatch rule**.
+4. Select the **JSON editor** tab.
+
+> ℹ️ **Note**
+> 
+> You can also use the **Dispatch rule details** tab to create a dispatch rule. However, the JSON editor allows you to configure all available [parameters](https://docs.livekit.io/sip/api.md#createsipdispatchrule).
+5. Copy and paste the following JSON:
+
+```json
+ {
+   "rule": {
+     "dispatchRuleIndividual": {
+       "roomPrefix": "call-"
+     }
+   },
+   "name": "My dispatch rule",
+   "roomConfig": {
+     "agents": [{
+       "agentName": "inbound-agent",
+       "metadata": "job dispatch metadata"
+     }]
+   }
+ }
+
+```
+6. Select **Create**.
+
 > ℹ️ **Note**
 > 
 > When you omit the `trunk_ids` field, the dispatch rule matches calls from all inbound trunks.
@@ -28695,7 +28974,8 @@ In the following examples, all calls are immediately connected to room `open-roo
     "dispatchRuleDirect": {
       "roomName": "open-room"
     }
-  }
+  },
+  "name": "My dispatch rule"
 }
 
 ```
@@ -28721,7 +29001,7 @@ const sipClient = new SipClient(process.env.LIVEKIT_URL,
 const roomName = 'open-room';
 
 const dispatchRuleOptions = {
-  name: 'my dispatch rule',
+  name: 'My dispatch rule',
 };
 
 // Dispatch all callers to the same room
@@ -28827,7 +29107,7 @@ import (
 func main() {
   // Create a request
   request := &livekit.CreateSIPDispatchRuleRequest{
-    Name: "my dispatch rule",
+    Name: "My dispatch rule",
     Rule: &livekit.SIPDispatchRule{
       Rule: &livekit.SIPDispatchRule_DispatchRuleDirect{
         DispatchRuleDirect: &livekit.SIPDispatchRuleDirect{
@@ -28853,6 +29133,33 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select **Create new** → **Dispatch rule**.
+4. Select the **JSON editor** tab.
+
+> ℹ️ **Note**
+> 
+> You can also use the **Dispatch rule details** tab for this example by selecting **Direct** for **Rule type**.
+5. Copy and paste the following JSON:
+
+```json
+ {
+   "rule": {
+     "dispatchRuleDirect": {
+       "roomName": "open-room"
+     }
+   },
+   "name": "My dispatch rule"
+ }
+
+```
+6. Select **Create**.
+
 ### Pin-protected room
 
 Add a `pin` to a room to require callers to enter a pin to connect to a room in LiveKit. The following example requires callers to enter `12345#` on the phone to enter `safe-room`:
@@ -28865,7 +29172,8 @@ Add a `pin` to a room to require callers to enter a pin to connect to a room in 
       "roomName": "safe-room",
       "pin": "12345"
     }
-  }
+  },
+  "name": "My dispatch rule"
 }
 
 ```
@@ -28883,7 +29191,8 @@ This creates a dispatch rule that puts callers into rooms based on the called nu
       "roomPrefix": "number-",
       "randomize": false
     }
-  }
+  },
+  "name": "My dispatch rule"
 }
 
 ```
@@ -28947,6 +29256,34 @@ For an executable example, replace the rule in the [Direct dispatch rule](#direc
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select **Create new** → **Dispatch rule**.
+4. Select the **JSON editor** tab.
+
+> ℹ️ **Note**
+> 
+> You can also use the **Dispatch rule details** tab for this example by selecting **Callee** for **Rule type**.
+5. Copy and paste the following JSON:
+
+```json
+ {
+   "rule": {
+     "dispatchRuleCallee": {
+       "roomPrefix": "number-",
+       "randomize": false
+     }
+   },
+   "name": "My dispatch rule"
+ }
+
+```
+6. Select **Create**.
+
 ## Setting custom attributes on inbound SIP participants
 
 LiveKit participants have an `attributes` field that stores key-value pairs. You can add custom attributes for SIP participants in the dispatch rule. These attributes are inherited by all SIP participants created by the dispatch rule.
@@ -28967,7 +29304,8 @@ The following examples add two attributes to SIP participants created by this di
     "dispatchRuleIndividual": {
       "roomPrefix": "call-"
     }
-  }
+  },
+  "name": "My dispatch rule"
 }
 
 ```
@@ -29044,6 +29382,37 @@ For an executable example, replace `request` in the [Direct dispatch rule](#dire
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select **Create new** → **Dispatch rule**.
+4. Select the **JSON editor** tab.
+
+> ℹ️ **Note**
+> 
+> The `attributes` parameter is only available in the **JSON editor** tab.
+5. Copy and paste the following text into the editor:
+
+```json
+{
+  "name": "My dispatchrule",
+  "attributes": {
+    "<key_name1>": "<value1>",
+    "<key_name2>": "<value2>"
+  },
+  "rule": {
+    "dispatchRuleIndividual": {
+      "roomPrefix": "call-"
+    }
+  }
+}
+
+```
+6. Select **Create**.
+
 ## Setting custom metadata on inbound SIP participants
 
 LiveKit participants have a `metadata` field that can store arbitrary data for your application (typically JSON). It can also be set on SIP participants created by a dispatch rule. Specifically, `metadata` set on a dispatch rule will be inherited by all SIP participants created by it.
@@ -29059,7 +29428,8 @@ The following examples add the metadata, `{"is_internal": true}`, to all SIP par
     "dispatchRuleIndividual": {
       "roomPrefix": "call-"
     }
-  }
+  },
+  "name": "My dispatch rule"
 }
 
 ```
@@ -29123,6 +29493,34 @@ For an executable example, replace `request` in the [Direct dispatch rule](#dire
   }
 
 ```
+
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select **Create new** → **Dispatch rule**.
+4. Select the **JSON editor** tab.
+
+> ℹ️ **Note**
+> 
+> The `metadata` parameter is only available in the **JSON editor** tab.
+5. Copy and paste the following text into the editor:
+
+```json
+{
+  "name": "My dispatch rule",
+  "metadata": "{\"is_internal\": true}",
+  "rule": {
+    "dispatchRuleIndividual": {
+      "roomPrefix": "call-"
+    }
+  }
+}
+
+```
+6. Select **Create**.
 
 ## Update dispatch rule
 
@@ -29280,13 +29678,19 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+Update and replace functions are the same in the LiveKit Cloud dashboard. For an example, see the [replace dispatch rule](#replace-dispatch-rule) section.
+
 ### Replace dispatch rule
 
 The `UpdateSIPDispatchRule` API allows you to replace an existing dispatch rule with a new one using the same dispatch rule ID.
 
 **LiveKit CLI**:
 
-The instructions for replacing a dispatch rule are the same as for [updating a dispatch rule](#update-dispatch-rule).
+The instructions for replacing a dispatch rule are the same as for [updating a dispatch rule](#update-specific-fields-of-a-dispatch-rule).
 
 ---
 
@@ -29446,6 +29850,36 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Navigate to the **Dispatch rules** section and find the dispatch rule you want to update.
+4. Select the more (**⋮**) menu → select **Edit**.
+5. Select the **JSON editor** tab and copy and paste the following text into the editor:
+
+```json
+ {
+   "name": "My replaced dispatch rule",
+   "rule": {
+     "dispatchRuleIndividual": {
+       "roomPrefix": "caller-room"
+     }
+   },
+   "trunkIds": ["<trunk-id1>", "<trunk-id2>"],
+   "hidePhoneNumber": false,
+   "metadata": "{\"is_internal\": true}",
+   "attributes": {
+     "<replaced_key_name1>": "<replaced_value1>",
+     "<replaced_key_name2>": "<replaced_value2>",
+   }
+ }
+
+```
+6. Select **Update**.
+
 ## List dispatch rules
 
 Use the [`ListSIPDispatchRule`](https://docs.livekit.io/sip/api.md#listsipdispatchrule) API to list all dispatch rules.
@@ -29550,6 +29984,14 @@ func main() {
 }
 
 ```
+
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. The **Dispatch rules** section lists all dispatch rules.
 
 ---
 
@@ -29798,8 +30240,8 @@ The following creates a SIP outbound trunk with username and password authentica
     "name": "My outbound trunk",
     "address": "<my-trunk>.pstn.twilio.com",
     "numbers": ["+15105550100"],
-    "auth_username": "<username>",
-    "auth_password": "<password>"
+    "authUsername": "<username>",
+    "authPassword": "<password>"
   }
 }
 
@@ -29815,8 +30257,8 @@ The following creates a SIP outbound trunk with username and password authentica
     "name": "My outbound trunk",
     "address": "sip.telnyx.com",
     "numbers": ["+15105550100"],
-    "auth_username": "<username>",
-    "auth_password": "<password>"
+    "authUsername": "<username>",
+    "authPassword": "<password>"
   }
 }
 
@@ -29987,6 +30429,35 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select **Create new** → **Trunk**.
+4. Select the **JSON editor** tab.
+
+> ℹ️ **Note**
+> 
+> You can also use the **Trunk details** tab to create a trunk. However, the JSON editor allows you to configure all available [parameters](https://docs.livekit.io/sip/api.md#createsipoutboundtrunk).
+5. Select **Outbound** for **Trunk direction**.
+6. Copy and paste the following text into the editor:
+
+```json
+{
+  "name": "My outbound trunk",
+  "address": "sip.telnyx.com",
+  "numbers": [
+    "+12135550100"
+  ],
+  "authUsername": "test_username",
+  "authPassword": "test_password"
+}
+
+```
+7. Select **Create**.
+
 ### Configuring an outbound trunk for any phone number
 
 The `numbers` parameter for outbound trunks is a required field. However, you can set the parameter to any string (for example, `*`) to use the outbound trunk for calls from any number. This is useful if you want to use the same outbound trunk for all calls or if you want to use a different phone number for each call.
@@ -30047,6 +30518,120 @@ lk sip participant create participant.json
 ```
 
 After you run the command, a call from the number `+15105550100` to `+12135550100` is initiated. Output from the command returns when the call is answered.
+
+## List outbound trunks
+
+Use the [`ListSIPOutboundTrunk`](https://docs.livekit.io/sip/api.md#listsipoutboundtrunk) API to list all outbound trunks and trunk parameters.
+
+**LiveKit CLI**:
+
+```bash
+lk sip outbound list
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+import { SipClient } from 'livekit-server-sdk';
+
+const sipClient = new SipClient(process.env.LIVEKIT_URL,
+                                process.env.LIVEKIT_API_KEY,
+                                process.env.LIVEKIT_API_SECRET);
+
+const rules = await sipClient.listSipOutboundTrunk();
+
+console.log(rules);
+
+```
+
+---
+
+**Python**:
+
+```python
+import asyncio
+
+from livekit import api
+from livekit.protocol.sip import ListSIPOutboundTrunkRequest
+
+async def main():
+  livekit_api = api.LiveKitAPI()
+
+  rules = await livekit_api.sip.list_sip_outbound_trunk(
+    ListSIPOutboundTrunkRequest()
+  )
+  print(f"{rules}")
+
+  await livekit_api.aclose()
+
+asyncio.run(main())
+
+```
+
+---
+
+**Ruby**:
+
+```ruby
+require 'livekit'
+
+sip_service = LiveKit::SIPServiceClient.new(
+  ENV['LIVEKIT_URL'],
+  api_key: ENV['LIVEKIT_API_KEY'],
+  api_secret: ENV['LIVEKIT_API_SECRET']
+)
+
+resp = sip_service.list_sip_outbound_trunk()
+
+puts resp.data
+
+```
+
+---
+
+**Go**:
+
+```go
+package main
+
+import (
+  "context"
+  "fmt"
+  "os"
+
+  lksdk "github.com/livekit/server-sdk-go/v2"
+  "github.com/livekit/protocol/livekit"
+)
+
+func main() {
+
+  sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
+                                  os.Getenv("LIVEKIT_API_KEY"),
+                                  os.Getenv("LIVEKIT_API_SECRET"))
+
+  // List dispatch rules
+  trunks, err := sipClient.ListSIPOutboundTrunk(
+    context.Background(), &livekit.ListSIPOutboundTrunkRequest{})
+
+  if err != nil {
+    fmt.Println(err)
+  } else {
+    fmt.Println(trunks)
+  }
+}
+
+```
+
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. The **Outbound** section lists all outbound trunks.
 
 ## Update an outbound trunk
 
@@ -30224,6 +30809,12 @@ func main() {
 
 ```
 
+---
+
+**LiveKit Cloud**:
+
+Update and replace functions are the same in the LiveKit Cloud dashboard. For an example, see the [replace an outbound trunk](#replace-an-outbound-trunk) section.
+
 ### Replace an outbound trunk
 
 The `UpdateSIPOutboundTrunk` API allows you to replace an existing outbound trunk with a new one using the same trunk ID.
@@ -30323,6 +30914,30 @@ To replace a trunk, use the previous example with the following `trunkInfo` and 
   }
 
 ```
+
+---
+
+**LiveKit Cloud**:
+
+1. Sign in to the **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config) page.
+2. Navigate to the **Outbound** section.
+3. Find the outbound trunk you want to replace → select the more (**⋮**) menu → select **Configure trunk**.
+4. Copy and paste the following text into the editor:
+
+```json
+{
+  "name": "My replaced trunk",
+  "address": "sip.telnyx.com",
+  "numbers": [
+    "+17025550100"
+  ],
+  "metadata": "{\"is_internal\": true}",
+  "authUsername": "<updated-username>",
+  "authPassword": "<updated-password>"
+}
+
+```
+5. Select **Update**.
 
 ## IP address range for LiveKit Cloud SIP
 
@@ -31770,5 +32385,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-07-02T00:27:43.576Z.
+This document was rendered at 2025-07-11T18:18:32.471Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

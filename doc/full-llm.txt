@@ -32385,5 +32385,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-07-11T18:18:32.471Z.
+This document was rendered at 2025-07-15T09:53:09.746Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

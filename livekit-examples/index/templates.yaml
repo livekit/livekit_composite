@@ -19,8 +19,8 @@
 - name: "voice-assistant-frontend"
   display_name: "Voice assistant"
   desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
-  url: "https://github.com/livekit-examples/voice-assistant-frontend"
-  image: "https://raw.githubusercontent.com/livekit-examples/voice-assistant-frontend/refs/heads/main/.github/assets/template-graphic.svg"
+  url: "https://github.com/livekit-examples/agent-starter-react"
+  image: "https://raw.githubusercontent.com/livekit-examples/agent-starter-react/refs/heads/main/.github/assets/template-graphic.svg"
   media:
     thumbnail:
       light: "https://raw.githubusercontent.com/livekit-examples/voice-assistant-frontend/refs/heads/main/.github/assets/template-light.webp"
@@ -32,6 +32,7 @@
   updated_at: "2024-09-19T00:00:00Z"
   is_enabled: true
   is_sandbox: true
+  is_hidden: true # deprecated in favor of agent-starter-react
   category: "voice-assistant"
   tags:
     - "agents"
@@ -69,6 +70,69 @@
     isPreConnectBufferEnabled:
       type: boolean
       description: "Buffer local audio while the agent is connecting for a faster startup experience"
+      default: true
+    logo:
+      type: string
+      description: "An optional URL or data URI for the logo image"
+    accent:
+      type: string
+      description: "A CSS color to use as the accent color of the app in light mode"
+      default: "#002cf2"
+    logoDark:
+      type: string
+      description: "An optional URL or data URI for the logo image"
+    accentDark:
+      type: string
+      description: "A CSS color to use as the accent color of the app in dark mode"
+      default: "#1fd5f9"
+    startButtonText:
+      type: string
+      description: "Text to display on the start button for the voice assistant"
+      default: "Start call"
+
+- name: "agent-starter-react"
+  display_name: "Agent starter React"
+  desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
+  url: "https://github.com/livekit-examples/agent-starter-react"
+  image: "https://raw.githubusercontent.com/livekit-examples/agent-starter-react/refs/heads/main/.github/assets/template-graphic.svg"
+  created_at: "2024-09-11T00:00:00Z"
+  updated_at: "2024-09-19T00:00:00Z"
+  is_enabled: true
+  is_sandbox: true
+  category: "voice-assistant"
+  tags:
+    - "agents"
+    - "voice"
+    - "avatars"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Frontend"
+    Tools: "Next.js, TypeScript"
+    License: "Apache-2.0"
+  inputs:
+    companyName:
+      type: string
+      description: "The name of your company or project"
+      default: "LiveKit"
+    pageTitle:
+      type: string
+      description: "The title of the page"
+      default: "Voice Assistant"
+    pageDescription:
+      type: string
+      description: "A short description of the page for SEO"
+      default: "A voice assistant built with LiveKit"
+    suportsChatInput:
+      type: boolean
+      description: "Enable chat input for the voice assistant"
+      default: true
+    suportsVideoInput:
+      type: boolean
+      description: "Enable video input for the voice assistant"
+      default: true
+    suportsScreenShare:
+      type: boolean
+      description: "Enable screen sharing for the voice assistant"
       default: true
     logo:
       type: string

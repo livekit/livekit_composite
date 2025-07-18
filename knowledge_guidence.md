@@ -19,6 +19,29 @@ However, LiveKit's turn detector does not use Hugging Face for inference — it 
 
 Unless you are using Hugging Face models elsewhere in your app, you can safely ignore this warning. You can import PyTorch to get rid of the warning but it is not necessary.
 
+### Python SSL: CERTIFICATE_VERIFY_FAILED - unable to get local issuer certificate
+
+**Error**:
+```
+WARNING livekit.agents - failed to connect to livekit, retrying in 0s: 
+Cannot connect to host abc-xyz.livekit.cloud:443 ssl:True 
+[SSLCertVerificationError: (1, 
+'[SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate (_ssl.c:1000)')]
+```
+
+**The fix:**
+
+```
+#This has fixed it for other Mac OS 15 users
+pip install --upgrade certifi
+
+# and whatever package manage you are using:
+[apt|yum|brew]: reinstall ca-certificates
+
+```
+
+and check with:`python -c "import certifi; print(certifi.where())"`
+
 
 ## Self Hosting LiveKit Server
 

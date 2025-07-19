@@ -465,8 +465,11 @@ Provide a brief technical summary focusing on the most important changes in this
         except Exception as e:
             chunk_analyses.append(f"*Error analyzing chunk {i+1}: {str(e)}*")
     
-    # Now combine all chunk analyses into a comprehensive summary
-    combined_prompt = f"""
+    # Combine chunk analyses efficiently to avoid token limit issues
+    # Instead of sending all analyses at once, combine them in smaller batches
+    if len(chunk_analyses) <= 3:
+        # For small numbers of chunks, combine directly but be more concise
+        combined_prompt = f"""
 You are analyzing changes in the {display_name} component that were split into {len(diff_chunks)} chunks for processing.
 
 Here are the individual analyses of each chunk:
@@ -484,23 +487,101 @@ Please provide a comprehensive technical summary that combines all the chunk ana
 
 Focus on the most important changes across all chunks and avoid redundancy.
 """
+        
+        try:
+            response = client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {
+                        "role": "system", 
+                        "content": "You are a senior software engineer who specializes in synthesizing multiple code change analyses into comprehensive summaries. Use Markdown bullet points for all lists and sections."
+                    },
+                    {"role": "user", "content": combined_prompt}
+                ],
+                max_tokens=1000,  # More tokens for the combined analysis
+                temperature=0.2
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            # If still too long, fall back to simple concatenation
+            return f"*Error combining chunk analyses: {str(e)}*\n\n**Individual chunk analyses:**\n" + "\n\n".join(chunk_analyses)
     
-    try:
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {
-                    "role": "system", 
-                    "content": "You are a senior software engineer who specializes in synthesizing multiple code change analyses into comprehensive summaries. Use Markdown bullet points for all lists and sections."
-                },
-                {"role": "user", "content": combined_prompt}
-            ],
-            max_tokens=1000,  # More tokens for the combined analysis
-            temperature=0.2
-        )
-        return response.choices[0].message.content.strip()
-    except Exception as e:
-        return f"*Error combining chunk analyses: {str(e)}*\n\n**Individual chunk analyses:**\n" + "\n\n".join(chunk_analyses)
+    else:
+        # For many chunks, use a hierarchical approach to avoid token limits
+        print(f"    🔄 Combining {len(chunk_analyses)} chunk analyses using hierarchical approach...")
+        
+        # First, combine chunks in pairs to reduce the number
+        combined_chunks = []
+        for i in range(0, len(chunk_analyses), 2):
+            if i + 1 < len(chunk_analyses):
+                # Combine two chunks
+                pair_prompt = f"""
+Combine these two chunk analyses for the {display_name} component into a single coherent summary:
+
+**Chunk {i+1} Analysis:**
+{chunk_analyses[i]}
+
+**Chunk {i+2} Analysis:**
+{chunk_analyses[i+1]}
+
+Provide a concise combined summary focusing on the most important changes from both chunks.
+"""
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-3.5-turbo",
+                        messages=[
+                            {
+                                "role": "system", 
+                                "content": "You are a senior software engineer combining code change analyses. Provide concise, focused summaries."
+                            },
+                            {"role": "user", "content": pair_prompt}
+                        ],
+                        max_tokens=600,
+                        temperature=0.2
+                    )
+                    combined_chunks.append(response.choices[0].message.content.strip())
+                except Exception as e:
+                    # If combination fails, just concatenate
+                    combined_chunks.append(f"{chunk_analyses[i]}\n\n{chunk_analyses[i+1]}")
+            else:
+                # Single chunk left
+                combined_chunks.append(chunk_analyses[i])
+        
+        # Now combine the reduced set of analyses
+        if len(combined_chunks) == 1:
+            return combined_chunks[0]
+        else:
+            # Final combination
+            final_prompt = f"""
+Combine these {len(combined_chunks)} analyses for the {display_name} component into a comprehensive technical summary:
+
+{chr(10).join([f"**Analysis {i+1}:**\n{analysis}\n" for i, analysis in enumerate(combined_chunks)])}
+
+{file_list}
+
+Provide a technical summary with the following sections, each as a Markdown bullet list:
+- **Key functional changes**
+- **Important code modifications**
+- **New features or fixes**
+- **Breaking changes or API updates**
+"""
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {
+                            "role": "system", 
+                            "content": "You are a senior software engineer creating comprehensive code change summaries. Use Markdown bullet points for all lists and sections."
+                        },
+                        {"role": "user", "content": final_prompt}
+                    ],
+                    max_tokens=1000,
+                    temperature=0.2
+                )
+                return response.choices[0].message.content.strip()
+            except Exception as e:
+                # Final fallback: just concatenate all analyses
+                return f"*Error in final combination: {str(e)}*\n\n**Combined analyses:**\n" + "\n\n".join(combined_chunks)
 
 
 def summarize_with_openai(diff_content: str, commit_info: dict, changed_files: list, stats: str, max_files_per_category: int = 50, large_added_dirs=None, max_chunk_size: int = 8000, max_tokens_per_chunk: int = 800) -> Tuple[str, str]:
@@ -607,6 +688,12 @@ Focus on the most significant changes and their impact.
             # Analyze each chunk separately
             if len(diff_chunks) > 1:
                 print(f"  📄 Large diff detected ({len(category_diff)} chars). Splitting into {len(diff_chunks)} chunks for analysis...")
+                
+                # If there are too many chunks, reduce the max_tokens_per_chunk to prevent token limit issues
+                if len(diff_chunks) > 5:
+                    adjusted_max_tokens = max(400, max_tokens_per_chunk // 2)
+                    print(f"  ⚠️  Many chunks detected ({len(diff_chunks)}). Reducing tokens per chunk to {adjusted_max_tokens} to prevent token limits.")
+                    max_tokens_per_chunk = adjusted_max_tokens
             
             try:
                 analysis_result = analyze_diff_chunks(client, display_name, file_list, diff_chunks, max_tokens_per_chunk)

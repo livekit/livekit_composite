@@ -14517,15 +14517,18 @@ The following rule routes all inbound calls to a new room and dispatches your ag
 
 ```json
 {
-    "rule": {
-        "dispatchRuleIndividual": {
-            "roomPrefix": "call-"
+    "dispatch_rule":
+    {
+        "rule": {
+            "dispatchRuleIndividual": {
+                "roomPrefix": "call-"
+            }
+        },
+        "roomConfig": {
+            "agents": [{
+                "agentName": "my-telephony-agent"
+            }]
         }
-    },
-    "roomConfig": {
-        "agents": [{
-            "agentName": "my-telephony-agent"
-        }]
     }
 }
 
@@ -18257,11 +18260,13 @@ The following examples show how to implement RAG and other techniques:
 
 ---
 
-## Capturing metrics
+## Logs, metrics, & telemetry
 
 ## Overview
 
-To improve observability into agent performance and model usage, you can log detailed metrics provided by LiveKit Agents. These metrics offer insights into duration, latency, and usage across different stages of a session.
+LiveKit Agents provides built-in support for logging, collecting, and analyzing metrics to help you monitor and optimize your agent's performance. Agent sessions emit structured metrics events that can be logged in real time or aggregated to analyze latency and usage patterns.
+
+In addition to per-event metrics, LiveKit’s OpenTelemetry integration provides trace-based observability. This enables you to capture the execution flow of an agents's lifecycle—from session start to individual [node](https://docs.livekit.io/agents/build/nodes.md) operations. You can use any OpenTelemetry-compatible provider to collect and analyze telemetry data, giving you  insight into conversation latency, tool usage, and performance bottlenecks.
 
 ## Logging events
 
@@ -18310,7 +18315,7 @@ ctx.add_shutdown_callback(log_usage)
 
 ### Speech-to-text (STT)
 
-`STTMetrics` is emitted after the STT model has processed the audio input. This metrics is only available when a STT component is used, which does not apply to Realtime APIs.
+`STTMetrics` is emitted after the STT model has processed the audio input. This metrics is only available when an STT component is used, which does not apply to Realtime APIs.
 
 | Metric | Description |
 | `audio_duration` | The duration (seconds) of the audio input received by the STT model. |
@@ -18363,6 +18368,77 @@ Total conversation latency is defined as the time it takes for the agent to resp
 total_latency = eou.end_of_utterance_delay + llm.ttft + tts.ttfb
 
 ```
+
+## Telemetry
+
+LiveKit's [OpenTelemetry](https://opentelemetry.io/docs/) integration automatically collects telemetry data from your agents and publishes it to any OpenTelemetry-compatible provider you choose. This enables monitoring and analysis of your agent's behavior and performance.
+
+### Collected data
+
+A **trace** represents the execution flow of a single request within an LLM application. It captures all relevant steps, including duration and metadata.
+
+Agent telemetry records traces for the following activities:
+
+- Session start
+- Agent turn
+- LLM node
+- Function tool
+- TTS node
+- End-of-turn detection
+- LLM and TTS metrics
+
+### Enabling telemetry
+
+To enable telemetry, configure a tracer provider using `set_tracer_provider` in your entrypoint function. You can use any [OpenTelemetry-compatible provider](https://opentelemetry.io/ecosystem/vendors/).
+
+The following example uses [LangFuse](https://langfuse.com/docs/opentelemetry/get-started). Set the required public key, secret key, and host as environment variables:
+
+```python
+import base64
+import os
+
+from livekit.agents.telemetry import set_tracer_provider
+
+def setup_langfuse(
+    host: str | None = None, public_key: str | None = None, secret_key: str | None = None
+):
+    from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+    public_key = public_key or os.getenv("LANGFUSE_PUBLIC_KEY")
+    secret_key = secret_key or os.getenv("LANGFUSE_SECRET_KEY")
+    host = host or os.getenv("LANGFUSE_HOST")
+
+    if not public_key or not secret_key or not host:
+        raise ValueError("LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY, and LANGFUSE_HOST must be set")
+
+    langfuse_auth = base64.b64encode(f"{public_key}:{secret_key}".encode()).decode()
+    os.environ["OTEL_EXPORTER_OTLP_ENDPOINT"] = f"{host.rstrip('/')}/api/public/otel"
+    os.environ["OTEL_EXPORTER_OTLP_HEADERS"] = f"Authorization=Basic {langfuse_auth}"
+
+    trace_provider = TracerProvider()
+    trace_provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    set_tracer_provider(trace_provider)
+
+async def entrypoint(ctx: JobContext):
+    setup_langfuse()  # set up the langfuse tracer provider
+
+    # ...
+
+```
+
+### Trace example
+
+The following diagram shows a trace of an agent session with user turns.
+
+![Diagram showing a trace of an agent session with two user turns.](/images/agents/agents-telemetry-trace-example.png)
+
+### Example
+
+For a full example, see the following in the LiveKit Agents GitHub repository.
+
+- **[LangFuse trace example](https://github.com/livekit/agents/blob/main/examples/voice_agents/langfuse_trace.py)**: An example of an agent using LangFuse as the tracer provider.
 
 ---
 
@@ -29492,18 +29568,21 @@ The following examples dispatch callers into individual rooms prefixed with `cal
 
 ```json
 {
-  "rule": {
-    "dispatchRuleIndividual": {
-      "roomPrefix": "call-"
-    }
-  },
-  "name": "My dispatch rule",
-  "roomConfig": {
-    "agents": [{
-      "agentName": "inbound-agent",
-      "metadata": "job dispatch metadata"
-    }]
-  }
+  "dispatch_rule":
+    {   
+      "rule": {
+        "dispatchRuleIndividual": {
+          "roomPrefix": "call-"
+        }   
+      },  
+      "name": "My dispatch rule",
+      "roomConfig": {
+        "agents": [{
+          "agentName": "inbound-agent",
+          "metadata": "job dispatch metadata"
+        }]  
+      }   
+    }   
 }
 
 ```
@@ -29542,19 +29621,28 @@ console.log("created dispatch rule", dispatchRule);
 from livekit import api
 
 lkapi = api.LiveKitAPI()
+
+# Create a dispatch rule to place each caller in a separate room
+rule = api.SIPDispatchRule(
+  dispatch_rule_individual = api.SIPDispatchRuleIndividual(
+    room_prefix = 'call-',
+  )
+)
+
 request = api.CreateSIPDispatchRuleRequest(
-    rule=api.SIPDispatchRule(
-        dispatch_rule_individual=api.SIPDispatchRuleIndividual(
-            room_prefix="call-",
-        )
-    ),
+  dispatch_rule = api.SIPDispatchRuleInfo(
+    rule = rule,
+    name = 'My dispatch rule',
+    trunk_ids = [],
     room_config=api.RoomConfiguration(
         agents=[api.RoomAgentDispatch(
             agent_name="inbound-agent",
             metadata="job dispatch metadata",
         )]
     )
+  )
 )
+
 dispatch = await lkapi.sip.create_sip_dispatch_rule(request)
 print("created dispatch", dispatch)
 await lkapi.aclose()
@@ -29603,36 +29691,40 @@ puts resp.data
 
 ```go
 func main() {
-	request := &livekit.CreateSIPDispatchRuleRequest{
-		Name: "My dispatch rule",
-		Rule: &livekit.SIPDispatchRule{
-			Rule: &livekit.SIPDispatchRule_DispatchRuleIndividual{
-				DispatchRuleIndividual: &livekit.SIPDispatchRuleIndividual{
-					RoomPrefix: "call-",
-				},
-			},
-		},
-		RoomConfig: &livekit.RoomConfiguration{
-			Agents: []*livekit.RoomAgentDispatch{
-				{
-					AgentName: "inbound-agent",
-					Metadata:  "job dispatch metadata",
-				},
-			},
-		},
-	}
+  rule := &livekit.SIPDispatchRule{
+    Rule: &livekit.SIPDispatchRule_DispatchRuleIndividual{
+      DispatchRuleIndividual: &livekit.SIPDispatchRuleIndividual{
+        RoomPrefix: "call-",
+      },
+    },
+  }
 
-	sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
-								os.Getenv("LIVEKIT_API_KEY"),
-								os.Getenv("LIVEKIT_API_SECRET"))
+  request := &livekit.CreateSIPDispatchRuleRequest{
+    DispatchRule: &livekit.SIPDispatchRuleInfo{
+      Name: "My dispatch rule",
+      Rule: rule,
+      RoomConfig: &livekit.RoomConfiguration{
+        Agents: []*livekit.RoomAgentDispatch{
+          {
+            AgentName: "inbound-agent",
+            Metadata:  "job dispatch metadata",
+          },
+        },
+      },
+    },
+  }
 
-	// Execute the request
-	dispatchRule, err := sipClient.CreateSIPDispatchRule(context.Background(), request)
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(dispatchRule)
-	}
+  sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
+                os.Getenv("LIVEKIT_API_KEY"),
+                os.Getenv("LIVEKIT_API_SECRET"))
+
+  // Execute the request
+  dispatchRule, err := sipClient.CreateSIPDispatchRule(context.Background(), request)
+  if err != nil {
+    fmt.Println(err)
+  } else {
+    fmt.Println(dispatchRule)
+  }
 }
 
 ```
@@ -29685,14 +29777,17 @@ In the following examples, all calls are immediately connected to room `open-roo
 1. Create a file named `dispatch-rule.json` and add the following:
 
 ```json
-{
-  "rule": {
-    "dispatchRuleDirect": {
-      "roomName": "open-room"
-    }
-  },
-  "name": "My dispatch rule"
-}
+ {
+   "dispatch_rule":
+     {   
+       "rule": {
+         "dispatchRuleDirect": {
+           "roomName": "open-room"
+         }   
+       },  
+       "name": "My dispatch rule"
+     }   
+ }
 
 ```
 2. Create the dispatch rule using `lk`:
@@ -29747,18 +29842,18 @@ from livekit import api
 async def main():
   livekit_api = api.LiveKitAPI()
 
-  room_name = 'open-room'
-
   # Create a dispatch rule to place all callers in the same room
   rule = api.SIPDispatchRule(
     dispatch_rule_direct = api.SIPDispatchRuleDirect(
-      room_name = room_name,
+      room_name = 'open-room',
     )
   )
 
   request = api.CreateSIPDispatchRuleRequest(
-    rule = rule,
-    name = 'My dispatch rule',
+    dispatch_rule = api.SIPDispatchRuleInfo(
+      rule = rule,
+      name = 'My dispatch rule',
+    )
   )
 
   try:
@@ -29821,17 +29916,23 @@ import (
 )
 
 func main() {
-  // Create a request
-  request := &livekit.CreateSIPDispatchRuleRequest{
-    Name: "My dispatch rule",
-    Rule: &livekit.SIPDispatchRule{
-      Rule: &livekit.SIPDispatchRule_DispatchRuleDirect{
-        DispatchRuleDirect: &livekit.SIPDispatchRuleDirect{
-          RoomName: "open-room",
-        },
-      },
-    },
-  }
+
+  // Specify rule type and options
+	rule := &livekit.SIPDispatchRule{
+		Rule: &livekit.SIPDispatchRule_DispatchRuleDirect{
+			DispatchRuleDirect: &livekit.SIPDispatchRuleDirect{
+				RoomName: "open-room",
+			},
+		},
+	}
+
+  // Create request
+	request := &livekit.CreateSIPDispatchRuleRequest{
+		DispatchRule: &livekit.SIPDispatchRuleInfo{
+			Rule:            rule,
+			Name:            "My dispatch rule",
+		},
+	}
 
   sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
                                   os.Getenv("LIVEKIT_API_KEY"),
@@ -29882,14 +29983,17 @@ Add a `pin` to a room to require callers to enter a pin to connect to a room in 
 
 ```json
 {
-  "trunk_ids": [],
-  "rule": {
-    "dispatchRuleDirect": {
-      "roomName": "safe-room",
-      "pin": "12345"
+  "dispatch_rule":
+    {
+      "trunk_ids": [],
+      "rule": {
+        "dispatchRuleDirect": {
+          "roomName": "safe-room",
+          "pin": "12345"
+        }
+      },
+      "name": "My dispatch rule"
     }
-  },
-  "name": "My dispatch rule"
 }
 
 ```
@@ -29902,13 +30006,16 @@ This creates a dispatch rule that puts callers into rooms based on the called nu
 
 ```json
 {
-  "rule": {
-    "dispatchRuleCallee": {
-      "roomPrefix": "number-",
-      "randomize": false
+  "dispatch_rule":
+    {
+      "rule": {
+        "dispatchRuleCallee": {
+          "roomPrefix": "number-",
+          "randomize": false
+        }
+      },
+      "name": "My dispatch rule"
     }
-  },
-  "name": "My dispatch rule"
 }
 
 ```
@@ -29923,7 +30030,7 @@ Callee dispatch rules can't be created using Node.js.
 
 **Python**:
 
-For an executable example, import `SIPDispatchRuleCallee` and replace the rule in the [Direct dispatch rule](#direct-dispatch-rule) example with the following rule:
+For an executable example, replace the rule in the [Direct dispatch rule](#direct-dispatch-rule) example with the following rule:
 
 ```python
 from livekit import api
@@ -30012,16 +30119,19 @@ The following examples add two attributes to SIP participants created by this di
 
 ```json
 {
-  "attributes": {
-    "<key_name1>": "<value1>",
-    "<key_name2>": "<value2>"
-  },
-  "rule": {
-    "dispatchRuleIndividual": {
-      "roomPrefix": "call-"
+  "dispatch_rule":
+    {
+      "attributes": {
+        "<key_name1>": "<value1>",
+        "<key_name2>": "<value2>"
+      },
+      "rule": {
+        "dispatchRuleIndividual": {
+          "roomPrefix": "call-"
+        }
+      },
+      "name": "My dispatch rule"
     }
-  },
-  "name": "My dispatch rule"
 }
 
 ```
@@ -30050,7 +30160,8 @@ const dispatchRuleOptions = {
 For an executable example, replace `request` in the [Direct dispatch rule](#direct-dispatch-rule) example with the following options:
 
 ```python
-  request = CreateSIPDispatchRuleRequest(
+request = api.CreateSIPDispatchRuleRequest(
+  dispatch_rule = api.SIPDispatchRuleInfo(
     rule = rule,
     name = 'My dispatch rule',
     attributes = {
@@ -30058,6 +30169,7 @@ For an executable example, replace `request` in the [Direct dispatch rule](#dire
       "<key_name2>": "<value2>",
     }
   )
+)
 
 ```
 
@@ -30083,18 +30195,20 @@ resp = sip_service.create_sip_dispatch_rule(
 
 **Go**:
 
-For an executable example, replace `request` in the [Direct dispatch rule](#direct-dispatch-rule) example with the following options:
+For an executable example, replace `request` in the [Direct dispatch rule](#direct-dispatch-rule) example with the following code:
 
 ```go
   // Create a request
-  request := &livekit.CreateSIPDispatchRuleRequest{
-    Rule: rule,
-    Name: name,
-    Attributes: map[string]string{
-      "<key_name1>" => "<value1>",
-      "<key_name2>" => "<value2>",
-    },
-  }
+	request := &livekit.CreateSIPDispatchRuleRequest{
+		DispatchRule: &livekit.SIPDispatchRuleInfo{
+			Rule:            rule,
+			Name:            "My dispatch rule",
+			Attributes: map[string]string{
+				"<key_name1>": "<value1>",
+				"<key_name2>": "<value2>",
+			},
+		},
+	}
 
 ```
 
@@ -30139,13 +30253,15 @@ The following examples add the metadata, `{"is_internal": true}`, to all SIP par
 
 ```json
 {
-  "metadata": "{\"is_internal\": true}",
-  "rule": {
-    "dispatchRuleIndividual": {
-      "roomPrefix": "call-"
-    }
-  },
-  "name": "My dispatch rule"
+  "dispatch_rule": {
+    "metadata": "{\"is_internal\": true}",
+    "rule": {
+      "dispatchRuleIndividual": {
+        "roomPrefix": "call-"
+      }
+    },
+    "name": "My dispatch rule"
+  }
 }
 
 ```
@@ -30171,10 +30287,12 @@ const dispatchRuleOptions = {
 For an executable example, replace `request` in the [Direct dispatch rule](#direct-dispatch-rule) example with the following options:
 
 ```python
-  request = CreateSIPDispatchRuleRequest(
-    rule = rule,
-    name = 'My dispatch rule',
-    metadata = "{\"is_internal\": true}",
+  request = api.CreateSIPDispatchRuleRequest(
+    dispatch_rule = api.SIPDispatchRuleInfo(
+      rule = rule,
+      name = 'My dispatch rule',
+      metadata = "{\"is_internal\": true}",
+    )
   )
 
 ```
@@ -30202,11 +30320,13 @@ For an executable example, replace `request` in the [Direct dispatch rule](#dire
 
 ```go
   // Create a request
-  request := &livekit.CreateSIPDispatchRuleRequest{
-    Rule: rule,
-    Name: name,
-    Metadata: "{\"is_internal\": true}",
-  }
+	request := &livekit.CreateSIPDispatchRuleRequest{
+		DispatchRule: &livekit.SIPDispatchRuleInfo{
+			Rule:            rule,
+			Name:            "My dispatch rule",
+			Metadata: "{\"is_internal\": true}",
+		},
+	}
 
 ```
 
@@ -30264,11 +30384,11 @@ Create a file named `dispatch-rule.json` with the following content:
 
 ```
 
-Update the dispatch rule using `lk`:
+Update the dispatch rule using `lk`. You can update the `trunks` parameter to a comma-separated string of trunks IDs if the rule matches specific trunks.
 
 ```shell
 lk sip dispatch update --id <dispatch-rule-id> \
-  --trunks "<trunk-id1>, <trunk-id2>" \
+  --trunks "[]" \
   dispatch-rule.json
 
 ```
@@ -30353,43 +30473,43 @@ The update API is not yet available in the Ruby SDK.
 package main
 
 import (
-	"context"
-	"fmt"
-	"os"
+  "context"
+  "fmt"
+  "os"
 
-	"github.com/livekit/protocol/livekit"
-	lksdk "github.com/livekit/server-sdk-go/v2"
+  "github.com/livekit/protocol/livekit"
+  lksdk "github.com/livekit/server-sdk-go/v2"
 )
 
 func main() {
 
-	rule_id := "<dispatch-rule-id>"
+  rule_id := "<dispatch-rule-id>"
 
-	// Update dispatch rule
-	name2 := "My updated dispatch rule"
-	request := &livekit.UpdateSIPDispatchRuleRequest{
-		SipDispatchRuleId: rule_id,
-		Action: &livekit.UpdateSIPDispatchRuleRequest_Update{
-			Update: &livekit.SIPDispatchRuleUpdate{
-				Name: &name2,
-				TrunkIds: &livekit.ListUpdate{
-					Set: []string{"<trunk-id1>", "<trunk-id2>"},
-				},
-			},
-		},
-	}
+  // Update dispatch rule
+  name2 := "My updated dispatch rule"
+  request := &livekit.UpdateSIPDispatchRuleRequest{
+    SipDispatchRuleId: rule_id,
+    Action: &livekit.UpdateSIPDispatchRuleRequest_Update{
+      Update: &livekit.SIPDispatchRuleUpdate{
+        Name: &name2,
+        TrunkIds: &livekit.ListUpdate{
+          Set: []string{"<trunk-id1>", "<trunk-id2>"},
+        },
+      },
+    },
+  }
 
-	sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
-		os.Getenv("LIVEKIT_API_KEY"),
-		os.Getenv("LIVEKIT_API_SECRET"))
+  sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
+    os.Getenv("LIVEKIT_API_KEY"),
+    os.Getenv("LIVEKIT_API_SECRET"))
 
-	updated, err := sipClient.UpdateSIPDispatchRule(context.Background(), request)
+  updated, err := sipClient.UpdateSIPDispatchRule(context.Background(), request)
 
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(updated)
-	}
+  if err != nil {
+    fmt.Println(err)
+  } else {
+    fmt.Println(updated)
+  }
 }
 
 ```
@@ -30452,11 +30572,6 @@ await replaceDispatchRule('<dispatch-rule-id>');
 import asyncio
 
 from livekit import api
-from livekit.protocol.sip import (
-    SIPDispatchRule,
-    SIPDispatchRuleDirect,
-    SIPDispatchRuleInfo
-)
 
 
 async def main():
@@ -30468,14 +30583,14 @@ async def main():
   rule_id = '<dispatch-rule-id>'
 
   # Dispatch rule type.
-  rule = SIPDispatchRule(
-    dispatch_rule_direct = SIPDispatchRuleDirect(
+  rule = api.SIPDispatchRule(
+    dispatch_rule_direct = api.SIPDispatchRuleDirect(
       room_name = "caller-room",
       pin = '1212'
     )
   )
 
-  ruleInfo = SIPDispatchRuleInfo(
+  ruleInfo = api.SIPDispatchRuleInfo(
     rule = rule,
     name = 'My replaced dispatch rule',
     trunk_ids = ["<trunk-id1>", "<trunk-id2>"],
@@ -30519,49 +30634,49 @@ The update API is not yet available in the Ruby SDK.
 package main
 
 import (
-	"context"
-	"fmt"
-	"os"
+  "context"
+  "fmt"
+  "os"
 
-	"github.com/livekit/protocol/livekit"
-	lksdk "github.com/livekit/server-sdk-go/v2"
+  "github.com/livekit/protocol/livekit"
+  lksdk "github.com/livekit/server-sdk-go/v2"
 )
 
 func main() {
 
-	rule_id := "<dispatch-rule-id>"
+  rule_id := "<dispatch-rule-id>"
 
   // Replace dispatch rule
-	rule := &livekit.SIPDispatchRuleInfo{
-		Name: "My replaced dispatch rule",
-		TrunkIds: []string{"<trunk-id1>", "<trunk-id2>"},
-		Rule: &livekit.SIPDispatchRule{
-			Rule: &livekit.SIPDispatchRule_DispatchRuleDirect{
-				DispatchRuleDirect: &livekit.SIPDispatchRuleDirect{
-					RoomName: "my-room",
-				},
-			},
-		},
-	}
+  rule := &livekit.SIPDispatchRuleInfo{
+    Name: "My replaced dispatch rule",
+    TrunkIds: []string{"<trunk-id1>", "<trunk-id2>"},
+    Rule: &livekit.SIPDispatchRule{
+      Rule: &livekit.SIPDispatchRule_DispatchRuleDirect{
+        DispatchRuleDirect: &livekit.SIPDispatchRuleDirect{
+          RoomName: "my-room",
+        },
+      },
+    },
+  }
 
-	request := &livekit.UpdateSIPDispatchRuleRequest{
-		SipDispatchRuleId: rule_id,
-		Action: &livekit.UpdateSIPDispatchRuleRequest_Replace{
-			Replace: rule,
-		},
-	}
+  request := &livekit.UpdateSIPDispatchRuleRequest{
+    SipDispatchRuleId: rule_id,
+    Action: &livekit.UpdateSIPDispatchRuleRequest_Replace{
+      Replace: rule,
+    },
+  }
 
   sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
                                   os.Getenv("LIVEKIT_API_KEY"),
                                   os.Getenv("LIVEKIT_API_SECRET"))
 
-	updated, err := sipClient.UpdateSIPDispatchRule(context.Background(), request)
+  updated, err := sipClient.UpdateSIPDispatchRule(context.Background(), request)
 
-	if err != nil {
-		fmt.Println(err)
-	} else {
-		fmt.Println(updated)
-	}
+  if err != nil {
+    fmt.Println(err)
+  } else {
+    fmt.Println(updated)
+  }
 }
 
 ```
@@ -30790,12 +30905,21 @@ Use the LiveKit CLI to create a [dispatch rule](https://docs.livekit.io/sip/disp
 
 ```json
 {
-  "rule": {
-    "dispatchRuleIndividual": {
-      "roomPrefix": "call"
-    }
-  }
+  "dispatch_rule":
+   {
+     "rule": {
+       "dispatchRuleIndividual": {
+         "roomPrefix": "call-"
+       }
+     }
+   }
 }
+
+```
+2. Create the dispatch rule using the CLI:
+
+```bash
+lk sip dispatch create dispatch-rule.json
 
 ```
 
@@ -32772,7 +32896,7 @@ Create dispatch rule.
 Returns [SIPDispatchRuleInfo](#sipdispatchruleinfo).
 
 | Parameter | Type | Required | Description |
-| rule | [SIPDispatchRule](#sipdispatchrule) | yes | Type of dispatch rule. |
+| dispatch_rule | [SIPDispatchRuleInfo](#sipdispatchruleinfo) | yes | Dispatch rule to create. |
 | trunk_ids | array<string> |  | List of associated trunk IDs. If empty, all trunks match this dispatch rule. |
 | hide_phone_number | bool |  | If true, use a random value for participant identity and phone number ommitted from attributes. By default, the participant identity is created using the phone number (if the participant identity isn't explicitly set). |
 | inbound_numbers | array<string> |  | If set, the dispatch rule only accepts calls made to numbers in the list. |
@@ -33101,5 +33225,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-07-17T23:08:43.716Z.
+This document was rendered at 2025-07-18T23:30:56.103Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

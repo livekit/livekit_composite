@@ -33,6 +33,7 @@ import (
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/observability/roomobs"
 	lksdp "github.com/livekit/protocol/sdp"
+	"github.com/livekit/protocol/signalling"
 	"github.com/livekit/protocol/utils"
 	"github.com/livekit/protocol/utils/guid"
 
@@ -227,7 +228,7 @@ func TestOutOfOrderUpdates(t *testing.T) {
 	p := newParticipantForTest("test")
 	p.updateState(livekit.ParticipantInfo_JOINED)
 	p.SetMetadata("initial metadata")
-	sink := p.getResponseSink().(*routingfakes.FakeMessageSink)
+	sink := p.GetResponseSink().(*routingfakes.FakeMessageSink)
 	pi1 := p.ToProto()
 	p.SetMetadata("second update")
 	pi2 := p.ToProto()
@@ -376,7 +377,7 @@ func TestDisableCodecs(t *testing.T) {
 	sink.WriteMessageCalls(func(msg proto.Message) error {
 		if res, ok := msg.(*livekit.SignalResponse); ok {
 			if res.GetAnswer() != nil {
-				answer, answerId = FromProtoSessionDescription(res.GetAnswer())
+				answer, answerId = signalling.FromProtoSessionDescription(res.GetAnswer())
 				answerReceived.Store(true)
 				answerIdReceived.Store(answerId)
 			}
@@ -525,7 +526,7 @@ func TestPreferVideoCodecForPublisher(t *testing.T) {
 		sink.WriteMessageCalls(func(msg proto.Message) error {
 			if res, ok := msg.(*livekit.SignalResponse); ok {
 				if res.GetAnswer() != nil {
-					answer, answerId = FromProtoSessionDescription(res.GetAnswer())
+					answer, answerId = signalling.FromProtoSessionDescription(res.GetAnswer())
 					pc.SetRemoteDescription(answer)
 					answerReceived.Store(true)
 					answerIdReceived.Store(answerId)
@@ -613,7 +614,7 @@ func TestPreferAudioCodecForRed(t *testing.T) {
 			sink.WriteMessageCalls(func(msg proto.Message) error {
 				if res, ok := msg.(*livekit.SignalResponse); ok {
 					if res.GetAnswer() != nil {
-						answer, answerId = FromProtoSessionDescription(res.GetAnswer())
+						answer, answerId = signalling.FromProtoSessionDescription(res.GetAnswer())
 						pc.SetRemoteDescription(answer)
 						answerReceived.Store(true)
 						answerIdReceived.Store(answerId)

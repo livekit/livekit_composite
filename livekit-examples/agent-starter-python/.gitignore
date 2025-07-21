@@ -4,7 +4,6 @@
 __pycache__
 .idea
 KMS
-uv.lock
 .venv
 .vscode
 *.egg-info

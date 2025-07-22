@@ -1,0 +1,16 @@
+input/
+output/
+
+.env
+venv
+.venv
+
+.egg-info/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.pyz
+*.pywz
+*.pyzw

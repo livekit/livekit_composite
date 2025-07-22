@@ -1,4 +1,4 @@
-PROJECT_NAME           = LiveKit ESP-32 SDK
+PROJECT_NAME           = LiveKit ESP32 SDK
 OUTPUT_DIRECTORY       = ./output
 OPTIMIZE_OUTPUT_FOR_C  = YES
 WARN_IF_UNDOCUMENTED   = YES
@@ -6,7 +6,7 @@ INPUT                  = ../README.md \
                          ../docs \
                          ../components/livekit/include \
                          ../components/livekit_sandbox/include
-USE_MDFILE_AS_MAINPAGE = ../README.md
+USE_MDFILE_AS_MAINPAGE = ./index.md
 FILE_PATTERNS          = *.h *.md
 EXTRACT_ALL            = YES
 RECURSIVE              = YES

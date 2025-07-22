@@ -1,0 +1,13 @@
+[project]
+name = "noise-canceller"
+version = "0.1.0"
+description = "CLI tool apply LiveKit noise cancellation to individual audio files"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "livekit-agents~=1.2",
+    "livekit-plugins-noise-cancellation~=0.2",
+    "python-dotenv~=1.1",
+    "rich>=14.0.0",
+    "soundfile~=0.13",
+]

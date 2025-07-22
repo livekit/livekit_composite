@@ -43,6 +43,7 @@ export function App({ appConfig }: AppProps) {
   }, [room, refreshConnectionDetails]);
 
   useEffect(() => {
+    let aborted = false;
     if (sessionStarted && room.state === 'disconnected' && connectionDetails) {
       Promise.all([
         room.localParticipant.setMicrophoneEnabled(true, undefined, {
@@ -50,6 +51,15 @@ export function App({ appConfig }: AppProps) {
         }),
         room.connect(connectionDetails.serverUrl, connectionDetails.participantToken),
       ]).catch((error) => {
+        if (aborted) {
+          // Once the effect has cleaned up after itself, drop any errors
+          //
+          // These errors are likely caused by this effect rerunning rapidly,
+          // resulting in a previous run `disconnect` running in parallel with
+          // a current run `connect`
+          return;
+        }
+
         toastAlert({
           title: 'There was an error connecting to the agent',
           description: `${error.name}: ${error.message}`,
@@ -57,6 +67,7 @@ export function App({ appConfig }: AppProps) {
       });
     }
     return () => {
+      aborted = true;
       room.disconnect();
     };
   }, [room, sessionStarted, connectionDetails, appConfig.isPreConnectBufferEnabled]);

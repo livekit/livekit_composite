@@ -945,13 +945,17 @@ Then follow the CLI prompts to finish your setup.
 The `--template` flag may be omitted to see a list of all available templates, or can be chosen from a selection of our first-party templates:
 
 | **Template Name** | **Language/Framework** | **Description** |
-| [voice-assistant-frontend](https://github.com/livekit-examples/voice-assistant-frontend) | TypeScript/Next.js | Voice assistant frontend with integrated token server |
-| [meet](https://github.com/livekit-examples/meet) | TypeScript/Next.js | Video conferencing frontend with integrated token server |
-| [multimodal-agent-python](https://github.com/livekit-examples/multimodal-agent-python) | Python | Multimodal agent with speech-to-speech and transcription capabilities |
-| [voice-pipeline-agent-python](https://github.com/livekit-examples/voice-pipeline-agent-python) | Python | Voice agent using modular TTS, LLM, and STT capabilities |
-| [multimodal-agent-node](https://github.com/livekit-examples/multimodal-agent-node) | Node.js/TypeScript | Multimodal agent with speech-to-speech and transcription capabilities |
-| [token-server-node](https://github.com/livekit-examples/token-server-node) | Node.js/TypeScript | Token server for generating access tokens |
-| [android-voice-assistant](https://github.com/livekit-examples/android-voice-assistant) | Kotlin/Android | Voice assistant mobile application |
+| [agent-starter-python](https://github.com/livekit-examples/agent-starter-python) | Python | A starter project for Python, featuring a simple voice agent implementation |
+| [voice-assistant-frontend](https://github.com/livekit-examples/agent-starter-react) | TypeScript/Next.js | A starter app for Next.js, featuring a flexible voice AI frontend |
+| [agent-starter-android](https://github.com/livekit-examples/agent-starter-android) | Kotlin/Android | A starter project for Android, featuring a flexible voice AI frontend |
+| [agent-starter-swift](https://github.com/livekit-examples/agent-starter-swift) | Swift | A starter project for Swift, featuring a flexible voice AI frontend |
+| [agent-starter-flutter](https://github.com/livekit-examples/agent-starter-flutter) | Flutter | A starter project for Flutter, featuring a flexible voice AI frontend |
+| [agent-starter-react-native](https://github.com/livekit-examples/agent-starter-react-native) | React Native/Expo | A starter project for Expo, featuring a flexible voice AI frontend |
+| [agent-starter-embed](https://github.com/livekit-examples/agent-starter-embed) | TypeScript/Next.js | A starter project for a flexible voice AI that can be embedded in any website |
+| [token-server](https://github.com/livekit-examples/token-server-node) | Node.js/TypeScript | A hosted token server to help you prototype your mobile applications faster |
+| [meet](https://github.com/livekit-examples/meet) | TypeScript/Next.js | An open source video conferencing app built on LiveKit Components and Next.js |
+| [multi-agent-python](https://github.com/livekit-examples/multi-agent-python) | Python | A team of writing coach agents demonstrating multi-agent workflows |
+| [outbound-caller-python](https://github.com/livekit-examples/outbound-caller-python) | Python | An agent that makes outbound calls using LiveKit SIP |
 
 > 💡 **Tip**
 > 
@@ -1542,7 +1546,6 @@ AMPLITUDE = 2 ** 8 - 1
 SAMPLES_PER_CHANNEL = 480 # 10 ms at 48kHz
 
 async def entrypoint(ctx: agents.JobContext):
-    await ctx.connect()
 
     source = rtc.AudioSource(SAMPLE_RATE, NUM_CHANNELS)
     track = rtc.LocalAudioTrack.create_audio_track("example-track", source)
@@ -6160,7 +6163,7 @@ To build your first voice AI app for Android, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Android Voice Agent](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
+- **[Android Voice Agent](https://github.com/livekit-examples/agent-starter-android)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
 
 ## Getting started guide
 
@@ -6323,7 +6326,7 @@ To build your first voice AI app for Android, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Android Voice Agent](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
+- **[Android Voice Agent](https://github.com/livekit-examples/agent-starter-android)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
 
 ## Getting started guide
 
@@ -6501,7 +6504,7 @@ To build your first voice AI app for Flutter, use the following quickstart and t
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[Flutter Voice Agent](https://github.com/livekit-examples/voice-assistant-flutter)**: A cross-platform voice AI assistant app built with Flutter.
+- **[Flutter Voice Agent](https://github.com/livekit-examples/agent-starter-flutter)**: A cross-platform voice AI assistant app built with Flutter.
 
 ## Getting started guide
 
@@ -6673,7 +6676,7 @@ To build your first voice AI app for React Native, use the following quickstart 
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[React Native Voice Agent](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
+- **[React Native Voice Agent](https://github.com/livekit-examples/agent-starter-react-native)**: A native voice AI assistant app built with React Native and Expo.
 
 ## Getting started guide
 
@@ -6874,7 +6877,7 @@ To build your first voice AI app for Expo, use the following quickstart and the 
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
 
-- **[React Native Voice Agent](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
+- **[React Native Voice Agent](https://github.com/livekit-examples/agent-starter-react-native)**: A native voice AI assistant app built with React Native and Expo.
 
 ## Getting started guide
 
@@ -11870,7 +11873,7 @@ lk cloud auth
 
 ```
 3. Navigate to the [Sandboxes](https://cloud.livekit.io/projects/p_/sandbox) page to create a new sandbox, choosing from one of our templates.
-4. Some templates (for example, [Voice assistant](https://github.com/livekit-examples/voice-assistant-frontend)) require you to run some code on your local machine. This might be an AI agent, a web server, or some other component depending on that template's use case. If present, follow the instructions under the `Code` tab to clone and set up the component:
+4. Some templates (for example, [Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)) require you to run some code on your local machine. This might be an AI agent, a web server, or some other component depending on that template's use case. If present, follow the instructions under the `Code` tab to clone and set up the component:
 
 ```bash
 lk app create \
@@ -14329,8 +14332,6 @@ async def entrypoint(ctx: agents.JobContext):
         ),
     )
 
-    await ctx.connect()
-
     await session.generate_reply(
         instructions="Greet the user and offer your assistance."
     )
@@ -14383,8 +14384,6 @@ async def entrypoint(ctx: agents.JobContext):
             noise_cancellation=noise_cancellation.BVC(),
         ),
     )
-
-    await ctx.connect()
 
     await session.generate_reply(
         instructions="Greet the user and offer your assistance."
@@ -14589,8 +14588,6 @@ import json
 # ... any existing code / imports ...
 
 def entrypoint(ctx: agents.JobContext):
-    await ctx.connect()
-
     # If a phone number was provided, then place an outbound call
     # By having a condition like this, you can use the same agent for inbound/outbound telephony as well as web/mobile/etc.
     dial_info = json.loads(ctx.job.metadata)
@@ -14830,11 +14827,13 @@ LiveKit recommends using one of the following starter apps to get up and running
 
 - **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
 
-- **[Flutter Voice Agent](https://github.com/livekit-examples/voice-assistant-flutter)**: A cross-platform voice AI assistant app built with Flutter.
+- **[Flutter Voice Agent](https://github.com/livekit-examples/agent-starter-flutter)**: A cross-platform voice AI assistant app built with Flutter.
 
-- **[React Native Voice Agent](https://github.com/livekit-examples/voice-assistant-react-native)**: A native voice AI assistant app built with React Native and Expo.
+- **[React Native Voice Agent](https://github.com/livekit-examples/agent-starter-react-native)**: A native voice AI assistant app built with React Native and Expo.
 
-- **[Android Voice Agent](https://github.com/livekit-examples/android-voice-assistant)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
+- **[Android Voice Agent](https://github.com/livekit-examples/agent-starter-android)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
+
+- **[Web Embed Voice Agent](https://github.com/livekit-examples/agent-starter-embed)**: A voice AI agent that can be embedded in any web page.
 
 ## Media and text
 
@@ -15186,8 +15185,6 @@ class Assistant(Agent):
 
 
 async def entrypoint(ctx: agents.JobContext):
-    await ctx.connect()
-
     session = AgentSession(
         stt=deepgram.STT(),
         llm=google.LLM(),
@@ -16549,8 +16546,6 @@ class VideoAssistant(Agent):
         ) 
 
 async def entrypoint(ctx: JobContext):
-    await ctx.connect()
-
     session = AgentSession()
 
     await session.start(
@@ -17345,6 +17340,19 @@ To disable transcription output, set `transcription_enabled=False` in `RoomOutpu
 
 When both voice and transcription are enabled, the agent's speech is synchronized with its transcriptions, displaying text word by word as it speaks. If the agent is interrupted, the transcription stops and is truncated to match the spoken output.
 
+#### Disabling synchronization
+
+To send transcriptions to the client as soon as they become available, without synchronizing to the original speech, set `sync_transcription` to False in `RoomOutputOptions`.
+
+```python
+await session.start(
+    agent=MyAgent(),
+    room=ctx.room,
+    room_output_options=RoomOutputOptions(sync_transcription=False),
+)
+
+```
+
 ### Accessing from AgentSession
 
 You can be notified within your agent whenever text input or output is committed to the chat history by listening to the [conversation_item_added](https://docs.livekit.io/agents/build/events.md#conversation_item_added) event.
@@ -17614,14 +17622,14 @@ session = AgentSession(
 
 You can also use your STT model's built-in phrase endpointing features for turn detection. Some providers, including [AssemblyAI](https://docs.livekit.io/agents/integrations/stt/assemblyai.md), include sophisticated semantic turn detection models.
 
-You should still provide a VAD plugin for responsive interruption handling. When you useSTT endpointing only, your agent is less responsive to user interruptions.
+You should still provide a VAD plugin for responsive interruption handling. When you use STT endpointing only, your agent is less responsive to user interruptions.
 
 To use STT endpointing, set `turn_detection="stt"` and provide an STT plugin.
 
 ```python
 session = AgentSession(
     turn_detection="stt",
-    stt=deepgram.STT(),
+    stt=assemblyai.STT(), # AssemblyAI is the recommended STT plugin for STT-based endpointing
     vad=silero.VAD.load(), # Recommended for responsive interruption handling
     # ... tts, llm, etc.
 )
@@ -17750,6 +17758,8 @@ The LiveKit turn detector is designed for use inside an `AgentSession` and also 
 LiveKit recommends also using the [Silero VAD plugin](https://docs.livekit.io/agents/build/turns/vad.md) for maximum performance, but you can rely on your STT plugin's endpointing instead if you prefer.
 
 The model runs locally on the CPU and requires <500 MB of RAM even with multiple concurrent jobs with a shared inference server.
+
+For production deployments, use compute-optimized instances (such as AWS c6i or c7i) rather than burstable instances (such as AWS t3). Burstable instances can cause inference timeouts under consistent load due to their CPU credit system.
 
 ### Installation
 
@@ -17946,8 +17956,6 @@ You can [prewarm](https://docs.livekit.io/agents/worker/options.md#prewarm) the 
 
 ```python
 async def entrypoint(ctx: agents.JobContext):
-    await ctx.connect()
-
     session = AgentSession(
         vad=ctx.proc.userdata["vad"],
         # ... stt, tts, llm, etc.
@@ -18034,8 +18042,6 @@ async def entrypoint(ctx: agents.JobContext):
     # Simple lookup, but you could use a database or API here if needed
     metadata = json.loads(ctx.job.metadata)
     user_name = metadata["user_name"]
-
-    await ctx.connect()
 
     session = AgentSession(
         # ... stt, llm, tts, vad, turn_detection, etc.
@@ -18151,8 +18157,6 @@ Add [background audio](https://docs.livekit.io/agents/build/audio.md#background-
 from livekit.agents import BackgroundAudioPlayer, AudioConfig, BuiltinAudioClip
 
 async def entrypoint(ctx: agents.JobContext):
-    await ctx.connect()
-
     session = AgentSession(
         # ... stt, llm, tts, vad, turn_detection, etc.
     )
@@ -18683,8 +18687,9 @@ Here is a simple behavioral test for the agent created in the [voice AI quicksta
 
 ```python
 from livekit.agents import AgentSession
+from livekit.plugins import openai
+
 from my_agent import Assistant
-from openai import LLM
 
 @pytest.mark.asyncio
 async def test_assistant_greeting() -> None:
@@ -19053,9 +19058,9 @@ To perform end-to-end testing of deployed agents, including the audio pipeline, 
 
 These examples and resources provide more help with testing and evaluation.
 
-- **[Drive-thru agent evals](https://github.com/livekit/agents/blob/main/examples/drive-thru/evals/test_agent.py)**: Complete evaluation suite for a complex food ordering agent.
+- **[Drive-thru agent evals](https://github.com/livekit/agents/blob/main/examples/drive-thru/test_agent.py)**: Complete evaluation suite for a complex food ordering agent.
 
-- **[Front-desk agent evals](https://github.com/livekit/agents/blob/main/examples/frontdesk/evals/test_agent.py)**: Complete evaluation suite for a calendar booking agent.
+- **[Front-desk agent evals](https://github.com/livekit/agents/blob/main/examples/frontdesk/test_agent.py)**: Complete evaluation suite for a calendar booking agent.
 
 - **[Agent starter project](https://github.com/livekit-examples/agent-starter-python)**: Starter project with a complete testing integration.
 
@@ -19358,7 +19363,11 @@ When a [worker](https://docs.livekit.io/agents/worker.md) accepts a job request 
 
 ## Entrypoint
 
-The `entrypoint` is executed as the main function of the process for each new job run by the worker, effectively handing control over to your code. You should load any necessary app-specific data, call `ctx.connect()` to join the room, and then execute your agent's logic.
+The `entrypoint` is executed as the main function of the process for each new job run by the worker, effectively handing control over to your code. You should load any necessary app-specific data and then execute your agent's logic.
+
+> ℹ️ **Note**
+> 
+> If you use `AgentSession`, it connects to LiveKit automatically when started. If not using `AgentSession`, or If you need to control the precise timing or method of connection, for instance to enable [end-to-end encryption](https://docs.livekit.io/home/client/tracks/encryption.md), use the `JobContext`'s [connect method](https://docs.livekit.io/reference/python/livekit/agents/index.html.md#livekit.agents.JobContext.connect).
 
 This example shows a simple entrypoint that processes incoming audio tracks and publishes a text message to the room.
 
@@ -19593,7 +19602,7 @@ The `entrypoint_fnc` is the main function called for each new job, and is the he
 ```python
 async def entrypoint(ctx: JobContext):
     # connect to the room
-    await ctx.connect()
+
     # handle the session
     ...
 
@@ -19771,6 +19780,8 @@ LiveKit Agents use a worker pool model suited to a container orchestration syste
 Deploying to production generally requires a simple `Dockerfile` that ends in `CMD ["python", "agent.py", "start"]` and a deployment platform that scales your worker pool based on load.
 
 ![Diagram illustrating the LiveKit Agents worker pool with LiveKit server](/images/agents/agents-orchestration.svg)
+
+- **[Python Voice Agent](https://github.com/livekit-examples/agent-starter-python)**: A voice AI starter project which includes a working Dockerfile and CI configuration.
 
 ## Where to deploy
 
@@ -24497,8 +24508,6 @@ from livekit.plugins import (
 load_dotenv()
 
 async def entrypoint(ctx: agents.JobContext):
-    await ctx.connect()
-
     @ctx.room.on("track_subscribed")
     def on_track_subscribed(track: rtc.RemoteTrack):
         print(f"Subscribed to track: {track.name}")
@@ -25932,8 +25941,6 @@ from livekit.plugins import cartesia
 from typing import AsyncIterable
 
 async def entrypoint(ctx: agents.JobContext):
-    await ctx.connect()
-
     text_stream: AsyncIterable[str] = ... # you need to provide a stream of text
     audio_source = rtc.AudioSource(44100, 1)
 
@@ -27595,8 +27602,6 @@ from livekit.agents import AgentSession, RoomOutputOptions
 from livekit.plugins import tavus
 
 async def entrypoint(ctx: agents.JobContext):
-   await ctx.connect()
-
    session = AgentSession(
       # ... stt, llm, tts, etc.
    )
@@ -27660,9 +27665,15 @@ const {
 
 The following [frontend starter apps](https://docs.livekit.io/agents/start/frontend.md#starter-apps) include out-of-the-box support for virtual avatars.
 
-- **[Web](https://github.com/livekit-examples/voice-assistant-frontend)**: A web voice assistant app built with React and Next.js.
+- **[SwiftUI Voice Agent](https://github.com/livekit-examples/agent-starter-swift)**: A native iOS, macOS, and visionOS voice AI assistant built in SwiftUI.
 
-- **[Swift](https://github.com/livekit-examples/voice-assistant-swift)**: A native iOS, macOS, and visionOS voice assistant built in SwiftUI.
+- **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
+
+- **[Flutter Voice Agent](https://github.com/livekit-examples/agent-starter-flutter)**: A cross-platform voice AI assistant app built with Flutter.
+
+- **[React Native Voice Agent](https://github.com/livekit-examples/agent-starter-react-native)**: A native voice AI assistant app built with React Native and Expo.
+
+- **[Android Voice Agent](https://github.com/livekit-examples/agent-starter-android)**: A native Android voice AI assistant app built with Kotlin and Jetpack Compose.
 
 - **[Agents Playground](https://docs.livekit.io/agents/start/playground.md)**: A virtual workbench to test your multimodal AI agent.
 
@@ -27877,8 +27888,6 @@ from livekit.agents import AgentSession, RoomOutputOptions
 from livekit.plugins import hedra
 
 async def entrypoint(ctx: agents.JobContext):
-   await ctx.connect()
-
    session = AgentSession(
       # ... stt, llm, tts, etc.
    )
@@ -28060,8 +28069,6 @@ from livekit.agents import AgentSession, RoomOutputOptions
 from livekit.plugins import tavus
 
 async def entrypoint(ctx: agents.JobContext):
-   await ctx.connect()
-
    session = AgentSession(
       # ... stt, llm, tts, etc.
    )
@@ -32666,7 +32673,6 @@ Before starting your `AgentSession`, select the best Deepgram STT model for the 
 # Add this import to the top of your file
 from livekit import rtc
 
-# add this after `await ctx.connect()`:
 participant = await ctx.wait_for_participant()
 dg_model = "nova-2-general"
 
@@ -33225,5 +33231,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-07-18T23:30:56.103Z.
+This document was rendered at 2025-07-21T22:46:01.795Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

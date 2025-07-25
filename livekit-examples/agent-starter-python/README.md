@@ -27,7 +27,7 @@ cd agent-starter-python
 uv sync
 ```
 
-Set up the environment by copying `.env.example` to `.env` and filling in the required values:
+Set up the environment by copying `.env.example` to `.env.local` and filling in the required values:
 
 - `LIVEKIT_URL`: Use [LiveKit Cloud](https://cloud.livekit.io/) or [run your own](https://docs.livekit.io/home/self-hosting/)
 - `LIVEKIT_API_KEY`
@@ -39,7 +39,7 @@ Set up the environment by copying `.env.example` to `.env` and filling in the re
 You can load the LiveKit environment automatically using the [LiveKit CLI](https://docs.livekit.io/home/cli/cli-setup):
 
 ```bash
-lk app env -w .env
+lk app env -w .env.local
 ```
 
 ## Run the agent

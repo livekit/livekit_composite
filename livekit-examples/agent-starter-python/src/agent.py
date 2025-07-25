@@ -20,7 +20,7 @@ from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
 logger = logging.getLogger("agent")
 
-load_dotenv()
+load_dotenv(".env.local")
 
 
 class Assistant(Agent):
@@ -64,7 +64,7 @@ async def entrypoint(ctx: JobContext):
         # any combination of STT, LLM, TTS, or realtime API can be used
         llm=openai.LLM(model="gpt-4o-mini"),
         stt=deepgram.STT(model="nova-3", language="multi"),
-        tts=cartesia.TTS(),
+        tts=cartesia.TTS(voice="6f84f4b8-58a2-430c-8c79-688dad597532"),
         # use LiveKit's turn detection model
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],

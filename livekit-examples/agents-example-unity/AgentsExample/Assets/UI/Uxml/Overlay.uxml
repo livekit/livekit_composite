@@ -1,0 +1,11 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Uss/Overlay.uss?fileID=7433441132597879392&amp;guid=f885d2321c4724640942af9566bb4eca&amp;type=3#Overlay" />
+    <engine:VisualElement class="view view--controls">
+        <engine:Button tooltip="Mute/Unmute" name="Mute" class="view--controls__button view--controls__button--mute" />
+        <engine:Button tooltip="Exit" name="Exit" class="view--controls__button view--controls__button--exit" />
+    </engine:VisualElement>
+    <engine:VisualElement name="VisualElement" class="view view--main-menu">
+        <engine:Label text="Agents Demo" class="view--main-menu__heading" />
+        <engine:Button text="Talk to Agent" name="Talk" class="view--main-menu__talk" />
+    </engine:VisualElement>
+</engine:UXML>

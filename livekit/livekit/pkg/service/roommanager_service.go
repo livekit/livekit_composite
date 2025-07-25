@@ -78,7 +78,7 @@ func (s rtcRestService) Create(ctx context.Context, req *rpc.RTCRestCreateReques
 		return nil, err
 	}
 
-	answer, err := lp.GetAnswer()
+	answer, _, err := lp.GetAnswer()
 	if err != nil {
 		lp.GetLogger().Errorw("rtcRest service: could not get answer", err)
 		return nil, err
@@ -223,4 +223,25 @@ func (s signalv2ParticipantService) RelaySignalv2Participant(ctx context.Context
 	return &rpc.RelaySignalv2ParticipantResponse{
 		WireMessage: wireMessage,
 	}, nil
+}
+
+func (s signalv2ParticipantService) RelaySignalv2ParticipantDeleteSession(
+	ctx context.Context,
+	req *rpc.RelaySignalv2ParticipantDeleteSessionRequest,
+) (*emptypb.Empty, error) {
+	room := s.RoomManager.GetRoom(ctx, livekit.RoomName(req.Room))
+	if room == nil {
+		return nil, ErrRoomNotFound
+	}
+
+	lp := room.GetParticipantByID(livekit.ParticipantID(req.ParticipantId))
+	if lp != nil {
+		room.RemoveParticipant(
+			lp.Identity(),
+			lp.ID(),
+			types.ParticipantCloseReasonClientRequestLeave,
+		)
+	}
+
+	return &emptypb.Empty{}, nil
 }

@@ -2780,7 +2780,7 @@ Your user's microphone is likely to pick up undesirable audio including backgrou
 
 LiveKit includes default outbound noise and echo cancellation based on the underlying open source WebRTC implementations of [`echoCancellation`](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackSettings/echoCancellation) and [`noiseSuppression`](https://developer.mozilla.org/en-US/docs/Web/API/MediaTrackSettings/noiseSuppression). You can adjust these settings with the `AudioCaptureOptions` type in the LiveKit SDKs during connection.
 
-LiveKit also offers an [enhanced noise cancellation](https://docs.livekit.io/home/cloud/noise-cancellation.md) feature to all LiveKit Cloud customers at no additional charge for the most effective solution.
+LiveKit Cloud includes [enhanced noise cancellation](https://docs.livekit.io/home/cloud/noise-cancellation.md) for the best possible audio quality, including a background voice cancellation (BVC) model that is optimized for voice AI applications.
 
 To hear the effects of the various noise removal options, play the samples below:
 
@@ -12156,6 +12156,51 @@ If wildcard hostnames are not allowed by your firewall or security policy, the f
 
 ---
 
+## Region pinning
+
+## Overview
+
+Region pinning restricts network traffic to a specific geographical region. Use this feature to comply with local telephony regulations or data residency requirements.
+
+There are two options for restricting traffic to a specific region:
+
+- **Protocol-based region pinning**
+
+Signaling and transport protocols include region selection. Use this option with LiveKit realtime SDKs.
+- **Region-based endpoint**
+
+Clients connect to a region-specific endpoint. Use this option for telephony applications. To learn more, see [SIP cloud and region pinning](https://docs.livekit.io/sip/cloud.md).
+
+## Protocol-based region pinning
+
+In protocol-based region pinning, region selection information is embedded in the initial signaling and transport messages. When pinning is enabled, if the initial connection is routed to a server outside the allowed regions, the request is rejected. The client then retries the connection using a server in one of the pinned regions.
+
+Region pinning is available for customers on the [Scale plan](https://livekit.io/pricing) or higher.
+
+> 🔥 **Protocol-based region pinning only works with LiveKit realtime SDKs**
+> 
+> For SIP requests, the server rejects the connection and doesn't retry it. Use [region-based endpoints](https://docs.livekit.io/sip/cloud.md#region-based-endpoint) for SIP.
+
+> ℹ️ **When to use protocol-based region pinning**
+> 
+> When connecting with LiveKit realtime SDKs or when regional data residency (for example, GDPR compliance) is required.
+
+### Enabling protocol-based region pinning
+
+LiveKit must enable region pinning for your project. To request region pinning, sign in to [LiveKit Cloud](https://cloud.livekit.io) and select the **Support** option in the menu.
+
+## Considerations
+
+When you enable region pinning, you turn off automatic failover to the nearest region in the case of an outage.
+
+## Available regions
+
+The following regions are available for region pinning:
+
+---
+
+---
+
 ## Analytics API
 
 ## Generate an access token for Analytics requests
@@ -12377,21 +12422,19 @@ This will return a JSON object like this:
 
 ## Overview
 
-LiveKit cloud offers access to advanced models licensed from [Krisp](https://krisp.ai/) to remove background noise and ensure the best possible audio quality. The models run locally, with no audio data sent to Krisp servers as part of this process and negligible impact on audio latency or quality.
+LiveKit Cloud includes advanced models licensed from [Krisp](https://krisp.ai/) to remove background noise and ensure the best possible audio quality. The models run locally, with no audio data sent to Krisp servers as part of this process and negligible impact on audio latency or quality.
 
-The filter is available in either an outbound configuration (where noise is removed by the sender) or in an inbound configuration (where noise is removed by the receiver).
+The feature includes a background voice cancellation (BVC) model, which removes extra background speakers in addition to background noise, providing the best possible experience for voice AI applications. You can also use the standard NC model if desired.
 
-Background voice cancellation (BVC) is available for inbound server-side SDKs, such as Python. This model removes extra background speakers in addition to background noise, providing the best possible experience for voice AI applications.
+The following comparison shows the effect of the models on the audio as perceived by a user, and also as perceived by a voice AI agent running an STT model ([Deepgram Nova 3](https://docs.livekit.io/agents/integrations/stt/deepgram.md) in these samples). The segments marked with a strikethrough indicate unwanted content that would confuse the agent. These samples illustrate that BVC is necessary to achieve clean STT in noisy multi-speaker environments.
 
-> 💡 **Recommendation**
-> 
-> For most 1:1 voice AI applications, LiveKit recommends using the BVC model in the LiveKit Agents Python SDK as the most effective solution.
-
-Here is a comparison to illustrate the improvement over standard WebRTC noise suppression:
+Try the free [noise canceller tool](https://github.com/livekit-examples/noise-canceller) with your LiveKit Cloud account to test your own audio samples.
 
 ## Supported platforms
 
-Consult the following table for a complete overview of feature support.
+You can apply the filter in the frontend ("outbound") with plugins for JavaScript, Swift, and Android, or directly inside of your agent code ("inbound"). The BVC model is available only within your agent, using the Python or Node.js plugins. LiveKit also offers an NC model for SIP-based telephony, which can be enabled with a flag in the trunk configuration.
+
+The following table shows the support for each platform.
 
 | Platform | Outbound | Inbound | BVC | Package |
 | Web | ✅ | ❌ | ❌ | [@livekit/krisp-noise-filter](https://www.npmjs.com/package/@livekit/krisp-noise-filter) |
@@ -12552,7 +12595,7 @@ npm install @livekit/krisp-noise-filter
 
 ```
 
-This package includes the Krisp SDK but not the models, which will be downloaded at runtime to minimize the impact on your application's bundle size.
+This package includes the Krisp SDK but not the models, which downloads at runtime to minimize the impact on your application's bundle size.
 
 #### React components usage
 
@@ -14076,6 +14119,8 @@ If you want to get your hands on the code right away, follow this quickstart gui
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Build a simple voice assistant with Python in less than 10 minutes.
 
+- **[Deeplearning.ai course](https://www.deeplearning.ai/short-courses/building-ai-voice-agents-for-production/)**: Learn to build and deploy voice agents with LiveKit in this free course from Deeplearning.ai.
+
 - **[GitHub repository](https://github.com/livekit/agents)**: Python source code and examples for the LiveKit Agents SDK.
 
 - **[SDK reference](https://docs.livekit.io/reference/python/v1/livekit/agents/index.html.md)**: Python reference docs for the LiveKit Agents SDK.
@@ -14165,6 +14210,8 @@ Follow these guides to learn more and get started with LiveKit Agents.
 This guide walks you through the setup of your very first voice assistant using LiveKit Agents for Python. In less than 10 minutes, you'll have a voice assistant that you can speak to in your terminal, browser, telephone, or native app.
 
 - **[Python starter project](https://github.com/livekit-examples/agent-starter-python)**: Prefer to just clone a repo? This repo is ready-to-go, will all the code you need to get started.
+
+- **[Deeplearning.ai course](https://www.deeplearning.ai/short-courses/building-ai-voice-agents-for-production/)**: Learn to build and deploy voice agents with LiveKit in this free course from Deeplearning.ai.
 
 ## Requirements
 
@@ -15455,6 +15502,14 @@ The beta integration with the Assistants API in the OpenAI LLM plugin has been d
 
 ---
 
+---
+
+## Deeplearning.ai course
+
+_Content not available for https://www.deeplearning.ai/short-courses/building-ai-voice-agents-for-production/_
+
+---
+
 ### Building voice agents
 
 ---
@@ -15554,15 +15609,21 @@ The following guides, in addition to others in this section, cover the core capa
 
 ## Overview
 
-Agents are composable within a single session to model complex tasks with a high degree of reliability. Some specific scenarios where this is useful include:
+LiveKit Agents enables you to compose reliable workflows to tackle complex scenarios.
 
-- Acquiring recording consent at the beginning of a call.
-- Collecting specific structured information, such as an address or a credit card number.
-- Moving through a series of questions, one at a time.
-- Leaving a voicemail message when the user is unavailable.
+An **Agent** takes indefinite control of a session. It can include custom prompts, tools, and other logic. If needed, it can invoke tasks or hand off control to a different agent. This is useful for scenarios such as the following:
+
 - Including multiple personas with unique traits within a single session.
+- Moving through different predetermined conversation phases.
+- Offering multiple modes or functionality within a single voice agent.
 
-## Defining an agent
+The framework also includes experimental support for **Tasks**, which take temporary control of a session to complete a specific task and return a specific result. For more information, see [Tasks](#tasks).
+
+## Agents
+
+Agents form the backbone of a session’s functionality and are responsible for overall orchestration.
+
+### Defining an agent
 
 Extend the `Agent` class to define a custom agent.
 
@@ -15574,7 +15635,7 @@ class HelpfulAssistant(Agent):
         super().__init__(instructions="You are a helpful voice AI assistant.")
 
     async def on_enter(self) -> None:
-        await self.session.say("Hello, how can I help you today?")
+        await self.session.generate_reply(instructions="Greet the user and ask how you can help them.")
 
 ```
 
@@ -15585,13 +15646,13 @@ agent = Agent(instructions="You are a helpful voice AI assistant.")
 
 ```
 
-## Setting the active agent
+### Setting the active agent
 
 Specify the initial agent in the `AgentSession` constructor:
 
 ```python
 session = AgentSession(
-    agent=HelpfulAssistant()
+    agent=CustomerServiceAgent()
     # ...
 )
 
@@ -15600,72 +15661,62 @@ session = AgentSession(
 To set a new agent, use the `update_agent` method:
 
 ```python
-session.update_agent(HelpfulAssistant())
+session.update_agent(CustomerServiceAgent())
 
 ```
 
-## Handing off from tool call
+### Handing off from tool call
 
 Return a different agent from within a tool call to hand off control automatically. This allows the LLM to make decisions about when handoff should occur. For more information, see [tool return value](https://docs.livekit.io/agents/build/tools.md#return-value).
 
 ```python
-from livekit.agents import Agent, function_tool, get_job_context
+from livekit.agents import Agent, function_tool
 
-class ConsentCollector(Agent):
+class CustomerServiceAgent(Agent):
     def __init__(self):
         super().__init__(
-            instructions="""Your are a voice AI agent with the singular task to collect positive 
-            recording consent from the user. If consent is not given, you must end the call."""
+            instructions="""You are a friendly customer service representative. Help customers with 
+            general inquiries, account questions, and technical support. If a customer needs 
+            specialized help, transfer them to the appropriate specialist."""
         )
 
     async def on_enter(self) -> None:
-        await self.session.say("May I record this call for quality assurance purposes?")
+        await self.session.generate_reply(instructions="Greet the user warmly and offer your assistance.")
 
     @function_tool()
-    async def on_consent_given(self):
-        """Use this tool to indicate that consent has been given and the call may proceed."""
-
-        # Perform a handoff, immediately transfering control to the new agent
-        return HelpfulAssistant()
+    async def transfer_to_billing(self, context: RunContext):
+        """Transfer the customer to a billing specialist for account and payment questions."""
+        return "Transferring to billing", BillingAgent(chat_ctx=self.chat_ctx)
 
     @function_tool()
-    async def end_call(self) -> None:
-        """Use this tool to indicate that consent has not been given and the call should end."""
-        await self.session.say("Thank you for your time, have a wonderful day.")
-        job_ctx = get_job_context()
-        await job_ctx.api.room.delete_room(api.DeleteRoomRequest(room=job_ctx.room.name))
+    async def transfer_to_technical_support(self, context: RunContext):
+        """Transfer the customer to technical support for product issues and troubleshooting."""
+        return "Transferring to technical support", TechnicalSupportAgent(chat_ctx=self.chat_ctx)
 
-```
-
-## Context preservation
-
-By default, each new agent starts with a fresh conversation history for their LLM prompt. To include the prior conversation, set the `chat_ctx` parameter in the `Agent` constructor. You can either copy the prior agent's `chat_ctx`, or construct a new one based on custom business logic to provide the appropriate context.
-
-```python
-from livekit.agents import ChatContext, function_tool, Agent
-
-class HelpfulAssistant(Agent):
-    def __init__(self, chat_ctx: ChatContext):
+class BillingAgent(Agent):
+    def __init__(self):
         super().__init__(
-            instructions="You are a helpful voice AI assistant.",
-            chat_ctx=chat_ctx
+            instructions="""You are a billing specialist. Help customers with account questions, 
+            payments, refunds, and billing inquiries. Be thorough and empathetic."""
         )
 
-class ConsentCollector(Agent):
-    # ...
+    async def on_enter(self) -> None:
+        await self.session.generate_reply(instructions="Introduce yourself as a billing specialist and ask how you can help with their account.")
 
-    @function_tool()
-    async def on_consent_given(self):
-        """Use this tool to indicate that consent has been given and the call may proceed."""
+class TechnicalSupportAgent(Agent):
+    def __init__(self):
+        super().__init__(
+            instructions="""You are a technical support specialist. Help customers troubleshoot 
+            product issues, setup problems, and technical questions. Ask clarifying questions 
+            to diagnose problems effectively."""
+        )
 
-        # Pass the chat context during handoff
-        return HelpfulAssistant(chat_ctx=self.session.chat_ctx)
+    async def on_enter(self) -> None:
+        await self.session.generate_reply(instructions="Introduce yourself as a technical support specialist and offer to help with any technical issues.")
 
 ```
 
-The complete conversation history for the session is always available in `session.history`.
-
-## Passing state
+### Passing state
 
 To store custom state within your session, use the `userdata` attribute. The type of userdata is up to you, but the recommended approach is to use a `dataclass`.
 
@@ -15713,34 +15764,163 @@ class IntakeAgent(Agent):
     
     def _handoff_if_done(self):
         if self.session.userdata.user_name and self.session.userdata.age:
-            return HelpfulAssistant()
+            return CustomerServiceAgent()
         else:
             return None
 
-class HelpfulAssistant(Agent):
+class CustomerServiceAgent(Agent):
     def __init__(self):
-        super().__init__(instructions="You are a helpful voice AI assistant.")
+        super().__init__(instructions="You are a friendly customer service representative.")
 
     async def on_enter(self) -> None:
         userdata: MySessionInfo = self.session.userdata
         await self.session.generate_reply(
-            instructions=f"Greet {userdata.user_name} and tell them a joke about being {userdata.age} years old."
+            instructions=f"Greet {userdata.user_name} personally and offer your assistance."
         )
 
 ```
 
+## Tasks
+
+Tasks allow you to create focused, reusable components that complete specific tasks and return typed results. Unlike regular agents that take indefinite control of a session, tasks are used within agents or other tasks, complete their objective, and return control along with their result.
+
+Tasks are useful for scenarios such as:
+
+- Acquiring recording consent at the beginning of a call.
+- Collecting specific structured information, such as an address or a credit card number.
+- Moving through a series of questions, one at a time.
+- Any discrete task that should complete and return control to the caller.
+
+> 🔥 **Experimental feature**
+> 
+> Tasks are currently experimental and the API might change in a future release.
+
+### Defining a task
+
+Extend the `AgentTask` class and specify a result type using [generics](https://typing.python.org/en/latest/reference/generics.html). Use the `on_enter` method to begin the task's interaction with the user, and call the `complete` method with a result when complete. The task has full support for tools, similar to an agent.
+
+```python
+from livekit.agents import AgentTask, function_tool
+
+class CollectConsent(AgentTask[bool]):
+    def __init__(self):
+        super().__init__(
+            instructions="Ask for recording consent and get a clear yes or no answer."
+        )
+
+    async def on_enter(self) -> None:
+        await self.session.generate_reply(instructions="Ask for permission to record the call for quality assurance purposes.")
+
+    @function_tool
+    async def consent_given(self) -> None:
+        """Use this when the user gives consent to record."""
+        self.complete(True)
+
+    @function_tool
+    async def consent_denied(self) -> None:
+        """Use this when the user denies consent to record."""
+        self.complete(False)
+
+```
+
+### Running a task
+
+The task runs automatically upon creation. It must be created within the context of an existing `Agent` which is active within an `AgentSession`. The task takes control of the session until it returns a result. Await the task to receive its result.
+
+```python
+from livekit.agents import Agent, function_tool, get_job_context
+
+class CustomerServiceAgent(Agent):
+    def __init__(self):
+        super().__init__(instructions="You are a friendly customer service representative.")
+
+    async def on_enter(self) -> None:
+        if await CollectConsent(chat_ctx=self.chat_ctx):
+            await self.session.generate_reply(instructions="Offer your assistance to the user.")
+        else:
+            await self.session.generate_reply(instructions="Inform the user that you are unable to proceed and will end the call.")
+            job_ctx = get_job_context()
+            await job_ctx.api.room.delete_room(api.DeleteRoomRequest(room=job_ctx.room.name))
+
+```
+
+### Task results
+
+Use any result type you want. For complex results, use a custom dataclass.
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class ContactInfoResult:
+    name: str
+    email_address: str
+    phone_number: str
+
+class GetContactInfoTask(AgentTask[ContactInfoResult]):
+    # ....
+
+```
+
+### Prebuilt tasks
+
+The framework will include prebuilt tasks for common use cases within the module [livekit.agents.beta.workflows](https://docs.livekit.io/reference/python/v1/livekit/agents/beta/workflows/index.html.md). As of initial release, only the `GetEmailTask` is available.
+
+#### GetEmailTask
+
+Use `GetEmailTask` to reliably collect and validate an email address from the user.
+
+```python
+from livekit.agents.beta.workflows import GetEmailTask
+
+# ... within your agent ...
+email_result = await GetEmailTask(chat_ctx=self.chat_ctx)
+print(f"Collected email: {email_result.email_address}")
+
+```
+
+## Context preservation
+
+By default, each new agent or task starts with a fresh conversation history for their LLM prompt. To include the prior conversation, set the `chat_ctx` parameter in the `Agent` or `AgentTask` constructor. You can either copy the prior agent's `chat_ctx`, or construct a new one based on custom business logic to provide the appropriate context.
+
+```python
+from livekit.agents import ChatContext, function_tool, Agent
+
+class TechnicalSupportAgent(Agent):
+    def __init__(self, chat_ctx: ChatContext):
+        super().__init__(
+            instructions="""You are a technical support specialist. Help customers troubleshoot 
+            product issues, setup problems, and technical questions.""",
+            chat_ctx=chat_ctx
+        )
+
+class CustomerServiceAgent(Agent):
+    # ...
+
+    @function_tool()
+    async def transfer_to_technical_support(self):
+        """Transfer the customer to technical support for product issues and troubleshooting."""
+        await self.session.generate_reply(instructions="Inform the customer that you're transferring them to the technical support team.")
+        
+        # Pass the chat context during handoff
+        return TechnicalSupportAgent(chat_ctx=self.session.chat_ctx)
+
+```
+
+The complete conversation history for the session is always available in `session.history`.
+
 ## Overriding plugins
 
-You can override any of the plugins used in the session by setting the corresponding attributes in your `Agent` constructor. For instance, you can change the voice for a specific agent by overriding the `tts` attribute:
+You can override any of the plugins used in the session by setting the corresponding attributes in your `Agent` or `AgentTask` constructor. For instance, you can change the voice for a specific agent by overriding the `tts` attribute.
 
 ```python
 from livekit.agents import Agent
 from livekit.plugins import cartesia
 
-class AssistantManager(Agent):
+class CustomerServiceManager(Agent):
     def __init__(self):
         super().__init__(
-            instructions="You are manager behind a team of helpful voice assistants.",
+            instructions="You are a customer service manager who can handle escalated issues.",
             tts=cartesia.TTS(voice="6f84f4b8-58a2-430c-8c79-688dad597532")
         )
 
@@ -17396,17 +17576,46 @@ Your agent also monitors the `lk.chat` text stream topic for incoming text messa
 
 To disable text input, set `text_enabled=False` in `RoomInputOptions`.
 
-## Text-only output
+## Text-only session
 
-To disable audio output entirely and send text only, set `audio_enabled=False` in `RoomOutputOptions`. The agent will publish text responses to the `lk.transcription` text stream topic, without a `lk.transcribed_track_id` attribute and without speech synchronization.
+### Disable audio for the entire session
 
-## Usage examples
+To disable audio input or output for the entire session, set `audio_enabled=False` in `RoomInputOptions` or `RoomOutputOptions`. When audio output is disabled, the agent will not publish audio tracks to the room. Text responses will be sent without the `lk.transcribed_track_id` attribute and without speech synchronization.
 
-This section contains small code samples demonstrating how to use the text features.
+```python
+session = AgentSession(
+    ...,
+    room_input_options=RoomInputOptions(audio_enabled=False),
+    room_output_options=RoomOutputOptions(audio_enabled=False),
+)
 
-For more information, see the [text streams](https://docs.livekit.io/home/client/data/text-streams.md) documentation. For more complete examples, see the [recipes](https://docs.livekit.io/recipes.md) collection.
+```
 
-### Frontend integration
+### Toggle audio input/output
+
+For hybrid sessions where audio input and output may be used, such as when a user toggles an audio switch, the audio track should remain published to the room. The agent can toggle audio input and output dynamically using `session.input.set_audio_enabled()` and `session.output.set_audio_enabled()`.
+
+```python
+session = AgentSession(...)
+
+# start with audio disabled
+session.input.set_audio_enabled(False)
+session.output.set_audio_enabled(False)
+await session.start(...)
+
+# user toggles audio switch
+@room.local_participant.register_rpc_method("toggle_audio")
+async def on_toggle_audio(data: rtc.RpcInvocationData) -> None:
+    session.input.set_audio_enabled(not session.input.audio_enabled)
+    session.output.set_audio_enabled(not session.output.audio_enabled)
+
+```
+
+## Frontend integration
+
+LiveKit client SDKs have native support for text streams. For more information, see the [text streams](https://docs.livekit.io/home/client/data/text-streams.md) documentation.
+
+### Receiving text streams
 
 Use the `registerTextStreamHandler` method to receive incoming transcriptions or text:
 
@@ -17440,6 +17649,8 @@ try await room.registerTextStreamHandler(for: "lk.transcription") { reader, part
 
 ```
 
+### Sending text input
+
 Use the `sendText` method to send text messages:
 
 **JavaScript**:
@@ -17459,23 +17670,6 @@ const info = await room.localParticipant.sendText(text, {
 ```swift
 let text = "Hello how are you today?"
 let info = try await room.localParticipant.sendText(text, for: "lk.chat")
-
-```
-
-### Configuring input/output options
-
-The AgentSession constructor accepts configuration for input and output options:
-
-```python
-session = AgentSession(
-    ..., # STT, LLM, etc.
-    room_input_options=RoomInputOptions(
-        text_enabled=False # disable text input
-    ), 
-    room_output_options=RoomOutputOptions(
-        audio_enabled=False # disable audio output
-    )
-)
 
 ```
 
@@ -28138,7 +28332,7 @@ LiveKit SIP bridges the gap between traditional telephony and modern digital com
 
 ## Concepts
 
-LiveKit SIP extends the [core primitives](https://docs.livekit.io/home/get-started/api-primitives.md) — participant, room, and track — to include two additional concepts specific to SIP: trunks and dispatch rules. These concepts are represented by objects created through the [API](https://docs.livekit.io/sip/api.md) and control how calls are handled.
+LiveKit SIP extends the [core primitives](https://docs.livekit.io/home/get-started/api-primitives.md)—participant, room, and track—to include two additional concepts specific to SIP: trunks and dispatch rules. These concepts are represented by objects created through the [API](https://docs.livekit.io/sip/api.md) and control how calls are handled.
 
 ### SIP participant
 
@@ -28148,9 +28342,12 @@ For inbound calls, a SIP participant is automatically created for each caller. T
 
 ### Trunks
 
-LiveKit SIP trunks are the bridge between your SIP provider and LiveKit. LiveKit requires a SIP trunk configured with your phone number provider. Configuration settings vary based on your app and whether you're accepting incoming calls or making outgoing calls or both.
+LiveKit SIP trunks bridge your SIP provider and LiveKit. To use LiveKit, you must configure a SIP trunk with your telephony provider. The setup depends on your use case—whether you're handling incoming calls, making outgoing calls, or both.
 
-An [inbound trunk](https://docs.livekit.io/sip/trunk-inbound.md) is configured to accept incoming calls and can be limited to specific IP addresses or phone numbers. An [outbound trunk](https://docs.livekit.io/sip/trunk-outbound.md) is configured for outgoing calls.
+- [Inbound trunks](https://docs.livekit.io/sip/trunk-inbound.md) handle incoming calls and can be restricted to specific IP addresses or phone numbers.
+- [Outbound trunks](https://docs.livekit.io/sip/trunk-outbound.md) are used to place outgoing calls.
+
+Trunks can be region restricted to meet local telephony regulations.
 
 > ℹ️ **Note**
 > 
@@ -28166,8 +28363,8 @@ Dispatch rules can also be used to add custom participant attributes to [SIP par
 
 LiveKit SIP relies on the following services:
 
-- SIP trunking provider for your phone number.
-- LiveKit server (part of LiveKit Cloud) for API requests, managing and verifying SIP trunks and dispatch rules, and creating participants and rooms for calls (part of LiveKit Cloud).
+- SIP trunking provider for your phone number. LiveKit SIP supports most SIP providers out of the box.
+- LiveKit server (part of LiveKit Cloud) for API requests, managing and verifying SIP trunks and dispatch rules, and creating participants and rooms for calls.
 - LiveKit SIP (part of LiveKit Cloud) to respond to SIP requests, mediate trunk authentication, and match dispatch rules.
 
 If you use LiveKit Cloud, LiveKit SIP is ready to use with your project without any additional configuration. If you're self hosting LiveKit, the SIP service needs to be deployed separately. To learn more about self hosting, see [SIP server](https://docs.livekit.io/home/self-hosting/sip-server.md).
@@ -28186,13 +28383,16 @@ LiveKit SIP has been tested with the following SIP providers:
 
 | [Twilio](https://www.twilio.com/) | [Telnyx](https://telnyx.com/) | [Exotel](https://exotel.com) | [Plivo](https://www.plivo.com) |
 
-LiveKit SIP supports the following functionality:
+## SIP features
+
+LiveKit SIP supports the following functionality.
 
 | Feature | Description |
 | DTMF | You can configure DTMF when making outbound calls by adding them to the `CreateSIPParticipant` request. To learn more, see [Making a call with extension codes (DTMF)](https://docs.livekit.io/sip/outbound-calls.md#dtmf). |
 | SIP REFER | You can transfer calls using the `TransferSIPParticipant` API. Calls can be transferred to any valid telephone number or SIP URI. To learn more, see [Cold transfer](https://docs.livekit.io/sip/transfer-cold.md). |
 | SIP headers | You can map custom `X-*` SIP headers to participant attributes. For example, custom headers can be used to route calls to different workflows. To learn more, see [Custom attributes](https://docs.livekit.io/sip/sip-participant.md#custom-attributes). |
 | Noise cancellation | You can enable noise cancellation for callers and callees using Krisp. To learn more, see [Noise cancellation for calls](#noise-cancellation-for-calls). |
+| Region pinning | You can restrict incoming and outgoing calls to a specific region to comply with local telephony regulations. To learn more, see [Region pinning for SIP](https://docs.livekit.io/sip/cloud.md#region-pinning). |
 
 ### Noise cancellation for calls
 
@@ -28216,6 +28416,113 @@ See the following guides to get started with LiveKit SIP:
 
 ---
 
+## Cloud
+
+## Overview
+
+LiveKit SIP is part of [LiveKit Cloud](https://docs.livekit.io/home/cloud/overview.md) and runs as a globally distributed service, providing redundancy and high availability. By default, SIP endpoints are global, and calls are routed through the region closest to the origination point. Incoming calls are routed to the region closest to the SIP trunking provider's endpoint. Outgoing calls originate from the same region where the `CreateSIPParticipant` API call is made.
+
+In most cases, using the global endpoint is the recommended approach. However, if you need to exercise more control over call routing—for example, to comply with local telephony regulations—LiveKit SIP supports region pinning. This allows you to restrict both incoming and outgoing calls to a specific region.
+
+## Region pinning
+
+Region pinning allows you to restrict incoming and outgoing calls to a specific region to comply with local telephony regulations. The following sections describe how to enable region pinning.
+
+### Inbound calls
+
+To enable region pinning for incoming calls, configure your SIP trunking provider to use a region-based endpoint. A region-based endpoint is configured to direct traffic only to nodes within a specific region.
+
+#### Region-based endpoint format
+
+The endpoint format is as follows:
+
+```
+{sip_subdomain}.{region_name}.sip.livekit.cloud
+
+```
+
+Where:
+
+- `{sip_subdomain}` is your LiveKit SIP URI subdomain. This is also your project ID without the `p_` prefix. You can find your SIP URI on the [Project settings](https://cloud.livekit.io/projects/p_/settings/project) page.
+
+For example, if your SIP URI is `sip:bwwn08a2m4o.sip.livekit.cloud`, your SIP subdomain is `bwwn08a2m4o`.
+- `{region_name}` is one of the following [regions](#available-regions):
+
+`eu`, `india`, `sa`, `us`
+
+For example to create a SIP endpoint for India, see the following:
+
+> 💡 **Tip**
+> 
+> Sign in to LiveKit Cloud to automatically include the subdomain for your project in the example.
+
+```bash
+%{regionalEndpointSubdomain}%.india.sip.livekit.cloud
+
+```
+
+Use the region-based endpoint to configure your SIP trunking provider. Follow the instructions for external provider setup in [SIP trunk setup](https://docs.livekit.io/sip/quickstarts/configuring-sip-trunk.md).
+
+### Outbound calls
+
+To originate calls from the same region as the destination phone number, set the `destination_country` parameter for an outbound trunk. This applies region pinning to all calls made through the trunk. When `destination_country` is enabled, outbound calls are routed based on location:
+
+- For countries that LiveKit operates data centers in, calls originate from a server within the country.
+- For other countries, calls originate from a server that is closest to that country.
+
+In the unlikely event that the preferred region is non-operational or offline, calls originate from another region nearby. For a full list of supported regions, see [Available regions](https://docs.livekit.io/sip/cloud.md#available-regions).
+
+The `destination_country` parameter accepts a two-letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2). To learn more, see [CreateSIPOutboundTrunk](https://docs.livekit.io/sip/api.md#createsipoutboundtrunk).
+
+#### Example outbound trunk
+
+Create an outbound trunk with the `destination_country` parameter set to India, `india`.
+
+1. Create a file named `outbound-trunk.json`, replacing the phone number with your SIP provider phone number and username and password:
+
+```json
+{
+  "trunk": {
+    "name": "My outbound trunk",
+    "phone_number": "+15105550100",
+    "username": "myusername",
+    "password": "mypassword",
+    "destination_country": "in"
+  }
+}
+
+```
+2. Create the outbound trunk using the CLI:
+
+```shell
+lk sip outbound create outbound-trunk.json
+
+```
+
+To learn more, see [Outbound trunks](https://docs.livekit.io/sip/trunk-outbound.md).
+
+### Considerations
+
+When you enable region pinning, you turn off automatic failover to the nearest region in the case of an outage.
+
+### Available regions
+
+The following regions are available for region pinning for SIP:
+
+| Region name | Region locations |
+| `eu` | France, Germany, Zurich |
+| `india` | India |
+| `sa` | Saudi Arabia |
+| `us` | US Central, US East B, US West B |
+
+> ℹ️ **Note**
+> 
+> This list of regions is subject to change. Last updated 2025-07-23.
+
+---
+
+---
+
 ## SIP trunk setup
 
 ## Overview
@@ -28229,7 +28536,15 @@ The usual steps to create a SIP trunk are as follows:
 1. Create a SIP trunk with your provider.
 2. Add authentication or limit trunk usage by phone numbers or IP addresses.
 3. Purchase a phone number and associate it with your SIP trunk.
-4. Add your [LiveKit SIP URI](https://cloud.livekit.io/projects/p_/settings/project) to the SIP trunk.
+4. Add your [LiveKit SIP endpoint](#sip-endpoint) to the SIP trunk.
+
+### SIP endpoint
+
+Depending on your SIP trunking provider, you might need to use a _SIP endpoint_ to configure inbound calls instead of your SIP URI. The SIP endpoint is your LiveKit SIP URI without the `sip:` prefix. You can find your SIP URI on the [**Project settings**](https://cloud.livekit.io/projects/p_/settings/project) page.
+
+For example, if your SIP URI is `sip:vjnxecm0tjk.sip.livekit.cloud`, your SIP endpoint is `vjnxecm0tjk.sip.livekit.cloud`.
+
+## Provider-specific instructions
 
 For step-by-step instructions for Telnyx, Twilio, or Plivo, see the following quickstarts:
 
@@ -28391,7 +28706,7 @@ Configure the trunk for inbound calls or outbound calls or both. To create a SIP
 
 **Inbound**:
 
-For inbound trunks, configure an [origination URI](https://www.twilio.com/docs/sip-trunking#origination). If you're using LiveKit Cloud and are signed in, your `<your SIP host>` is filled in below:
+For inbound trunks, configure an [origination URI](https://www.twilio.com/docs/sip-trunking#origination). If you're using LiveKit Cloud and are signed in, your SIP URI is automatically included in the following command:
 
 ```shell
  twilio api trunking v1 trunks origination-urls create \
@@ -28406,7 +28721,7 @@ For inbound trunks, configure an [origination URI](https://www.twilio.com/docs/s
 
 **Outbound**:
 
-For outbound trunks, configure username and password authentication using a credentials list. The following steps are completed using the Twilio console.
+For outbound trunks, configure username and password authentication using a credentials list. Complete the following steps using the Twilio console.
 
 **Step 1: Create a credential list**
 
@@ -28448,7 +28763,7 @@ twilio api trunking v1 trunks phone-numbers create \
 4. For inbound calls:
 
 - Navigate to **Voice** » **Manage** » **Origination connection policy**, and create an **Origination Connection Policy**
-- Select the policy you just created and set the [Origination SIP URI](https://www.twilio.com/docs/sip-trunking#origination) to `sip:<your SIP URI>`. For example, if your SIP URI is `1abcdefgh2i.sip.livekit.cloud` then enter `sip:1abcdefgh2i.sip.livekit.cloud`.
+- Select the policy you just created and set the [Origination SIP URI](https://www.twilio.com/docs/sip-trunking#origination) to your LiveKit SIP URI (available on your [**Project settings**](https://cloud.livekit.io/projects/p_/settings/project) page). For example, `sip:vjnxecm0tjk.sip.livekit.cloud`.
 5. For outbound calls, configure termination and authentication:
 
 - Navigate to **Elastic SIP Trunking** » **Manage** » **Trunks**.
@@ -28475,7 +28790,7 @@ Head back to the main setup documentation to finish connecting your SIP trunk to
 
 > ℹ️ **Note**
 > 
-> If you're using LiveKit Cloud as your SIP server and you're signed in, your SIP URI is automatically included in the code blocks where appropriate.
+> If you're using LiveKit Cloud as your SIP server and you're signed in, your SIP endpoint is automatically included in the code blocks where appropriate.
 
 ## Creating a Telnyx SIP trunk using the API
 
@@ -28620,7 +28935,7 @@ curl -L 'https://api.telnyx.com/v2/fqdn_connections' \
 }
 
 ```
-3. Create an FQDN with your SIP URI and your FQDN connection ID:
+3. Create an FQDN with your [LiveKit SIP endpoint](https://docs.livekit.io/sip/quickstarts/configuring-sip-trunk.md#sip-endpoint) and your FQDN connection ID:
 
 ```shell
 curl -L 'https://api.telnyx.com/v2/fqdns' \
@@ -28688,7 +29003,9 @@ curl -L -X PATCH 'https://api.telnyx.com/v2/phone_numbers/<phone_number_id>' \
 4. Create a SIP connection:- For inbound calls:
 
 - Select [FQDN](https://developers.telnyx.com/docs/voice/sip-trunking/quickstart#option-3-fqdn-authentication) and save.
-- Select **Add FQDN** and enter <your SIP URI> from above into the **FQDN** field.
+- Select **Add FQDN** and enter your [LiveKit SIP endpoint](https://docs.livekit.io/sip/quickstarts/configuring-sip-trunk.md#sip-endpoint) into the **FQDN** field.
+
+For example, `vjnxecm0tjk.sip.livekit.cloud`.
 - Select the **Inbound** tab. In the **Destination Number Format** field, select `+E.164`.
 - In the **SIP Transport Protocol** field, select either **TCP** or **UDP**.
 - In the **SIP Region** field, select your region.
@@ -28734,9 +29051,7 @@ Create a Plivo SIP trunk for incoming or outgoing calls, or both, using the foll
 
 1. Select **Create New Inbound Trunk** and provide a descriptive name for your trunk.
 2. Under **Trunk Authentication**, click **Add New URI**.
-3. Enter your LiveKit SIP URI.
-
-For example, if your SIP URI is `sip:1abcdefgh2i.sip.livekit.cloud` then enter `1abcdefgh2i.sip.livekit.cloud`
+3. Enter your [LiveKit SIP endpoint](https://docs.livekit.io/sip/quickstarts/configuring-sip-trunk.md#sip-endpoint). For example, `vjnxecm0tjk.sip.livekit.cloud`
 4. Select **Create Trunk** to complete your inbound trunk creation.
 5. Navigate to the [**Phone Numbers Dashboard**](https://console.plivo.com/active-phone-numbers/) and select the number to route to your inbound trunk.
 6. Under **Number Configuration**, set **Trunk** to your newly created inbound trunk and select **Update** to save.
@@ -28815,6 +29130,8 @@ See the following guide to create an AI agent to receive inbound calls.
 
 ## Inbound trunk
 
+## Overview
+
 After you purchase a phone number and [configure your SIP trunking provider](https://docs.livekit.io/sip/quickstarts/configuring-sip-trunk.md), you must create an inbound trunk and [dispatch rule](https://docs.livekit.io/sip/dispatch-rule.md) to accept incoming calls. The inbound trunk allows you to limit incoming calls to those coming from your SIP trunking provider.
 
 You can also configure additional properties for all incoming calls that match the trunk including SIP headers, participant metadata and attributes, and session properties. For a full list of available parameters, see [`CreateSIPInboundTrunk`](https://docs.livekit.io/sip/api.md#createsipinboundtrunk).
@@ -28824,6 +29141,10 @@ You can also configure additional properties for all incoming calls that match t
 > LiveKit supports username and password authentication for inbound trunks, but your SIP trunking provider must also support it. Support varies by provider—for example, Twilio Elastic SIP Trunking doesn’t support it, though you can use username and password authentication with [TwiML](https://docs.livekit.io/sip/accepting-calls-twilio-voice.md). Check with your provider to confirm.
 
 To learn more about LiveKit SIP, see [SIP overview](https://docs.livekit.io/sip.md). To learn more about SIP API endpoints and types, see [SIP API](https://docs.livekit.io/sip/api.md).
+
+## Restricting calls to a region
+
+When you configure your SIP trunking provider for inbound calls, you need to specify the LiveKit SIP endpoint to use. By default, this is a global endpoint and incoming calls are routed to the region closest to the call's origination point—typically the region where your telephony provider initiated the call. You can limit calls to a specific region using [region pinning](https://docs.livekit.io/sip/cloud.md).
 
 ## Inbound trunk example
 
@@ -31069,7 +31390,18 @@ See the following guide to create an AI agent that makes outbound calls.
 
 ## Outbound trunk
 
-To provision an outbound trunk with the SIP Service, use the [`CreateSIPOutboundTrunk`](https://docs.livekit.io/sip/api.md#createsipoutboundtrunk) API. It returns an `SIPOutboundTrunkInfo` object that describes the created SIP trunk. These parameters can also be queried at any time using the `ListSIPOutboundTrunk` API.
+To provision an outbound trunk with the SIP Service, use the [`CreateSIPOutboundTrunk`](https://docs.livekit.io/sip/api.md#createsipoutboundtrunk) API. It returns an `SIPOutboundTrunkInfo` object that describes the created SIP trunk. You can query these parameters any time using the `ListSIPOutboundTrunk` API.
+
+## Restricting calls to a region
+
+To originate calls from the same region as the destination phone number, set the `destination_country` parameter for an outbound trunk. This applies region pinning to all calls made through the trunk. When `destination_country` is enabled, outbound calls are routed based on location:
+
+- For countries that LiveKit operates data centers in, calls originate from a server within the country.
+- For other countries, calls originate from a server that is closest to that country.
+
+In the unlikely event that the preferred region is non-operational or offline, calls originate from another region nearby. For a full list of supported regions, see [Available regions](https://docs.livekit.io/sip/cloud.md#available-regions).
+
+The `destination_country` parameter accepts a two-letter country code. To learn more, see [CreateSIPOutboundTrunk](https://docs.livekit.io/sip/api.md#createsipoutboundtrunk).
 
 ## Create an outbound trunk
 
@@ -32886,7 +33218,7 @@ Returns [SIPOutboundTrunkInfo](#sipoutboundtrunkinfo).
 | name | string | yes | name of the trunk. |
 | metadata | string |  | User-defined metadata for the trunk. This metadata is added to every SIP participant that uses the trunk. |
 | address | string | yes | Hostname or IP the SIP INVITE is sent to. This is _not_ a SIP URI and shouldn't contain the `sip:` protocol. |
-| destination_country | string | yes | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. The country code is used by LiveKit to route calls. |
+| destination_country | string | yes | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. LiveKit uses the country code to route calls. To learn more, see [Restricting calls to a region](https://docs.livekit.io/sip/trunk-outbound.md#region-pinning). |
 | numbers | array<string> | yes | List of provider phone numbers associated with the trunk that can be used as a caller id. |
 | transport | [SIPTransport](#siptransport) |  | Protocol to use for SIP transport: auto, TCP, or UDP. |
 | auth_username | string |  | If configured, the username for authorized use of the provider's SIP trunk. |
@@ -33131,7 +33463,7 @@ Enum. Valid values are as follows:
 | name | string | Trunk name. |
 | metadata | string | User-defined metadata for trunk. |
 | address | string | Hostname or IP address the SIP request message (SIP INVITE) is sent to. |
-| destination_country | string | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. |
+| destination_country | string | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. LiveKit uses the country code to route calls. To learn more, see [Restricting calls to a region](https://docs.livekit.io/sip/trunk-outbound.md#region-pinning). |
 | transport | [SIPTransport](#siptransport) | Protocol to use for SIP transport: auto, TCP, or UDP. |
 | numbers | array<string> | Phone numbers used to make calls. A random number in the list is selected whenever a call is made. |
 | auth_username | string | Username used to authenticate with the SIP server. |
@@ -33144,7 +33476,7 @@ Enum. Valid values are as follows:
 | Field | Type | Description |
 | address | string | Hostname or IP address the SIP request message (SIP INVITE) is sent to. |
 | transport | [SIPTransport](#siptransport) | Protocol to use for SIP transport: auto, TCP, or UDP. |
-| destination_country | string | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. |
+| destination_country | string | Two letter [country code](https://en.wikipedia.org/wiki/ISO_3166-1_alpha-2) for the country the call terminates in. LiveKit uses the country code to route calls. To learn more, see [Restricting calls to a region](https://docs.livekit.io/sip/trunk-outbound.md#region-pinning). |
 | numbers | array<string> | Phone numbers used to make calls. A random number in the list is selected whenever a call is made. |
 | auth_username | string | Username used to authenticate with the SIP server. |
 | auth_password | string | Password used to authenticate with the SIP server. |
@@ -33231,5 +33563,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-07-21T22:46:01.795Z.
+This document was rendered at 2025-07-24T21:21:14.172Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

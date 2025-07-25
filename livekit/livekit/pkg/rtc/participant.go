@@ -205,6 +205,7 @@ type ParticipantParams struct {
 	FireOnTrackBySdp               bool
 	DisableCodecRegression         bool
 	LastPubReliableSeq             uint32
+	Country                        string
 }
 
 type ParticipantImpl struct {
@@ -312,8 +313,8 @@ type ParticipantImpl struct {
 	metricsCollector  *metric.MetricsCollector
 	metricsReporter   *metric.MetricsReporter
 
-	signalhandler signalling.ParticipantSignalHandler
 	signalling    signalling.ParticipantSignalling
+	signalhandler signalling.ParticipantSignalHandler
 	signaller     signalling.ParticipantSignaller
 
 	// loggers for publisher and subscriber
@@ -352,20 +353,11 @@ func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
 			joiningMessageLastWrittenSeqs: make(map[livekit.ParticipantID]uint32),
 		},
 	}
-	p.signalhandler = signalling.NewSignalHandler(signalling.SignalHandlerParams{
-		Logger:      params.Logger,
-		Participant: p,
-	})
-	p.signalling = signalling.NewSignalling(signalling.SignallingParams{
-		Logger: params.Logger,
-	})
-	p.signaller = signalling.NewSignallerAsync(signalling.SignallerAsyncParams{
-		Logger:      params.Logger,
-		Participant: p,
-	})
+	p.setupSignalling()
 
 	p.id.Store(params.SID)
 	p.dataChannelStats = telemetry.NewBytesTrackStats(
+		p.params.Country,
 		telemetry.BytesTrackIDForParticipantID(telemetry.BytesTrackTypeData, p.ID()),
 		p.ID(),
 		params.Telemetry,
@@ -421,6 +413,10 @@ func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
 	p.setupMetrics()
 
 	return p, nil
+}
+
+func (p *ParticipantImpl) GetCountry() string {
+	return p.params.Country
 }
 
 func (p *ParticipantImpl) GetTrailer() []byte {
@@ -1168,19 +1164,24 @@ func (p *ParticipantImpl) onPublisherAnswer(answer webrtc.SessionDescription, an
 	return p.sendSdpAnswer(answer, answerId)
 }
 
-func (p *ParticipantImpl) GetAnswer() (webrtc.SessionDescription, error) {
+func (p *ParticipantImpl) GetAnswer() (webrtc.SessionDescription, uint32, error) {
 	if p.IsClosed() || p.IsDisconnected() {
-		return webrtc.SessionDescription{}, ErrParticipantSessionClosed
+		return webrtc.SessionDescription{}, 0, ErrParticipantSessionClosed
 	}
 
-	answer, err := p.TransportManager.GetAnswer()
+	answer, answerId, err := p.TransportManager.GetAnswer()
 	if err != nil {
-		return answer, err
+		return answer, answerId, err
 	}
 
 	answer = p.configurePublisherAnswer(answer)
-	p.pubLogger.Debugw("returning answer", "transport", livekit.SignalTarget_PUBLISHER, "answer", answer)
-	return answer, nil
+	p.pubLogger.Debugw(
+		"returning answer",
+		"transport", livekit.SignalTarget_PUBLISHER,
+		"answer", answer,
+		"answerId", answerId,
+	)
+	return answer, answerId, nil
 }
 
 // HandleAnswer handles a client answer response, with subscriber PC, server initiates the
@@ -1817,7 +1818,35 @@ func (h PrimaryTransportHandler) OnFullyEstablished() {
 	h.p.onPrimaryTransportFullyEstablished()
 }
 
-// ----------------------------------------------------------
+func (p *ParticipantImpl) setupSignalling() {
+	// SIGNALLING-V2-TODO: do proper types to decide which signalling components to instantiate
+	if !p.params.SynchronousLocalCandidatesMode {
+		p.signalling = signalling.NewSignalling(signalling.SignallingParams{
+			Logger: p.params.Logger,
+		})
+		p.signalhandler = signalling.NewSignalHandler(signalling.SignalHandlerParams{
+			Logger:      p.params.Logger,
+			Participant: p,
+		})
+		p.signaller = signalling.NewSignallerAsync(signalling.SignallerAsyncParams{
+			Logger:      p.params.Logger,
+			Participant: p,
+		})
+	} else {
+		p.signalling = signalling.NewSignallingv2(signalling.Signallingv2Params{
+			Logger: p.params.Logger,
+		})
+		p.signalhandler = signalling.NewSignalHandlerv2(signalling.SignalHandlerv2Params{
+			Logger:      p.params.Logger,
+			Participant: p,
+			Signalling:  p.signalling,
+		})
+		p.signaller = signalling.NewSignallerv2Async(signalling.Signallerv2AsyncParams{
+			Logger:      p.params.Logger,
+			Participant: p,
+		})
+	}
+}
 
 func (p *ParticipantImpl) setupTransportManager() error {
 	p.twcc = twcc.NewTransportWideCCResponder()
@@ -2929,7 +2958,14 @@ func (p *ParticipantImpl) mediaTrackReceived(track sfu.TrackRemote, rtpReceiver 
 				)
 			}
 
-			prometheus.RecordPublishTime(mt.Source(), mt.Kind(), pubTime, p.GetClientInfo().GetSdk(), p.Kind())
+			prometheus.RecordPublishTime(
+				p.params.Country,
+				mt.Source(),
+				mt.Kind(),
+				pubTime,
+				p.GetClientInfo().GetSdk(),
+				p.Kind(),
+			)
 			p.handleTrackPublished(mt, isMigrated)
 		}()
 	}
@@ -2997,6 +3033,7 @@ func (p *ParticipantImpl) addMediaTrack(signalCid string, sdpCid string, ti *liv
 		ParticipantID:         p.ID,
 		ParticipantIdentity:   p.params.Identity,
 		ParticipantVersion:    p.version.Load(),
+		ParticipantCountry:    p.params.Country,
 		BufferFactory:         p.params.Config.BufferFactory,
 		ReceiverConfig:        p.params.Config.Receiver,
 		AudioConfig:           p.params.AudioConfig,

@@ -213,17 +213,19 @@ type FakeLocalParticipant struct {
 	getAdaptiveStreamReturnsOnCall map[int]struct {
 		result1 bool
 	}
-	GetAnswerStub        func() (webrtc.SessionDescription, error)
+	GetAnswerStub        func() (webrtc.SessionDescription, uint32, error)
 	getAnswerMutex       sync.RWMutex
 	getAnswerArgsForCall []struct {
 	}
 	getAnswerReturns struct {
 		result1 webrtc.SessionDescription
-		result2 error
+		result2 uint32
+		result3 error
 	}
 	getAnswerReturnsOnCall map[int]struct {
 		result1 webrtc.SessionDescription
-		result2 error
+		result2 uint32
+		result3 error
 	}
 	GetAudioLevelStub        func() (float64, bool)
 	getAudioLevelMutex       sync.RWMutex
@@ -289,6 +291,16 @@ type FakeLocalParticipant struct {
 	}
 	getConnectionQualityReturnsOnCall map[int]struct {
 		result1 *livekit.ConnectionQualityInfo
+	}
+	GetCountryStub        func() string
+	getCountryMutex       sync.RWMutex
+	getCountryArgsForCall []struct {
+	}
+	getCountryReturns struct {
+		result1 string
+	}
+	getCountryReturnsOnCall map[int]struct {
+		result1 string
 	}
 	GetDisableSenderReportPassThroughStub        func() bool
 	getDisableSenderReportPassThroughMutex       sync.RWMutex
@@ -361,17 +373,19 @@ type FakeLocalParticipant struct {
 	getLoggerResolverReturnsOnCall map[int]struct {
 		result1 logger.DeferredFieldResolver
 	}
-	GetOfferStub        func() (webrtc.SessionDescription, error)
+	GetOfferStub        func() (webrtc.SessionDescription, uint32, error)
 	getOfferMutex       sync.RWMutex
 	getOfferArgsForCall []struct {
 	}
 	getOfferReturns struct {
 		result1 webrtc.SessionDescription
-		result2 error
+		result2 uint32
+		result3 error
 	}
 	getOfferReturnsOnCall map[int]struct {
 		result1 webrtc.SessionDescription
-		result2 error
+		result2 uint32
+		result3 error
 	}
 	GetPacerStub        func() pacer.Pacer
 	getPacerMutex       sync.RWMutex
@@ -2437,7 +2451,7 @@ func (fake *FakeLocalParticipant) GetAdaptiveStreamReturnsOnCall(i int, result1 
 	}{result1}
 }
 
-func (fake *FakeLocalParticipant) GetAnswer() (webrtc.SessionDescription, error) {
+func (fake *FakeLocalParticipant) GetAnswer() (webrtc.SessionDescription, uint32, error) {
 	fake.getAnswerMutex.Lock()
 	ret, specificReturn := fake.getAnswerReturnsOnCall[len(fake.getAnswerArgsForCall)]
 	fake.getAnswerArgsForCall = append(fake.getAnswerArgsForCall, struct {
@@ -2450,9 +2464,9 @@ func (fake *FakeLocalParticipant) GetAnswer() (webrtc.SessionDescription, error)
 		return stub()
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1, ret.result2, ret.result3
 	}
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
 func (fake *FakeLocalParticipant) GetAnswerCallCount() int {
@@ -2461,36 +2475,39 @@ func (fake *FakeLocalParticipant) GetAnswerCallCount() int {
 	return len(fake.getAnswerArgsForCall)
 }
 
-func (fake *FakeLocalParticipant) GetAnswerCalls(stub func() (webrtc.SessionDescription, error)) {
+func (fake *FakeLocalParticipant) GetAnswerCalls(stub func() (webrtc.SessionDescription, uint32, error)) {
 	fake.getAnswerMutex.Lock()
 	defer fake.getAnswerMutex.Unlock()
 	fake.GetAnswerStub = stub
 }
 
-func (fake *FakeLocalParticipant) GetAnswerReturns(result1 webrtc.SessionDescription, result2 error) {
+func (fake *FakeLocalParticipant) GetAnswerReturns(result1 webrtc.SessionDescription, result2 uint32, result3 error) {
 	fake.getAnswerMutex.Lock()
 	defer fake.getAnswerMutex.Unlock()
 	fake.GetAnswerStub = nil
 	fake.getAnswerReturns = struct {
 		result1 webrtc.SessionDescription
-		result2 error
-	}{result1, result2}
+		result2 uint32
+		result3 error
+	}{result1, result2, result3}
 }
 
-func (fake *FakeLocalParticipant) GetAnswerReturnsOnCall(i int, result1 webrtc.SessionDescription, result2 error) {
+func (fake *FakeLocalParticipant) GetAnswerReturnsOnCall(i int, result1 webrtc.SessionDescription, result2 uint32, result3 error) {
 	fake.getAnswerMutex.Lock()
 	defer fake.getAnswerMutex.Unlock()
 	fake.GetAnswerStub = nil
 	if fake.getAnswerReturnsOnCall == nil {
 		fake.getAnswerReturnsOnCall = make(map[int]struct {
 			result1 webrtc.SessionDescription
-			result2 error
+			result2 uint32
+			result3 error
 		})
 	}
 	fake.getAnswerReturnsOnCall[i] = struct {
 		result1 webrtc.SessionDescription
-		result2 error
-	}{result1, result2}
+		result2 uint32
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *FakeLocalParticipant) GetAudioLevel() (float64, bool) {
@@ -2822,6 +2839,59 @@ func (fake *FakeLocalParticipant) GetConnectionQualityReturnsOnCall(i int, resul
 	}
 	fake.getConnectionQualityReturnsOnCall[i] = struct {
 		result1 *livekit.ConnectionQualityInfo
+	}{result1}
+}
+
+func (fake *FakeLocalParticipant) GetCountry() string {
+	fake.getCountryMutex.Lock()
+	ret, specificReturn := fake.getCountryReturnsOnCall[len(fake.getCountryArgsForCall)]
+	fake.getCountryArgsForCall = append(fake.getCountryArgsForCall, struct {
+	}{})
+	stub := fake.GetCountryStub
+	fakeReturns := fake.getCountryReturns
+	fake.recordInvocation("GetCountry", []interface{}{})
+	fake.getCountryMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeLocalParticipant) GetCountryCallCount() int {
+	fake.getCountryMutex.RLock()
+	defer fake.getCountryMutex.RUnlock()
+	return len(fake.getCountryArgsForCall)
+}
+
+func (fake *FakeLocalParticipant) GetCountryCalls(stub func() string) {
+	fake.getCountryMutex.Lock()
+	defer fake.getCountryMutex.Unlock()
+	fake.GetCountryStub = stub
+}
+
+func (fake *FakeLocalParticipant) GetCountryReturns(result1 string) {
+	fake.getCountryMutex.Lock()
+	defer fake.getCountryMutex.Unlock()
+	fake.GetCountryStub = nil
+	fake.getCountryReturns = struct {
+		result1 string
+	}{result1}
+}
+
+func (fake *FakeLocalParticipant) GetCountryReturnsOnCall(i int, result1 string) {
+	fake.getCountryMutex.Lock()
+	defer fake.getCountryMutex.Unlock()
+	fake.GetCountryStub = nil
+	if fake.getCountryReturnsOnCall == nil {
+		fake.getCountryReturnsOnCall = make(map[int]struct {
+			result1 string
+		})
+	}
+	fake.getCountryReturnsOnCall[i] = struct {
+		result1 string
 	}{result1}
 }
 
@@ -3204,7 +3274,7 @@ func (fake *FakeLocalParticipant) GetLoggerResolverReturnsOnCall(i int, result1 
 	}{result1}
 }
 
-func (fake *FakeLocalParticipant) GetOffer() (webrtc.SessionDescription, error) {
+func (fake *FakeLocalParticipant) GetOffer() (webrtc.SessionDescription, uint32, error) {
 	fake.getOfferMutex.Lock()
 	ret, specificReturn := fake.getOfferReturnsOnCall[len(fake.getOfferArgsForCall)]
 	fake.getOfferArgsForCall = append(fake.getOfferArgsForCall, struct {
@@ -3217,9 +3287,9 @@ func (fake *FakeLocalParticipant) GetOffer() (webrtc.SessionDescription, error) 
 		return stub()
 	}
 	if specificReturn {
-		return ret.result1, ret.result2
+		return ret.result1, ret.result2, ret.result3
 	}
-	return fakeReturns.result1, fakeReturns.result2
+	return fakeReturns.result1, fakeReturns.result2, fakeReturns.result3
 }
 
 func (fake *FakeLocalParticipant) GetOfferCallCount() int {
@@ -3228,36 +3298,39 @@ func (fake *FakeLocalParticipant) GetOfferCallCount() int {
 	return len(fake.getOfferArgsForCall)
 }
 
-func (fake *FakeLocalParticipant) GetOfferCalls(stub func() (webrtc.SessionDescription, error)) {
+func (fake *FakeLocalParticipant) GetOfferCalls(stub func() (webrtc.SessionDescription, uint32, error)) {
 	fake.getOfferMutex.Lock()
 	defer fake.getOfferMutex.Unlock()
 	fake.GetOfferStub = stub
 }
 
-func (fake *FakeLocalParticipant) GetOfferReturns(result1 webrtc.SessionDescription, result2 error) {
+func (fake *FakeLocalParticipant) GetOfferReturns(result1 webrtc.SessionDescription, result2 uint32, result3 error) {
 	fake.getOfferMutex.Lock()
 	defer fake.getOfferMutex.Unlock()
 	fake.GetOfferStub = nil
 	fake.getOfferReturns = struct {
 		result1 webrtc.SessionDescription
-		result2 error
-	}{result1, result2}
+		result2 uint32
+		result3 error
+	}{result1, result2, result3}
 }
 
-func (fake *FakeLocalParticipant) GetOfferReturnsOnCall(i int, result1 webrtc.SessionDescription, result2 error) {
+func (fake *FakeLocalParticipant) GetOfferReturnsOnCall(i int, result1 webrtc.SessionDescription, result2 uint32, result3 error) {
 	fake.getOfferMutex.Lock()
 	defer fake.getOfferMutex.Unlock()
 	fake.GetOfferStub = nil
 	if fake.getOfferReturnsOnCall == nil {
 		fake.getOfferReturnsOnCall = make(map[int]struct {
 			result1 webrtc.SessionDescription
-			result2 error
+			result2 uint32
+			result3 error
 		})
 	}
 	fake.getOfferReturnsOnCall[i] = struct {
 		result1 webrtc.SessionDescription
-		result2 error
-	}{result1, result2}
+		result2 uint32
+		result3 error
+	}{result1, result2, result3}
 }
 
 func (fake *FakeLocalParticipant) GetPacer() pacer.Pacer {
@@ -9252,6 +9325,8 @@ func (fake *FakeLocalParticipant) Invocations() map[string][][]interface{} {
 	defer fake.getClientInfoMutex.RUnlock()
 	fake.getConnectionQualityMutex.RLock()
 	defer fake.getConnectionQualityMutex.RUnlock()
+	fake.getCountryMutex.RLock()
+	defer fake.getCountryMutex.RUnlock()
 	fake.getDisableSenderReportPassThroughMutex.RLock()
 	defer fake.getDisableSenderReportPassThroughMutex.RUnlock()
 	fake.getEnabledPublishCodecsMutex.RLock()

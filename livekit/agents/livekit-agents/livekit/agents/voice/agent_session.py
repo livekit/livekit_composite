@@ -39,7 +39,7 @@ from .agent import Agent
 from .agent_activity import AgentActivity
 from .audio_recognition import _TurnDetector
 from .events import (
-    AgentFalseInterruptedEvent,
+    AgentFalseInterruptionEvent,
     AgentState,
     AgentStateChangedEvent,
     CloseEvent,
@@ -306,7 +306,7 @@ class AgentSession(rtc.EventEmitter[EventTypes], Generic[Userdata_T]):
 
         # used to emit the agent false interruption event
         self._false_interruption_timer: asyncio.TimerHandle | None = None
-        self._false_interrupted_event: AgentFalseInterruptedEvent | None = None
+        self._false_interrupted_event: AgentFalseInterruptionEvent | None = None
 
         self._userdata: Userdata_T | None = userdata if is_given(userdata) else None
         self._closing_task: asyncio.Task[None] | None = None
@@ -524,6 +524,42 @@ class AgentSession(rtc.EventEmitter[EventTypes], Generic[Userdata_T]):
                         self._set_user_away_timer()
 
                 self._room_io.subscribed_fut.add_done_callback(on_room_io_subscribed)
+
+            # log used IO
+            def _collect_source(
+                inp: io.AudioInput | io.VideoInput | None,
+            ) -> list[io.AudioInput | io.VideoInput]:
+                return [] if inp is None else [inp] + _collect_source(inp.source)
+
+            def _collect_chain(
+                out: io.TextOutput | io.VideoOutput | io.AudioOutput | None,
+            ) -> list[io.VideoOutput | io.AudioOutput | io.TextOutput]:
+                return [] if out is None else [out] + _collect_chain(out.next_in_chain)
+
+            audio_input = _collect_source(self.input.audio)[::-1]
+            video_input = _collect_source(self.input.video)[::-1]
+
+            audio_output = _collect_chain(self.output.audio)
+            video_output = _collect_chain(self.output.video)
+            transcript_output = _collect_chain(self.output.transcription)
+
+            logger.debug(
+                "using audio io: %s -> `AgentSession` -> %s",
+                " -> ".join([f"`{out.label}`" for out in audio_input]) or "(none)",
+                " -> ".join([f"`{out.label}`" for out in audio_output]) or "(none)",
+            )
+
+            logger.debug(
+                "using transcript io: `AgentSession` -> %s",
+                " -> ".join([f"`{out.label}`" for out in transcript_output]) or "(none)",
+            )
+
+            if video_input or video_output:
+                logger.debug(
+                    "using video io: %s > `AgentSession` > %s",
+                    " -> ".join([f"`{out.label}`" for out in video_input]) or "(none)",
+                    " -> ".join([f"`{out.label}`" for out in video_output]) or "(none)",
+                )
 
     async def drain(self) -> None:
         if self._activity is None:
@@ -969,7 +1005,7 @@ class AgentSession(rtc.EventEmitter[EventTypes], Generic[Userdata_T]):
         self._chat_ctx.insert(message)
         self.emit("conversation_item_added", ConversationItemAddedEvent(item=message))
 
-    def _schedule_agent_false_interruption(self, ev: AgentFalseInterruptedEvent) -> None:
+    def _schedule_agent_false_interruption(self, ev: AgentFalseInterruptionEvent) -> None:
         if self._opts.agent_false_interruption_timeout is None:
             return
 

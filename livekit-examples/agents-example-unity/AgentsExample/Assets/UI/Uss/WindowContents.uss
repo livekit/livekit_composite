@@ -1,0 +1,26 @@
+.agent__container {
+    -unity-font-definition: url("/Assets/Fonts/sysfont.asset");
+    font-size: 16px;
+    height: 100%;
+}
+
+.agent__text {
+    font-size: 32px;
+    margin: 18px;
+    padding: 0;
+    white-space: normal;
+}
+
+.agent__scroll {
+    flex: 6;
+}
+
+.agent__visualizer {
+    flex: 1;
+    margin: 8px;
+    margin-top: 0;
+
+    /* Custom properties */
+    --bar-color: black;
+    --bar-gap: 0.4;
+}

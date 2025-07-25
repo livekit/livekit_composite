@@ -1,0 +1,120 @@
+:root {
+    --lk-bg2: rgb(29, 29, 29);
+    --lk-bg3: rgb(42, 42, 42);
+    --lk-bg4: rgb(55, 55, 55);
+    --lk-bg5: rgb(68, 68, 68);
+    --lk-fg: rgb(255, 255, 255);
+    --lk-fg2: rgb(244, 244, 244);
+    --lk-fg3: rgb(234, 234, 234);
+    --lk-fg4: rgb(224, 224, 224);
+    --lk-fg5: rgb(214, 214, 214);
+    --lk-border-color: rgba(255, 255, 255, 0.1);
+    --lk-accent-fg: rgb(255, 255, 255);
+    --lk-accent-bg: rgb(31, 140, 249);
+    --lk-accent2: rgb(50, 150, 249);
+    --lk-accent3: rgb(70, 160, 250);
+    --lk-accent4: rgb(90, 170, 250);
+    --lk-danger-fg: rgb(255, 255, 255);
+    --lk-danger: rgb(249, 31, 49);
+    --lk-danger2: rgb(249, 50, 67);
+    --lk-danger3: rgb(250, 70, 85);
+    --lk-danger4: rgb(250, 90, 103);
+    --lk-success-fg: rgb(255, 255, 255);
+    --lk-success: rgb(31, 249, 104);
+    --lk-success2: rgb(50, 249, 117);
+    --lk-success3: rgb(70, 250, 130);
+    --lk-success4: rgb(90, 250, 144);
+    --lk-control-fg: var(--lk-fg);
+    --lk-control-bg: var(--lk-bg2);
+    --lk-control-hover-bg: var(--lk-bg3);
+    --lk-control-active-bg: var(--lk-bg4);
+    --lk-control-active-hover-bg: var(--lk-bg5);
+    --lk-connection-excellent: rgb(6, 219, 77);
+    --lk-connection-good: rgb(249, 177, 31);
+    --lk-connection-poor: rgb(249, 31, 49);
+    --lk-font-size: 16px;
+    --lk-border-radius: 8px;
+}
+
+Text {
+    color: var(--lk-control-fg);
+}
+
+Button {
+    border-width: 0;
+    margin: 0;
+    padding: 10px 16px;
+    color: var(--lk-control-fg);
+    border-radius: var(--lk-border-radius);
+    background-color: var(--lk-control-bg);
+    transition-property: background-color, scale;
+    transition-duration: 300ms, 300ms;
+    transition-timing-function: ease, ease;
+}
+
+Button:hover {
+    background-color: var(--lk-control-hover-bg);
+}
+
+Button:active {
+    scale: 0.95;
+}
+
+.view {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 5%;
+    opacity: 0;
+    transition-property: opacity;
+    transition-duration: 1s;
+    transition-timing-function: ease-in-out;
+}
+
+.view--main-menu {
+    justify-content: space-between;
+    align-items: stretch;
+}
+
+.view--visible {
+    opacity: 1;
+}
+
+.view--main-menu__heading {
+    -unity-font-style: bold;
+    font-size: 28px;
+    color: var(--lk-fg);
+}
+
+.view--main-menu__talk {
+    align-self: center;
+    font-size: 16px;
+}
+
+.view--controls {
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.view--controls__button {
+    border-radius: 100%;
+    width: 50px;
+    height: 50px;
+    background-size: 50% 50%;
+}
+
+.view--controls__button--exit {
+    background-image: url("/Assets/Textures/Icons.png#Close");
+}
+
+.view--controls__button--mute {
+    margin-right: 12px;
+    background-image: url("/Assets/Textures/Icons.png#MicOn");
+}
+
+.view--controls__button--mute.muted {
+    background-image: url("/Assets/Textures/Icons.png#MicOff");
+}

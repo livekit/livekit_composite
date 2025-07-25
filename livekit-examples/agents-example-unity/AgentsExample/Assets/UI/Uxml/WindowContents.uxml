@@ -1,0 +1,9 @@
+<engine:UXML xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:engine="UnityEngine.UIElements" xmlns:editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <Style src="project://database/Assets/UI/Uss/WindowContents.uss?fileID=7433441132597879392&amp;guid=78a3d557f0d964291b28cb88992efeea&amp;type=3#WindowContents" />
+    <engine:VisualElement class="agent__container">
+        <engine:ScrollView horizontal-scroller-visibility="Hidden" vertical-scroller-visibility="Hidden" name="TranscriptionScroll" class="agent__scroll">
+            <engine:Label text="" name="TranscriptionField" class="agent-transcript__text agent__text" />
+        </engine:ScrollView>
+        <AudioVisualizer class="agent__visualizer" />
+    </engine:VisualElement>
+</engine:UXML>

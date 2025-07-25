@@ -34,6 +34,7 @@ import (
 	"github.com/livekit/protocol/observability"
 	"github.com/livekit/protocol/observability/roomobs"
 	"github.com/livekit/protocol/rpc"
+	"github.com/livekit/protocol/signalling"
 	"github.com/livekit/protocol/utils"
 	"github.com/livekit/protocol/utils/guid"
 	"github.com/livekit/protocol/utils/must"
@@ -569,11 +570,17 @@ func (r *RoomManager) StartSession(
 func (r *RoomManager) HandleConnect(
 	ctx context.Context,
 	grants *auth.ClaimGrants,
-	rscr *rpc.RelaySignalv2ConnectRequest,
-) (*rpc.RelaySignalv2ConnectResponse, error) {
+	createRoom *livekit.CreateRoomRequest,
+	wireMessage *livekit.Signalv2WireMessage, // contains livekit.ConnectRequest
+) (*livekit.Signalv2WireMessage, error) {
 	sessionStartTime := time.Now()
 
-	createRoom := rscr.CreateRoom
+	// find connect request in wire message
+	connectRequest := signalling.GetConnectRequest(wireMessage)
+	if connectRequest == nil {
+		return nil, ErrNoConnectRequest
+	}
+
 	room, err := r.getOrCreateRoom(ctx, createRoom)
 	if err != nil {
 		return nil, err
@@ -603,15 +610,16 @@ func (r *RoomManager) HandleConnect(
 		"nodeID", r.currentNode.NodeID(),
 		"numParticipants", room.GetParticipantCount(),
 		"grants", grants,
-		"connectRequest", logger.Proto(rscr),
+		"createRoom", logger.Proto(createRoom),
+		"wireMessage", logger.Proto(wireMessage),
 	)
 
-	clientInfo := rscr.ConnectRequest.ClientInfo
+	clientInfo := connectRequest.ClientInfo
 	clientConf := r.clientConfManager.GetConfiguration(clientInfo)
 
 	rtcConf := *r.rtcConfig
 	rtcConf.SetBufferFactory(room.GetBufferFactory())
-	if rscr.ConnectRequest.ConnectionSettings.DisableIceLite {
+	if connectRequest.ConnectionSettings.DisableIceLite {
 		rtcConf.SettingEngine.SetLite(false)
 	}
 
@@ -640,8 +648,8 @@ func (r *RoomManager) HandleConnect(
 	}
 
 	subscriberAllowPause := r.config.RTC.CongestionControl.AllowPause
-	if rscr.ConnectRequest.ConnectionSettings.SubscriberAllowPause != nil {
-		subscriberAllowPause = *rscr.ConnectRequest.ConnectionSettings.SubscriberAllowPause
+	if connectRequest.ConnectionSettings.SubscriberAllowPause != nil {
+		subscriberAllowPause = *connectRequest.ConnectionSettings.SubscriberAllowPause
 	}
 
 	participant, err := rtc.NewParticipant(rtc.ParticipantParams{
@@ -666,7 +674,7 @@ func (r *RoomManager) HandleConnect(
 		ClientConf:              clientConf,
 		ClientInfo:              rtc.ClientInfo{ClientInfo: clientInfo},
 		// SIGNALLING-V@-TODO Region:                  pi.Region,
-		AdaptiveStream:   rscr.ConnectRequest.ConnectionSettings.AdaptiveStream,
+		AdaptiveStream:   connectRequest.ConnectionSettings.AdaptiveStream,
 		AllowTCPFallback: allowFallback,
 		TURNSEnabled:     r.config.IsTURNSEnabled(),
 		ParticipantHelper: &roomManagerParticipantHelper{
@@ -696,18 +704,34 @@ func (r *RoomManager) HandleConnect(
 
 	// join room
 	opts := rtc.ParticipantOptions{
-		AutoSubscribe: rscr.ConnectRequest.ConnectionSettings.AutoSubscribe,
+		AutoSubscribe: connectRequest.ConnectionSettings.AutoSubscribe,
 	}
 	iceServers := r.iceServersForParticipant(
 		apiKey,
 		participant,
 		iceConfig.PreferenceSubscriber == livekit.ICECandidateType_ICT_TLS,
 	)
-	connectResponse, err := room.Joinv2(participant, &opts, iceServers)
-	if err != nil {
+	if err := room.Joinv2(participant, &opts, iceServers); err != nil {
 		pLogger.Errorw("could not join room", err)
 		_ = participant.Close(true, types.ParticipantCloseReasonJoinFailed, false)
 		return nil, err
+	}
+
+	// SIGNALLING-V2-TODO: process messages other than ConnecRequest in envelope.
+
+	var wireMessageResponse *livekit.Signalv2WireMessage
+	if pending := participant.SignalPendingMessages(); pending != nil {
+		var ok bool
+		if wireMessageResponse, ok = pending.(*livekit.Signalv2WireMessage); !ok {
+			pLogger.Errorw("could not join room", ErrInvalidMessageType)
+			_ = participant.Close(true, types.ParticipantCloseReasonJoinFailed, false)
+			return nil, ErrInvalidMessageType
+		}
+	}
+	if signalling.GetConnectResponse(wireMessageResponse) == nil {
+		pLogger.Errorw("could not join room", ErrNoConnectResponse)
+		_ = participant.Close(true, types.ParticipantCloseReasonJoinFailed, false)
+		return nil, ErrNoConnectResponse
 	}
 
 	var participantServerClosers utils.Closers
@@ -721,7 +745,6 @@ func (r *RoomManager) HandleConnect(
 		return nil, err
 	}
 
-	// SIGNALLING-V2-TODO: register HTTP
 	httpSignalParticipantServer := must.Get(rpc.NewTypedSignalv2ParticipantServer(signalv2ParticipantService{r}, r.bus))
 	participantServerClosers = append(
 		participantServerClosers,
@@ -775,9 +798,7 @@ func (r *RoomManager) HandleConnect(
 		r.iceConfigCache.Put(iceConfigCacheKey{room.Name(), participant.Identity()}, iceConfig)
 	})
 
-	return &rpc.RelaySignalv2ConnectResponse{
-		ConnectResponse: connectResponse,
-	}, nil
+	return wireMessageResponse, nil
 }
 
 // create the actual room object, to be used on RTC node

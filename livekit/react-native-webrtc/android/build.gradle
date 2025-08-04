@@ -18,6 +18,7 @@ android {
         targetSdkVersion safeExtGet('targetSdkVersion', 24)
         versionCode 1
         versionName "1.0"
+        consumerProguardFiles 'consumer-rules.pro'
     }
 
     // WebRTC requires Java 8 features
@@ -29,7 +30,7 @@ android {
 }
 
 dependencies {
-    implementation 'com.facebook.react:react-native:+'
-    api 'io.github.webrtc-sdk:android:125.6422.04'
+    implementation "com.facebook.react:react-android:+"
+    api 'io.github.webrtc-sdk:android:137.7151.01'
     implementation "androidx.core:core:1.7.0"
 }

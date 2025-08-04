@@ -21,12 +21,12 @@
     "typescript": "^5.6.3"
   },
   "dependencies": {
-    "@livekit/agents": "^0.7.0",
+    "@livekit/agents": "^0.7.9",
     "@livekit/agents-plugin-deepgram": "^0.5.3",
     "@livekit/agents-plugin-elevenlabs": "^0.6.1",
     "@livekit/agents-plugin-openai": "^0.9.0",
     "@livekit/agents-plugin-silero": "^0.5.3",
-    "@livekit/rtc-node": "^0.13.3",
+    "@livekit/rtc-node": "^0.13.18",
     "dotenv": "^16.4.5",
     "zod": "^3.23.8"
   }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 LiveKit
+ * Copyright 2025 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,7 +61,6 @@ class RoomViewController: UIViewController {
     }
 
     override func viewWillLayoutSubviews() {
-        print("viewWillLayoutSubviews...")
         super.viewWillLayoutSubviews()
         collectionView.frame = view.bounds
         collectionView.collectionViewLayout.invalidateLayout()
@@ -159,7 +158,6 @@ extension RoomViewController: RoomDelegate {
         print("connection state did update")
 
         Task { @MainActor in
-
             if case .disconnected = connectionState {
                 remoteParticipants = []
                 collectionView.reloadData()
@@ -176,7 +174,6 @@ extension RoomViewController: RoomDelegate {
         }
     }
 
-    @MainActor
     func room(_: Room, participantDidDisconnect _: RemoteParticipant) {
         print("participant did leave")
         Task { @MainActor in
@@ -228,13 +225,13 @@ extension RoomViewController: UICollectionViewDelegateFlowLayout {
 }
 
 extension RoomViewController: UICollectionViewDataSource {
-    public func collectionView(_: UICollectionView, numberOfItemsInSection _: Int) -> Int {
+    func collectionView(_: UICollectionView, numberOfItemsInSection _: Int) -> Int {
         // total number of participants to show (including local participant)
         print("numberOfItemsInSection...")
         return remoteParticipants.count
     }
 
-    public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: ParticipantCell.reuseIdentifier,
                                                       for: indexPath)
 

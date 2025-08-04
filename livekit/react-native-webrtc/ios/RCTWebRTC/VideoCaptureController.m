@@ -69,7 +69,7 @@
         BOOL shouldChange = session.multitaskingCameraAccessEnabled != enable;
         BOOL canChange = !enable || (enable && session.isMultitaskingCameraAccessSupported);
 
-        if(shouldChange && canChange) {
+        if (shouldChange && canChange) {
             [session beginConfiguration];
             [session setMultitaskingCameraAccessEnabled:enable];
             [session commitConfiguration];
@@ -152,16 +152,15 @@
             self.usingFrontCamera ? AVCaptureDevicePositionFront : AVCaptureDevicePositionBack;
         deviceId = [self findDeviceForPosition:position].uniqueID;
     }
-    
+
     if (self.deviceId != deviceId && ![self.deviceId isEqualToString:deviceId]) {
         self.deviceId = deviceId;
     }
 }
 
 - (void)applyConstraints:(NSDictionary *)constraints error:(NSError **)outError {
-
     BOOL hasChanged = NO;
-    
+
     int width = [constraints[@"width"] intValue];
     int height = [constraints[@"height"] intValue];
     int frameRate = [constraints[@"frameRate"] intValue];
@@ -170,12 +169,12 @@
         hasChanged = YES;
         self.width = width;
     }
-    
+
     if (self.height != height) {
         hasChanged = YES;
         self.height = height;
     }
-    
+
     if (self.frameRate != frameRate) {
         hasChanged = YES;
         self.frameRate = frameRate;
@@ -191,7 +190,7 @@
     AVCaptureDeviceFormat *format = self.selectedFormat;
     CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription);
     NSMutableDictionary *settings = [[NSMutableDictionary alloc] initWithDictionary:@{
-        @"groupId": @"",
+        @"groupId" : @"",
         @"height" : @(dimensions.height),
         @"width" : @(dimensions.width),
         @"frameRate" : @(30),

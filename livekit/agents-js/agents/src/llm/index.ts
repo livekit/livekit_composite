@@ -2,31 +2,60 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 export {
-  type CallableFunction,
-  type FunctionCallInfo,
-  type CallableFunctionResult,
-  type FunctionContext,
-  type inferParameters,
-  oaiParams,
-  oaiBuildFunctionInfo,
-} from './function_context.js';
+  handoff,
+  isFunctionTool,
+  tool,
+  ToolError,
+  type AgentHandoff,
+  type FunctionTool,
+  type ProviderDefinedTool,
+  type Tool,
+  type ToolChoice,
+  type ToolContext,
+  type ToolOptions,
+  type ToolType,
+} from './tool_context.js';
 
 export {
-  type ChatImage,
-  type ChatAudio,
-  type ChatContent,
-  ChatRole,
-  ChatMessage,
   ChatContext,
+  ChatMessage,
+  FunctionCall,
+  FunctionCallOutput,
+  type AudioContent,
+  type ChatContent,
+  type ChatItem,
+  type ChatRole,
+  type ImageContent,
 } from './chat_context.js';
 
 export {
-  type ChoiceDelta,
-  type CompletionUsage,
-  type Choice,
-  type ChatChunk,
-  type LLMCallbacks,
-  LLMEvent,
   LLM,
   LLMStream,
+  type ChatChunk,
+  type ChoiceDelta,
+  type CompletionUsage,
+  type LLMCallbacks,
 } from './llm.js';
+
+export {
+  RealtimeModel,
+  RealtimeSession,
+  type GenerationCreatedEvent,
+  type InputSpeechStartedEvent,
+  type InputSpeechStoppedEvent,
+  type InputTranscriptionCompleted,
+  type MessageGeneration,
+  type RealtimeCapabilities,
+} from './realtime.js';
+
+export { RemoteChatContext } from './remote_chat_context.js';
+
+export {
+  computeChatCtxDiff,
+  createToolOptions,
+  executeToolCall,
+  oaiBuildFunctionInfo,
+  oaiParams,
+  toJsonSchema,
+  type OpenAIFunctionParameters,
+} from './utils.js';

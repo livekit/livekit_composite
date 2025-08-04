@@ -18,6 +18,26 @@
     Tools: "Python >=3.9"
     License: "Apache-2.0"
 
+- name: "agent-starter-node"
+  display_name: "Node.js Voice Agent"
+  desc: "A starter project for Node.js, featuring a simple voice agent implementation"
+  url: "https://github.com/livekit-examples/agent-starter-node"
+  created_at: "2025-07-18T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  requires: ["voice-assistant-frontend", "agent-starter-android", "agent-starter-swift", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  is_enabled: true
+  is_sandbox: false
+  category: "agent-starter-backend"
+  tags:
+    - "node.js"
+    - "agents"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Python >=3.9"
+    License: "Apache-2.0"
+
 - name: "voice-assistant-frontend"
   display_name: "Next.js Voice Agent"
   desc: "A starter app for Next.js, featuring a flexible voice AI frontend"

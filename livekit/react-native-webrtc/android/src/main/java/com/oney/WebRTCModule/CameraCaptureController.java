@@ -3,6 +3,10 @@ package com.oney.WebRTCModule;
 import android.content.Context;
 import android.hardware.camera2.CameraManager;
 import android.util.Log;
+import android.util.Pair;
+
+import androidx.annotation.Nullable;
+import androidx.core.util.Consumer;
 
 import androidx.annotation.Nullable;
 import androidx.core.util.Consumer;
@@ -31,7 +35,6 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
 
     private boolean isFrontFacing;
 
-
     /**
      * Equivalent to the camera index as a String
      */
@@ -50,7 +53,6 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
      * {@link CameraEnumerator#createCapturer}.
      */
     private final CameraEventsHandler cameraEventsHandler = new CameraEventsHandler() {
-
         @Override
         public void onCameraOpening(String cameraName) {
             super.onCameraOpening(cameraName);
@@ -137,7 +139,6 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
             }
         }
 
-
         // Otherwise, use facingMode (defaulting to front/user facing).
         if (cameraName == null) {
             cameraIndex = -1;
@@ -153,8 +154,8 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
 
         if (cameraName == null) {
             if (onFinishedCallback != null) {
-                onFinishedCallback.accept(new Exception(
-                        "OverconstrainedError: could not find camera with deviceId: " + deviceId + " or facingMode: " + facingMode));
+                onFinishedCallback.accept(new Exception("OverconstrainedError: could not find camera with deviceId: "
+                        + deviceId + " or facingMode: " + facingMode));
             }
             return;
         }
@@ -174,9 +175,7 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
         CameraVideoCapturer capturer = (CameraVideoCapturer) videoCapturer;
         Runnable changeFormatIfNeededAndFinish = () -> {
             saveConstraints.run();
-            if (targetWidth != oldTargetWidth ||
-                    targetHeight != oldTargetHeight ||
-                    targetFps != oldTargetFps) {
+            if (targetWidth != oldTargetWidth || targetHeight != oldTargetHeight || targetFps != oldTargetFps) {
                 updateActualSize(finalCameraIndex, finalCameraName, videoCapturer);
                 capturer.changeCaptureFormat(targetWidth, targetHeight, targetFps);
             }
@@ -244,8 +243,8 @@ public class CameraCaptureController extends AbstractVideoCaptureController {
      *                   {@code null} and a {@code VideoCapturer} can be created for it, then
      *                   {@code facingMode} is ignored.
      * @param facingMode the facing of the requested video source such as
-     *                   {@code user} and {@code environment}. If {@code null}, "user" is
-     *                   presumed.
+     * {@code user} and {@code environment}. If {@code null}, "user" is
+     * presumed.
      * @return a pair containing the deviceId and {@code VideoCapturer} satisfying the {@code facingMode} or
      * {@code deviceId} constraint, or null.
      */

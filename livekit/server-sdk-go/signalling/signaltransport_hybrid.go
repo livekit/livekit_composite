@@ -16,8 +16,10 @@ package signalling
 
 import (
 	"context"
+	"sync"
 
 	"github.com/livekit/protocol/logger"
+	"github.com/pion/webrtc/v4"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -37,6 +39,9 @@ type signalTransportHybrid struct {
 	params SignalTransportHybridParams
 
 	syncTransport SignalTransport
+
+	asyncTransportLock sync.RWMutex
+	asyncTransport     SignalTransport
 }
 
 func NewSignalTransportHybrid(params SignalTransportHybridParams) SignalTransport {
@@ -55,6 +60,44 @@ func NewSignalTransportHybrid(params SignalTransportHybridParams) SignalTranspor
 func (s *signalTransportHybrid) SetLogger(l logger.Logger) {
 	s.params.Logger = l
 	s.syncTransport.SetLogger(l)
+	if asyncTransport := s.getAsyncTransport(); asyncTransport != nil {
+		asyncTransport.SetLogger(l)
+	}
+}
+
+func (s *signalTransportHybrid) SetAsyncTransport(asyncTransport SignalTransport) {
+	s.asyncTransportLock.Lock()
+	defer s.asyncTransportLock.Unlock()
+
+	s.asyncTransport = asyncTransport
+}
+
+func (s *signalTransportHybrid) getAsyncTransport() SignalTransport {
+	s.asyncTransportLock.RLock()
+	defer s.asyncTransportLock.RUnlock()
+
+	return s.asyncTransport
+}
+
+func (s *signalTransportHybrid) Start() {
+	s.syncTransport.Start()
+	if asyncTransport := s.getAsyncTransport(); asyncTransport != nil {
+		asyncTransport.Start()
+	}
+}
+
+func (s *signalTransportHybrid) IsStarted() bool {
+	if asyncTransport := s.getAsyncTransport(); asyncTransport != nil {
+		return asyncTransport.IsStarted()
+	}
+	return s.syncTransport.IsStarted()
+}
+
+func (s *signalTransportHybrid) Close() {
+	s.syncTransport.Close()
+	if asyncTransport := s.getAsyncTransport(); asyncTransport != nil {
+		asyncTransport.Close()
+	}
 }
 
 func (s *signalTransportHybrid) Join(
@@ -62,8 +105,9 @@ func (s *signalTransportHybrid) Join(
 	url string,
 	token string,
 	connectParams ConnectParams,
+	publisherOffer webrtc.SessionDescription,
 ) error {
-	return s.syncTransport.Join(ctx, url, token, connectParams)
+	return s.syncTransport.Join(ctx, url, token, connectParams, publisherOffer)
 }
 
 func (s *signalTransportHybrid) Reconnect(
@@ -84,5 +128,9 @@ func (s *signalTransportHybrid) UpdateParticipantToken(token string) {
 }
 
 func (s *signalTransportHybrid) SendMessage(msg proto.Message) error {
+	if asyncTransport := s.getAsyncTransport(); asyncTransport != nil {
+		return asyncTransport.SendMessage(msg)
+	}
+
 	return s.syncTransport.SendMessage(msg)
 }

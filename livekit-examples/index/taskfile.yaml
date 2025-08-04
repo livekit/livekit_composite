@@ -1,45 +1,82 @@
 version: "3"
 
 vars:
-  INDENT: 2
+  INDENT: 4
   REL_PATH: "{{ relPath .USER_WORKING_DIR .ROOT_DIR }}"
   VENV_DIR: "venv"
-  PYTHON_MAIN: "main.py"
+  PYTHON_MAIN: '{{ joinPath "./src" "agent.py" }}'
 
 tasks:
-  hello_world:
+  help_setup_python_uv:
     cmds:
-      - 'echo "Hello, World!"'
+      - echo 'To setup and run locally:'
+      - echo ''
+      - echo '{{ indent .INDENT "cd" }} {{ .REL_PATH }}'
+      - echo '{{ indent .INDENT "uv sync" }}'
+      - echo '{{ indent .INDENT "uv run" }} {{ .PYTHON_MAIN }} download-files'
+      - echo '{{ indent .INDENT "uv run" }} {{ .PYTHON_MAIN }} console'
+      - echo ''
 
-  post_create_node:
+  install_python_uv:
     cmds:
-      - echo -e 'To setup and run:\r\n'
-      - echo -e '{{ quote .REL_PATH | cat "cd" | indent .INDENT }}\r'
-      - echo -e '{{ indent .INDENT "pnpm install" }}\r'
-      - echo -e '{{ indent .INDENT "pnpm build" }}\r'
-      - echo -e '{{ indent .INDENT "pnpm start" }}\r\n'
+      - uv sync
+      - uv run {{ .PYTHON_MAIN }} download-files
 
-  install_node:
+  dev_python_uv:
     cmds:
-      - pnpm install
+      - uv run {{ .PYTHON_MAIN }} console
 
-  post_create_python:
+  help_setup_python_pip:
     cmds:
-      - echo -e 'To setup and run:\r\n'
-      - echo -e '{{ quote .REL_PATH | cat "cd" | indent .INDENT }}\r'
-      - echo -e '{{ indent .INDENT "python3 -m venv venv" }}\r'
+      - echo 'To setup and run locally:'
+      - echo ''
+      - echo '{{ indent .INDENT "cd" }} {{ .REL_PATH }}'
+      - echo '{{ indent .INDENT "python3 -m venv" }} {{ .VENV_DIR }}'
       - platforms: [darwin, linux]
-        cmd: echo -e '{{ indent .INDENT "source" }} {{ .VENV_DIR }}/bin/activate\r'
+        cmd: echo '{{ indent .INDENT "source" }} {{ .VENV_DIR }}/bin/activate'
       - platforms: [windows]
-        cmd: echo -e '{{ indent .INDENT "powershell" }} {{ .VENV_DIR }}/Scripts/Activate.ps1\r'
-      - echo -e '{{ indent .INDENT "pip install -r requirements.txt" }}\r'
-      - echo -e '{{ indent .INDENT "python3" }} {{ .PYTHON_MAIN }} dev\r\n'
+        cmd: echo '{{ indent .INDENT "powershell"}} {{ .VENV_DIR }}/scripts/activate.ps1'
+      - echo '{{ indent .INDENT "pip install -r requirements.txt" }}'
+      - echo '{{ indent .INDENT "python3" }} {{ .PYTHON_MAIN }} download-files'
+      - echo '{{ indent .INDENT "python3" }} {{ .PYTHON_MAIN }} console'
+      - echo ''
 
-  install_python:
+
+  install_python_pip:
     cmds:
-      - python3 -m venv venv
+      - python3 -m venv {{ .VENV_DIR }}
       - platforms: [darwin, linux]
         cmd: "source {{ .VENV_DIR }}/bin/activate"
       - platforms: [windows]
         cmd: "powershell {{ .VENV_DIR }}/scripts/activate.ps1"
       - "pip install -r requirements.txt"
+
+  dev_python_pip:
+    cmds:
+      - python3 {{ .PYTHON_MAIN }} console
+
+  help_setup_node_pnpm:
+    cmds:
+      - echo 'To setup and run locally:'
+      - echo ''
+      - echo '{{ indent .INDENT "cd" }} {{ .REL_PATH }}'
+      - echo '{{ indent .INDENT "pnpm install" }}'
+      - echo '{{ indent .INDENT "pnpm build" }}'
+      - echo '{{ indent .INDENT "pnpm dev" }}'
+      - echo ''
+
+  install_node_pnpm:
+    cmds:
+      - pnpm install
+
+  dev_node_pnpm:
+    cmds:
+      - pnpm dev
+
+  help_deploy_agent:
+    cmds:
+      - echo 'To deploy your agent to LiveKit cloud:'
+      - echo ''
+      - echo '{{ indent .INDENT "lk agent create" }}'
+      - echo ''
+

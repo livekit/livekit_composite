@@ -54,28 +54,37 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(ctx: JobContext):
-    # each log entry will include these fields
+    # Logging setup
+    # Add any other context you want in all log entries here
     ctx.log_context_fields = {
         "room": ctx.room.name,
     }
 
     # Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
     session = AgentSession(
-        # any combination of STT, LLM, TTS, or realtime API can be used
+        # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
+        # See all providers at https://docs.livekit.io/agents/integrations/llm/
         llm=openai.LLM(model="gpt-4o-mini"),
+        # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
+        # See all providers at https://docs.livekit.io/agents/integrations/stt/
         stt=deepgram.STT(model="nova-3", language="multi"),
+        # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
+        # See all providers at https://docs.livekit.io/agents/integrations/tts/
         tts=cartesia.TTS(voice="6f84f4b8-58a2-430c-8c79-688dad597532"),
-        # use LiveKit's turn detection model
+        # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
+        # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
     )
 
-    # To use the OpenAI Realtime API, use the following session setup instead:
+    # To use a realtime model instead of a voice pipeline, use the following session setup instead:
     # session = AgentSession(
+    #     # See all providers at https://docs.livekit.io/agents/integrations/realtime/
     #     llm=openai.realtime.RealtimeModel()
     # )
 
-    # log metrics as they are emitted, and total usage after session is over
+    # Metrics collection, to measure pipeline performance
+    # For more information, see https://docs.livekit.io/agents/build/metrics/
     usage_collector = metrics.UsageCollector()
 
     @session.on("metrics_collected")
@@ -87,9 +96,17 @@ async def entrypoint(ctx: JobContext):
         summary = usage_collector.get_summary()
         logger.info(f"Usage: {summary}")
 
-    # shutdown callbacks are triggered when the session is over
     ctx.add_shutdown_callback(log_usage)
 
+    # # Add a virtual avatar to the session, if desired
+    # # For other providers, see https://docs.livekit.io/agents/integrations/avatar/
+    # avatar = hedra.AvatarSession(
+    #   avatar_id="...",  # See https://docs.livekit.io/agents/integrations/avatar/hedra
+    # )
+    # # Start the avatar and wait for it to join
+    # await avatar.start(session, room=ctx.room)
+
+    # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
         agent=Assistant(),
         room=ctx.room,
@@ -99,10 +116,9 @@ async def entrypoint(ctx: JobContext):
             # - For telephony applications, use `BVCTelephony` for best results
             noise_cancellation=noise_cancellation.BVC(),
         ),
-        room_output_options=RoomOutputOptions(transcription_enabled=True),
     )
 
-    # join the room when agent is ready
+    # Join the room and connect to the user
     await ctx.connect()
 
 

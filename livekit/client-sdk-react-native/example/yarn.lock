@@ -2163,25 +2163,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@livekit/protocol@npm:1.39.1":
-  version: 1.39.1
-  resolution: "@livekit/protocol@npm:1.39.1"
+"@livekit/protocol@npm:1.39.3":
+  version: 1.39.3
+  resolution: "@livekit/protocol@npm:1.39.3"
   dependencies:
     "@bufbuild/protobuf": ^1.10.0
-  checksum: 2ca25994ac28c05c618272029f4af82197897545096402548b5ae75b2bd97de993d345b0cca902d2b0fb4f0110602c667844a7a540824d6a12b726f6f495b988
+  checksum: 72aa3b9e82203ccec039047518d841d65b10dcc11ab9d661f269eab8a8672aed7b2d072f4f09cc6fb94a2579542b0a9216d7f66476d34cd1675c13e1ebcc119f
   languageName: node
   linkType: hard
 
-"@livekit/react-native-webrtc@npm:^125.0.10":
-  version: 125.0.10
-  resolution: "@livekit/react-native-webrtc@npm:125.0.10"
+"@livekit/react-native-webrtc@npm:^125.0.12":
+  version: 125.0.12
+  resolution: "@livekit/react-native-webrtc@npm:125.0.12"
   dependencies:
     base64-js: 1.5.1
     debug: 4.3.4
     event-target-shim: 6.0.2
   peerDependencies:
     react-native: ">=0.60.0"
-  checksum: e40d4742e8b2819653b96979309b167c753f77b953b6ca29b0c48a5aa3169706e36981e95da78c90ec5c1c9b22f225c31fb1d5ed531295e6c996bbbdb64a9a72
+  checksum: 42219d63e39cf7a7b76489d4bb800de996cd345f239d0df888568ad134e7b3a1a75630a84750ac52577562e749942071ef147186f2d56cc4b65d4a9187e0415b
   languageName: node
   linkType: hard
 
@@ -6102,12 +6102,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"livekit-client@npm:^2.9.8":
-  version: 2.13.5
-  resolution: "livekit-client@npm:2.13.5"
+"livekit-client@npm:^2.15.4":
+  version: 2.15.4
+  resolution: "livekit-client@npm:2.15.4"
   dependencies:
     "@livekit/mutex": 1.1.1
-    "@livekit/protocol": 1.39.1
+    "@livekit/protocol": 1.39.3
     events: ^3.3.0
     loglevel: ^1.9.2
     sdp-transform: ^2.15.0
@@ -6117,7 +6117,7 @@ __metadata:
     webrtc-adapter: ^9.0.1
   peerDependencies:
     "@types/dom-mediacapture-record": ^1
-  checksum: aaff2e0729a7dd51b8641153043ab77825614c12af80662c4f1b98b713af7b7d2565210eed1a56c9e068c45afe4b03bb60a49de02117769868b516a9d1a3a1de
+  checksum: 7ae2e2f5326c8f7925b359277fd12ddeefb0bc5069b0563a9e184f2b860351bf91733c1fa5fd7b65467b643776368058d485af888e2771fd68c61c409b950e05
   languageName: node
   linkType: hard
 
@@ -6128,7 +6128,7 @@ __metadata:
     "@babel/core": ^7.20.0
     "@babel/preset-env": ^7.20.0
     "@babel/runtime": ^7.20.0
-    "@livekit/react-native-webrtc": ^125.0.10
+    "@livekit/react-native-webrtc": ^125.0.12
     "@react-native-async-storage/async-storage": ^1.17.10
     "@react-native/babel-preset": 0.74.84
     "@react-native/eslint-config": 0.74.84
@@ -6140,7 +6140,7 @@ __metadata:
     "@types/fastestsmallesttextencoderdecoder": ^1.0.0
     "@types/react": ^18.2.6
     babel-plugin-module-resolver: ^4.1.0
-    livekit-client: ^2.9.8
+    livekit-client: ^2.15.4
     patch-package: ^8.0.0
     react: 18.2.0
     react-native: 0.74.2

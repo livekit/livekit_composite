@@ -35,9 +35,8 @@ static NSString *const kEventFrameCryptionStateChanged = @"frameCryptionStateCha
 @property(nonatomic, strong) NSMutableDictionary<NSString *, RTCMediaStream *> *localStreams;
 @property(nonatomic, strong) NSMutableDictionary<NSString *, RTCMediaStreamTrack *> *localTracks;
 
-
-@property(nonatomic, strong) NSMutableDictionary<NSString*, RTCFrameCryptor*>* frameCryptors;
-@property(nonatomic, strong) NSMutableDictionary<NSString*, RTCFrameCryptorKeyProvider*>* keyProviders;
+@property(nonatomic, strong) NSMutableDictionary<NSString *, RTCFrameCryptor *> *frameCryptors;
+@property(nonatomic, strong) NSMutableDictionary<NSString *, RTCFrameCryptorKeyProvider *> *keyProviders;
 
 - (RTCMediaStream *)streamForReactTag:(NSString *)reactTag;
 

@@ -35,10 +35,8 @@ static char frameCryptorUUIDKey;
     }
 }
 
-RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(frameCryptorFactoryCreateFrameCryptor
-                  : (nonnull NSDictionary *)constraints) {
-    
-    __block NSString* frameCryptorId = nil;
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(frameCryptorFactoryCreateFrameCryptor : (nonnull NSDictionary *)constraints) {
+    __block NSString *frameCryptorId = nil;
     dispatch_sync(self.workerQueue, ^{
         NSNumber *peerConnectionId = constraints[@"peerConnectionId"];
         NSNumber *algorithm = constraints[@"algorithm"];
@@ -46,46 +44,46 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(frameCryptorFactoryCreateFrameCryptor
             NSLog(@"frameCryptorFactoryCreateFrameCryptorFailed: Invalid algorithm");
             return;
         }
-        
+
         NSString *participantId = constraints[@"participantId"];
         if (participantId == nil) {
             NSLog(@"frameCryptorFactoryCreateFrameCryptorFailed: Invalid participantId");
             return;
         }
-        
+
         NSString *keyProviderId = constraints[@"keyProviderId"];
         if (keyProviderId == nil) {
             NSLog(@"frameCryptorFactoryCreateFrameCryptorFailed: Invalid keyProviderId");
             return;
         }
-        
+
         RTCFrameCryptorKeyProvider *keyProvider = self.keyProviders[keyProviderId];
         if (keyProvider == nil) {
             NSLog(@"frameCryptorFactoryCreateFrameCryptorFailed: Invalid keyProvider");
             return;
         }
-        
+
         NSString *type = constraints[@"type"];
         NSString *rtpSenderId = constraints[@"rtpSenderId"];
         NSString *rtpReceiverId = constraints[@"rtpReceiverId"];
-        
+
         if ([type isEqualToString:@"sender"]) {
             RTCRtpSender *sender = [self getSenderByPeerConnectionId:peerConnectionId senderId:rtpSenderId];
-            
+
             if (sender == nil) {
                 NSLog(@"frameCryptorFactoryCreateFrameCryptorFailed: Error: sender not found!");
                 return;
             }
-            
+
             RTCFrameCryptor *frameCryptor = [[RTCFrameCryptor alloc] initWithFactory:self.peerConnectionFactory
                                                                            rtpSender:sender
                                                                        participantId:participantId
                                                                            algorithm:[self getAlgorithm:algorithm]
                                                                          keyProvider:keyProvider];
             frameCryptorId = [[NSUUID UUID] UUIDString];
-            
+
             frameCryptor.delegate = self;
-            
+
             self.frameCryptors[frameCryptorId] = frameCryptor;
             objc_setAssociatedObject(frameCryptor, &frameCryptorUUIDKey, frameCryptorId, OBJC_ASSOCIATION_COPY);
             return;
@@ -101,9 +99,9 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(frameCryptorFactoryCreateFrameCryptor
                                                                            algorithm:[self getAlgorithm:algorithm]
                                                                          keyProvider:keyProvider];
             frameCryptorId = [[NSUUID UUID] UUIDString];
-            
+
             frameCryptor.delegate = self;
-            
+
             self.frameCryptors[frameCryptorId] = frameCryptor;
             objc_setAssociatedObject(frameCryptor, &frameCryptorUUIDKey, frameCryptorId, OBJC_ASSOCIATION_COPY);
             return;
@@ -112,7 +110,7 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(frameCryptorFactoryCreateFrameCryptor
             return;
         }
     });
-    
+
     return frameCryptorId;
 }
 
@@ -218,9 +216,9 @@ RCT_EXPORT_METHOD(frameCryptorDispose
 }
 
 RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(frameCryptorFactoryCreateKeyProvider
-                  : (nonnull NSDictionary *)keyProviderOptions) {
+                                       : (nonnull NSDictionary *)keyProviderOptions) {
     __block NSString *keyProviderId = [[NSUUID UUID] UUIDString];
-    
+
     dispatch_sync(self.workerQueue, ^{
         NSNumber *sharedKey = keyProviderOptions[@"sharedKey"];
         if (sharedKey == nil) {
@@ -228,39 +226,44 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(frameCryptorFactoryCreateKeyProvider
             keyProviderId = nil;
             return;
         }
-        
+
         if (keyProviderOptions[@"ratchetSalt"] == nil) {
             NSLog(@"frameCryptorFactoryCreateKeyProviderFailed: Invalid ratchetSalt");
             keyProviderId = nil;
             return;
         }
-        NSData *ratchetSalt = [self bytesFromMap:keyProviderOptions key:@"ratchetSalt" isBase64Key:@"ratchetSaltIsBase64"];
-        
+        NSData *ratchetSalt = [self bytesFromMap:keyProviderOptions
+                                             key:@"ratchetSalt"
+                                     isBase64Key:@"ratchetSaltIsBase64"];
+
         NSNumber *ratchetWindowSize = keyProviderOptions[@"ratchetWindowSize"];
         if (ratchetWindowSize == nil) {
             NSLog(@"frameCryptorFactoryCreateKeyProviderFailed: Invalid ratchetWindowSize");
             keyProviderId = nil;
             return;
         }
-        
+
         NSNumber *failureTolerance = keyProviderOptions[@"failureTolerance"];
         NSData *uncryptedMagicBytes = nil;
-        
+
         if (keyProviderOptions[@"uncryptedMagicBytes"] != nil) {
             uncryptedMagicBytes = [[NSData alloc] initWithBase64EncodedString:keyProviderOptions[@"uncryptedMagicBytes"]
                                                                       options:0];
         }
-        
+
         NSNumber *keyRingSize = keyProviderOptions[@"keyRingSize"];
         NSNumber *discardFrameWhenCryptorNotReady = keyProviderOptions[@"discardFrameWhenCryptorNotReady"];
-        
-        RTCFrameCryptorKeyProvider *keyProvider = [[RTCFrameCryptorKeyProvider alloc] initWithRatchetSalt:ratchetSalt
-                                                                                        ratchetWindowSize:[ratchetWindowSize intValue]
-                                                                                            sharedKeyMode:[sharedKey boolValue]
-                                                                                      uncryptedMagicBytes:uncryptedMagicBytes
-                                                                                         failureTolerance:failureTolerance != nil ? [failureTolerance intValue] : -1
-                                                                                              keyRingSize:keyRingSize != nil ? [keyRingSize intValue] : 0
-                                                                          discardFrameWhenCryptorNotReady:discardFrameWhenCryptorNotReady != nil ? [discardFrameWhenCryptorNotReady boolValue] : NO];
+
+        RTCFrameCryptorKeyProvider *keyProvider = [[RTCFrameCryptorKeyProvider alloc]
+                        initWithRatchetSalt:ratchetSalt
+                          ratchetWindowSize:[ratchetWindowSize intValue]
+                              sharedKeyMode:[sharedKey boolValue]
+                        uncryptedMagicBytes:uncryptedMagicBytes
+                           failureTolerance:failureTolerance != nil ? [failureTolerance intValue] : -1
+                                keyRingSize:keyRingSize != nil ? [keyRingSize intValue] : 0
+            discardFrameWhenCryptorNotReady:discardFrameWhenCryptorNotReady != nil
+                                                ? [discardFrameWhenCryptorNotReady boolValue]
+                                                : NO];
         self.keyProviders[keyProviderId] = keyProvider;
         return;
     });
@@ -457,21 +460,21 @@ RCT_EXPORT_METHOD(keyProviderDispose
     resolve(@{@"result" : @"success"});
 }
 
-- (NSString *)stringFromState:(FrameCryptionState)state {
+- (NSString *)stringFromState:(RTCFrameCryptorState)state {
     switch (state) {
-        case FrameCryptionStateNew:
+        case RTCFrameCryptorStateNew:
             return @"new";
-        case FrameCryptionStateOk:
+        case RTCFrameCryptorStateOk:
             return @"ok";
-        case FrameCryptionStateEncryptionFailed:
+        case RTCFrameCryptorStateEncryptionFailed:
             return @"encryptionFailed";
-        case FrameCryptionStateDecryptionFailed:
+        case RTCFrameCryptorStateDecryptionFailed:
             return @"decryptionFailed";
-        case FrameCryptionStateMissingKey:
+        case RTCFrameCryptorStateMissingKey:
             return @"missingKey";
-        case FrameCryptionStateKeyRatcheted:
+        case RTCFrameCryptorStateKeyRatcheted:
             return @"keyRatcheted";
-        case FrameCryptionStateInternalError:
+        case RTCFrameCryptorStateInternalError:
             return @"internalError";
         default:
             return @"unknown";
@@ -482,23 +485,21 @@ RCT_EXPORT_METHOD(keyProviderDispose
 
 - (void)frameCryptor:(RTC_OBJC_TYPE(RTCFrameCryptor) *)frameCryptor
     didStateChangeWithParticipantId:(NSString *)participantId
-                          withState:(FrameCryptionState)stateChanged {
-    
+                          withState:(RTCFrameCryptorState)stateChanged {
     id frameCryptorId = objc_getAssociatedObject(frameCryptor, &frameCryptorUUIDKey);
-    
+
     if (![frameCryptorId isKindOfClass:[NSString class]]) {
         NSLog(@"Received frameCryptordidStateChangeWithParticipantId event for frame cryptor without UUID!");
         return;
     }
-    
+
     NSDictionary *event = @{
         @"event" : kEventFrameCryptionStateChanged,
         @"participantId" : participantId,
-        @"frameCryptorId" : (NSString *) frameCryptorId,
+        @"frameCryptorId" : (NSString *)frameCryptorId,
         @"state" : [self stringFromState:stateChanged]
-      };
+    };
     [self sendEventWithName:kEventFrameCryptionStateChanged body:event];
-    
 }
 
 @end

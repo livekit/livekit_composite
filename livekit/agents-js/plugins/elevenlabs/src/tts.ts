@@ -1,9 +1,15 @@
 // SPDX-FileCopyrightText: 2024 LiveKit, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
-import { AsyncIterableQueue, AudioByteStream, log, tokenize, tts } from '@livekit/agents';
+import {
+  AsyncIterableQueue,
+  AudioByteStream,
+  log,
+  shortuuid,
+  tokenize,
+  tts,
+} from '@livekit/agents';
 import type { AudioFrame } from '@livekit/rtc-node';
-import { randomUUID } from 'node:crypto';
 import { URL } from 'node:url';
 import { type RawData, WebSocket } from 'ws';
 import type { TTSEncoding, TTSModels } from './models.js';
@@ -149,6 +155,9 @@ export class SynthesizeStream extends tts.SynthesizeStream {
     const tokenizeInput = async () => {
       let stream: tokenize.WordStream | null = null;
       for await (const text of this.input) {
+        if (this.abortController.signal.aborted) {
+          break;
+        }
         if (text === SynthesizeStream.FLUSH_SENTINEL) {
           stream?.endInput();
           stream = null;
@@ -165,13 +174,15 @@ export class SynthesizeStream extends tts.SynthesizeStream {
 
     const runStream = async () => {
       for await (const stream of segments) {
+        if (this.abortController.signal.aborted) {
+          break;
+        }
         await this.#runWS(stream);
         this.queue.put(SynthesizeStream.END_OF_STREAM);
       }
     };
 
     await Promise.all([tokenizeInput(), runStream()]);
-    this.close();
   }
 
   async #runWS(stream: tokenize.WordStream, maxRetry = 3) {
@@ -204,8 +215,8 @@ export class SynthesizeStream extends tts.SynthesizeStream {
       }
     }
 
-    const requestId = randomUUID();
-    const segmentId = randomUUID();
+    const requestId = shortuuid();
+    const segmentId = shortuuid();
 
     ws.send(
       JSON.stringify({
@@ -220,6 +231,9 @@ export class SynthesizeStream extends tts.SynthesizeStream {
     const sendTask = async () => {
       let xmlContent: string[] = [];
       for await (const data of stream) {
+        if (this.abortController.signal.aborted) {
+          break;
+        }
         let text = data.token;
 
         if ((this.#opts.enableSsmlParsing && text.startsWith('<phoneme')) || xmlContent.length) {
@@ -253,7 +267,7 @@ export class SynthesizeStream extends tts.SynthesizeStream {
 
     const listenTask = async () => {
       const bstream = new AudioByteStream(sampleRateFromFormat(this.#opts.encoding), 1);
-      while (!this.closed) {
+      while (!this.closed && !this.abortController.signal.aborted) {
         try {
           await new Promise<RawData>((resolve, reject) => {
             ws.removeAllListeners();
@@ -262,7 +276,7 @@ export class SynthesizeStream extends tts.SynthesizeStream {
               if (!eosSent) {
                 this.#logger.error(`WebSocket closed with code ${code}: ${reason}`);
               }
-              reject();
+              reject(new Error('WebSocket closed'));
             });
           }).then((msg) => {
             const json = JSON.parse(msg.toString());
@@ -280,7 +294,7 @@ export class SynthesizeStream extends tts.SynthesizeStream {
               sendLastFrame(segmentId, true);
               this.queue.put(SynthesizeStream.END_OF_STREAM);
 
-              if (segmentId === requestId) {
+              if (segmentId === requestId || this.abortController.signal.aborted) {
                 ws.close();
                 return;
               }

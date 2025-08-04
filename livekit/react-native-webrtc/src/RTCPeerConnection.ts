@@ -18,6 +18,7 @@ import RTCRtpTransceiver from './RTCRtpTransceiver';
 import RTCSessionDescription, { RTCSessionDescriptionInit } from './RTCSessionDescription';
 import RTCTrackEvent from './RTCTrackEvent';
 import * as RTCUtil from './RTCUtil';
+import { RTCOfferOptions } from './RTCUtil';
 
 const log = new Logger('pc');
 const { WebRTCModule } = NativeModules;
@@ -132,7 +133,7 @@ export default class RTCPeerConnection extends EventTarget<RTCPeerConnectionEven
         log.debug(`${this._pcId} ctor`);
     }
 
-    async createOffer(options) {
+    async createOffer(options?:RTCOfferOptions) {
         log.debug(`${this._pcId} createOffer`);
 
         const {
@@ -535,13 +536,11 @@ export default class RTCPeerConnection extends EventTarget<RTCPeerConnectionEven
     }
 
     getSenders(): RTCRtpSender[] {
-        // @ts-ignore
-        return this._transceivers.map(e => !e.transceiver.stopped && e.transceiver.sender).filter(Boolean);
+        return this._transceivers.filter(e => !e.transceiver.stopped).map(e => e.transceiver.sender);
     }
 
     getReceivers(): RTCRtpReceiver[] {
-        // @ts-ignore
-        return this._transceivers.map(e => !e.transceiver.stopped && e.transceiver.receiver).filter(Boolean);
+        return this._transceivers.filter(e => !e.transceiver.stopped).map(e => e.transceiver.receiver);
     }
 
     close(): void {

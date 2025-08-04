@@ -91,11 +91,10 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
         String fieldTrials = options.fieldTrials;
 
         PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(reactContext)
-
-                .setFieldTrials(fieldTrials)
-                                                 .setNativeLibraryLoader(new LibraryLoader())
-                                                 .setInjectableLogger(injectableLogger, loggingSeverity)
-                                                 .createInitializationOptions());
+                        .setFieldTrials(fieldTrials)
+                        .setNativeLibraryLoader(new LibraryLoader())
+                        .setInjectableLogger(injectableLogger, loggingSeverity)
+                        .createInitializationOptions());
 
         if (injectableLogger == null && loggingSeverity != null) {
             Logging.enableLogToDebugOutput(loggingSeverity);
@@ -117,7 +116,7 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
         if (adm == null) {
             adm = JavaAudioDeviceModule.builder(reactContext).createAudioDeviceModule();
         }
-        
+
         AudioProcessingFactory audioProcessingFactory = null;
         try {
             if (options.audioProcessingFactoryFactory != null) {
@@ -131,9 +130,9 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
         Log.d(TAG, "Using video decoder factory: " + decoderFactory.getClass().getCanonicalName());
 
         PeerConnectionFactory.Builder pcFactoryBuilder = PeerConnectionFactory.builder()
-                .setAudioDeviceModule(adm)
-                .setVideoEncoderFactory(encoderFactory)
-                .setVideoDecoderFactory(decoderFactory);
+                                                                 .setAudioDeviceModule(adm)
+                                                                 .setVideoEncoderFactory(encoderFactory)
+                                                                 .setVideoDecoderFactory(decoderFactory);
 
         if (audioProcessingFactory != null) {
             pcFactoryBuilder.setAudioProcessingFactory(audioProcessingFactory);
@@ -748,7 +747,7 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod(isBlockingSynchronousMethod = true)
-    public void transceiverSetCodecPreferences(int id, String senderId, ReadableArray codecPreferences) {
+    public boolean transceiverSetCodecPreferences(int id, String senderId, ReadableArray codecPreferences) {
         ThreadUtils.runOnExecutor(() -> {
             WritableMap identifier = Arguments.createMap();
             WritableMap params = Arguments.createMap();
@@ -807,6 +806,7 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
                 Log.d(TAG, "transceiverSetCodecPreferences(): " + e.getMessage());
             }
         });
+        return true;
     }
 
     @ReactMethod
@@ -982,8 +982,8 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
     }
 
     @ReactMethod
-    public void mediaStreamTrackSetVideoEffect(String id, String name) {
-        ThreadUtils.runOnExecutor(() -> { getUserMediaImpl.setVideoEffect(id, name); });
+    public void mediaStreamTrackSetVideoEffects(String id, ReadableArray names) {
+        ThreadUtils.runOnExecutor(() -> { getUserMediaImpl.setVideoEffects(id, names); });
     }
 
     @ReactMethod
@@ -1319,11 +1319,14 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
                 return;
             }
 
-            IceCandidate candidate = new IceCandidate(
-                candidateMap.hasKey("sdpMid") && !candidateMap.isNull("sdpMid") ? candidateMap.getString("sdpMid")  : "",
-                candidateMap.hasKey("sdpMLineIndex") && !candidateMap.isNull("sdpMLineIndex")  ? candidateMap.getInt("sdpMLineIndex") : 0,
-                candidateMap.getString("candidate"));
-            
+            IceCandidate candidate = new IceCandidate(candidateMap.hasKey("sdpMid") && !candidateMap.isNull("sdpMid")
+                            ? candidateMap.getString("sdpMid")
+                            : "",
+                    candidateMap.hasKey("sdpMLineIndex") && !candidateMap.isNull("sdpMLineIndex")
+                            ? candidateMap.getInt("sdpMLineIndex")
+                            : 0,
+                    candidateMap.getString("candidate"));
+
             peerConnection.addIceCandidate(candidate, new AddIceObserver() {
                 @Override
                 public void onAddSuccess() {

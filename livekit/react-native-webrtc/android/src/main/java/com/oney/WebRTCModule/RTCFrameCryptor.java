@@ -25,7 +25,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class RTCFrameCryptor {
-
     private static final String TAG = "RTCFrameCryptor";
     private final Map<String, FrameCryptor> frameCryptos = new HashMap<>();
     private final Map<String, FrameCryptorStateObserver> frameCryptoObservers = new HashMap<>();
@@ -78,14 +77,14 @@ public class RTCFrameCryptor {
             sendEvent("frameCryptionStateChanged", event);
         }
     }
-//
+    //
 
     private FrameCryptorAlgorithm frameCryptorAlgorithmFromInt(int algorithm) {
         switch (algorithm) {
             case 0:
                 return FrameCryptorAlgorithm.AES_GCM;
-            case 1:
-                return FrameCryptorAlgorithm.AES_CBC;
+            // case 1:
+            //     return FrameCryptorAlgorithm.AES_CBC;
             default:
                 return FrameCryptorAlgorithm.AES_GCM;
         }
@@ -110,7 +109,7 @@ public class RTCFrameCryptor {
         String rtpSenderId = params.getString("rtpSenderId");
         String rtpReceiverId = params.getString("rtpReceiverId");
 
-        if (type == null || !(type.equals("sender") || type.equals("receiver"))){
+        if (type == null || !(type.equals("sender") || type.equals("receiver"))) {
             Log.w(TAG, "frameCryptorFactoryCreateFrameCryptorFailed: type must be sender or receiver");
             return null;
         } else if (type.equals("sender")) {
@@ -235,9 +234,15 @@ public class RTCFrameCryptor {
             uncryptedMagicBytes = Base64.decode(keyProviderOptions.getString("uncryptedMagicBytes"), Base64.DEFAULT);
         }
         int keyRingSize = (int) keyProviderOptions.getInt("keyRingSize");
-        boolean discardFrameWhenCryptorNotReady = (boolean) keyProviderOptions.getBoolean("discardFrameWhenCryptorNotReady");
-        FrameCryptorKeyProvider keyProvider = FrameCryptorFactory.createFrameCryptorKeyProvider(sharedKey, ratchetSalt, ratchetWindowSize,
-                uncryptedMagicBytes, failureTolerance, keyRingSize, discardFrameWhenCryptorNotReady);
+        boolean discardFrameWhenCryptorNotReady =
+                (boolean) keyProviderOptions.getBoolean("discardFrameWhenCryptorNotReady");
+        FrameCryptorKeyProvider keyProvider = FrameCryptorFactory.createFrameCryptorKeyProvider(sharedKey,
+                ratchetSalt,
+                ratchetWindowSize,
+                uncryptedMagicBytes,
+                failureTolerance,
+                keyRingSize,
+                discardFrameWhenCryptorNotReady);
         keyProviders.put(keyProviderId, keyProvider);
         return keyProviderId;
     }

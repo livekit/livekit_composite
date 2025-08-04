@@ -1,7 +1,6 @@
 {
   "$schema": "https://turborepo.org/schema.json",
   "globalEnv": [
-    "ASSEMBLY_AI_KEY",
     "AZURE_API_KEY",
     "AZURE_OPENAI_API_KEY",
     "AZURE_OPENAI_DEPLOYMENT",
@@ -21,12 +20,14 @@
     "LOG_LEVEL",
     "OCTOAI_TOKEN",
     "OPENAI_API_KEY",
+    "OPENAI_API_VERSION",
     "PERPLEXITY_API_KEY",
     "TELNYX_API_KEY",
     "TOGETHER_API_KEY",
     "XAI_API_KEY",
     "NEUPHONIC_API_KEY",
-    "RESEMBLE_API_KEY"
+    "RESEMBLE_API_KEY",
+    "LIVEKIT_REMOTE_EOT_URL"
   ],
   "pipeline": {
     "build": {

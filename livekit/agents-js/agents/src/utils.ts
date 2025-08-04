@@ -1,22 +1,29 @@
 // SPDX-FileCopyrightText: 2024 LiveKit, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
-import type {
-  LocalParticipant,
-  RemoteParticipant,
-  Room,
-  TrackPublication,
-} from '@livekit/rtc-node';
-import { AudioFrame, TrackSource } from '@livekit/rtc-node';
+import { AudioFrame, AudioResampler } from '@livekit/rtc-node';
+import { delay } from '@std/async';
 import { EventEmitter, once } from 'node:events';
+import type { ReadableStream } from 'node:stream/web';
+import { TransformStream, type TransformStreamDefaultController } from 'node:stream/web';
+import { v4 as uuidv4 } from 'uuid';
+import { log } from './log.js';
 
 /** Union of a single and a list of {@link AudioFrame}s */
 export type AudioBuffer = AudioFrame[] | AudioFrame;
 
+export const noop = () => {};
+
+export const isPending = async (promise: Promise<unknown>): Promise<boolean> => {
+  const sentinel = Symbol('sentinel');
+  const result = await Promise.race([promise, Promise.resolve(sentinel)]);
+  return result === sentinel;
+};
+
 /**
  * Merge one or more {@link AudioFrame}s into a single one.
  *
- * @param buffer Either an {@link AudioFrame} or a list thereof
+ * @param buffer - Either an {@link AudioFrame} or a list thereof
  * @throws
  * {@link https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypeError
  * | TypeError} if sample rate or channel count are mismatched
@@ -50,33 +57,6 @@ export const mergeFrames = (buffer: AudioBuffer): AudioFrame => {
   }
 
   return buffer;
-};
-
-export const findMicroTrackId = (room: Room, identity: string): string => {
-  let p: RemoteParticipant | LocalParticipant | undefined = room.remoteParticipants.get(identity);
-
-  if (identity === room.localParticipant?.identity) {
-    p = room.localParticipant;
-  }
-
-  if (!p) {
-    throw new Error(`participant ${identity} not found`);
-  }
-
-  // find first micro track
-  let trackId: string | undefined;
-  p.trackPublications.forEach((track: TrackPublication) => {
-    if (track.source === TrackSource.SOURCE_MICROPHONE) {
-      trackId = track.sid;
-      return;
-    }
-  });
-
-  if (!trackId) {
-    throw new Error(`participant ${identity} does not have a microphone track`);
-  }
-
-  return trackId;
 };
 
 /** @internal */
@@ -117,14 +97,14 @@ export class Queue<T> {
 }
 
 /** @internal */
-export class Future {
-  #await: Promise<void>;
-  #resolvePromise!: () => void;
+export class Future<T = void> {
+  #await: Promise<T>;
+  #resolvePromise!: (value: T) => void;
   #rejectPromise!: (error: Error) => void;
   #done: boolean = false;
 
   constructor() {
-    this.#await = new Promise<void>((resolve, reject) => {
+    this.#await = new Promise<T>((resolve, reject) => {
       this.#resolvePromise = resolve;
       this.#rejectPromise = reject;
     });
@@ -138,14 +118,56 @@ export class Future {
     return this.#done;
   }
 
-  resolve() {
+  resolve(value: T) {
     this.#done = true;
-    this.#resolvePromise();
+    this.#resolvePromise(value);
   }
 
   reject(error: Error) {
     this.#done = true;
     this.#rejectPromise(error);
+  }
+}
+
+/** @internal */
+export class Event {
+  #isSet = false;
+  #waiters: Array<() => void> = [];
+
+  async wait() {
+    if (this.#isSet) return true;
+
+    let resolve: () => void = noop;
+    const waiter = new Promise<void>((r) => {
+      resolve = r;
+      this.#waiters.push(resolve);
+    });
+
+    try {
+      await waiter;
+      return true;
+    } finally {
+      const index = this.#waiters.indexOf(resolve);
+      if (index !== -1) {
+        this.#waiters.splice(index, 1);
+      }
+    }
+  }
+
+  get isSet(): boolean {
+    return this.#isSet;
+  }
+
+  set(): void {
+    if (this.#isSet) return;
+
+    this.#isSet = true;
+    this.#waiters.forEach((resolve) => resolve());
+    this.#waiters = [];
+  }
+
+  clear(): void {
+    this.#isSet = false;
   }
 }
 
@@ -159,7 +181,7 @@ export class CancellablePromise<T> {
   constructor(
     executor: (
       resolve: (value: T | PromiseLike<T>) => void,
-      reject: (reason?: any) => void,
+      reject: (reason?: unknown) => void,
       onCancel: (cancelFn: () => void) => void,
     ) => void,
   ) {
@@ -194,13 +216,13 @@ export class CancellablePromise<T> {
 
   then<TResult1 = T, TResult2 = never>(
     onfulfilled?: ((value: T) => TResult1 | Promise<TResult1>) | null,
-    onrejected?: ((reason: any) => TResult2 | Promise<TResult2>) | null,
+    onrejected?: ((reason: unknown) => TResult2 | Promise<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     return this.#promise.then(onfulfilled, onrejected);
   }
 
   catch<TResult = never>(
-    onrejected?: ((reason: any) => TResult | Promise<TResult>) | null,
+    onrejected?: ((reason: unknown) => TResult | Promise<TResult>) | null,
   ): Promise<T | TResult> {
     return this.#promise.catch(onrejected);
   }
@@ -338,4 +360,278 @@ export class AudioEnergyFilter {
 
     return false;
   }
+}
+
+export const TASK_TIMEOUT_ERROR = new Error('Task cancellation timed out');
+
+export enum TaskResult {
+  Timeout = 'timeout',
+  Completed = 'completed',
+  Aborted = 'aborted',
+}
+
+/** @internal */
+/**
+ * A task that can be cancelled.
+ *
+ * We recommend using the `Task.from` method to create a task. When creating subtasks, pass the same controller to all subtasks.
+ *
+ * @example
+ * ```ts
+ * const parent = Task.from((controller) => {
+ *   const child1 = Task.from(() => { ... }, controller);
+ *   const child2 = Task.from(() => { ... }, controller);
+ * });
+ * parent.cancel();
+ * ```
+ *
+ * This will cancel all subtasks when the parent is cancelled.
+ *
+ * @param T - The type of the task result
+ */
+export class Task<T> {
+  private resultFuture: Future<T>;
+
+  #logger = log();
+
+  constructor(
+    private readonly fn: (controller: AbortController) => Promise<T>,
+    private readonly controller: AbortController,
+    readonly name?: string,
+  ) {
+    this.resultFuture = new Future();
+    this.runTask();
+  }
+
+  /**
+   * Creates a new task from a function.
+   *
+   * @param fn - The function to run
+   * @param controller - The abort controller to use
+   * @returns A new task
+   */
+  static from<T>(
+    fn: (controller: AbortController) => Promise<T>,
+    controller?: AbortController,
+    name?: string,
+  ) {
+    const abortController = controller ?? new AbortController();
+    return new Task(fn, abortController, name);
+  }
+
+  private async runTask() {
+    const run = async () => {
+      if (this.name) {
+        this.#logger.debug(`Task.runTask: task ${this.name} started`);
+      }
+      return await this.fn(this.controller);
+    };
+
+    return run()
+      .then((value) => {
+        this.resultFuture.resolve(value);
+        return value;
+      })
+      .catch((error) => {
+        this.resultFuture.reject(error);
+      })
+      .finally(() => {
+        if (this.name) {
+          this.#logger.debug(`Task.runTask: task ${this.name} done`);
+        }
+      });
+  }
+
+  /**
+   * Cancels the task.
+   */
+  cancel() {
+    this.controller.abort();
+  }
+
+  /**
+   * Cancels the task and waits for it to complete.
+   *
+   * @param timeout - The timeout in milliseconds
+   * @returns The result status of the task (timeout, completed, aborted)
+   */
+  async cancelAndWait(timeout?: number) {
+    this.cancel();
+
+    try {
+      // Race between task completion and timeout
+      const promises = [
+        this.result
+          .then(() => TaskResult.Completed)
+          .catch((error) => {
+            if (error.name === 'AbortError') {
+              return TaskResult.Aborted;
+            }
+            throw error;
+          }),
+      ];
+
+      if (timeout) {
+        promises.push(delay(timeout).then(() => TaskResult.Timeout));
+      }
+
+      const result = await Promise.race(promises);
+
+      // Check what happened
+      if (result === TaskResult.Timeout) {
+        throw TASK_TIMEOUT_ERROR;
+      }
+
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  /**
+   * The result of the task.
+   */
+  get result(): Promise<T> {
+    return this.resultFuture.await;
+  }
+
+  /**
+   * Whether the task has completed.
+   */
+  get done(): boolean {
+    return this.resultFuture.done;
+  }
+}
+
+export async function waitFor(tasks: Task<void>[]): Promise<void> {
+  await Promise.allSettled(tasks.map((task) => task.result));
+}
+
+export async function cancelAndWait(tasks: Task<void>[], timeout?: number): Promise<void> {
+  await Promise.allSettled(tasks.map((task) => task.cancelAndWait(timeout)));
+}
+
+export function withResolvers<T = unknown>() {
+  let resolve!: (value: T | PromiseLike<T>) => void;
+  let reject!: (reason?: unknown) => void;
+
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+
+  return { promise, resolve, reject };
+}
+
+/**
+ * Generates a short UUID with a prefix. Mirrors the python agents implementation.
+ *
+ * @param prefix - The prefix to add to the UUID.
+ * @returns A short UUID with the prefix.
+ */
+export function shortuuid(prefix: string = ''): string {
+  return `${prefix}${uuidv4().slice(0, 12)}`;
+}
+
+const READONLY_SYMBOL = Symbol('Readonly');
+
+const MUTATION_METHODS = [
+  'push',
+  'pop',
+  'shift',
+  'unshift',
+  'splice',
+  'sort',
+  'reverse',
+  'fill',
+  'copyWithin',
+] as const;
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy
+/**
+ * Creates a read-only proxy for an array.
+ * @param array - The array to make read-only.
+ * @param additionalErrorMessage - An additional error message to include in the error thrown when a mutation method is called.
+ * @returns A read-only proxy for the array.
+ */
+export function createImmutableArray<T>(array: T[], additionalErrorMessage: string = ''): T[] {
+  return new Proxy(array, {
+    get(target, key) {
+      if (key === READONLY_SYMBOL) {
+        return true;
+      }
+
+      // Intercept mutation methods
+      if (
+        typeof key === 'string' &&
+        MUTATION_METHODS.includes(key as (typeof MUTATION_METHODS)[number])
+      ) {
+        return function () {
+          throw new TypeError(
+            `Cannot call ${key}() on a read-only array. ${additionalErrorMessage}`.trim(),
+          );
+        };
+      }
+
+      return Reflect.get(target, key);
+    },
+    set(_, prop) {
+      throw new TypeError(
+        `Cannot assign to read-only array index "${String(prop)}". ${additionalErrorMessage}`.trim(),
+      );
+    },
+    deleteProperty(_, prop) {
+      throw new TypeError(
+        `Cannot delete read-only array index "${String(prop)}". ${additionalErrorMessage}`.trim(),
+      );
+    },
+    defineProperty(_, prop) {
+      throw new TypeError(
+        `Cannot define property "${String(prop)}" on a read-only array. ${additionalErrorMessage}`.trim(),
+      );
+    },
+    setPrototypeOf() {
+      throw new TypeError(
+        `Cannot change prototype of a read-only array. ${additionalErrorMessage}`.trim(),
+      );
+    },
+  });
+}
+
+export function isImmutableArray(array: unknown): boolean {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return typeof array === 'object' && !!(array as any)[READONLY_SYMBOL];
+}
+
+/**
+ * Resamples an audio stream to a target sample rate.
+ *
+ * WARINING: The input stream will be locked until the resampled stream is closed.
+ *
+ * @param stream - The input stream to resample.
+ * @param outputRate - The target sample rate.
+ * @returns A new stream with the resampled audio.
+ */
+export function resampleStream({
+  stream,
+  outputRate,
+}: {
+  stream: ReadableStream<AudioFrame>;
+  outputRate: number;
+}): ReadableStream<AudioFrame> {
+  let resampler: AudioResampler | null = null;
+  const transformStream = new TransformStream<AudioFrame, AudioFrame>({
+    transform(chunk: AudioFrame, controller: TransformStreamDefaultController<AudioFrame>) {
+      if (!resampler) {
+        resampler = new AudioResampler(chunk.sampleRate, outputRate);
+      }
+      for (const frame of resampler.push(chunk)) {
+        controller.enqueue(frame);
+      }
+      for (const frame of resampler.flush()) {
+        controller.enqueue(frame);
+      }
+    },
+  });
+  return stream.pipeThrough(transformStream);
 }

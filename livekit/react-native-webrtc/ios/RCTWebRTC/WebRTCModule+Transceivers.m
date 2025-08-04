@@ -6,7 +6,6 @@
 #import <WebRTC/RTCRtpCodecCapability.h>
 #import <WebRTC/RTCRtpReceiver.h>
 #import <WebRTC/RTCRtpSender.h>
-#import <WebRTC/RTCRtpCodecCapability.h>
 
 #import "SerializeUtils.h"
 #import "WebRTCModule.h"
@@ -35,12 +34,8 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(receiverGetCapabilities : (NSString *)kin
     return params;
 }
 
-RCT_EXPORT_METHOD(senderReplaceTrack
-                  : (nonnull NSNumber *)objectID senderId
-                  : (NSString *)senderId trackId
-                  : (NSString *)trackId resolver
-                  : (RCTPromiseResolveBlock)resolve rejecter
-                  : (RCTPromiseRejectBlock)reject) {
+RCT_EXPORT_METHOD(senderReplaceTrack : (nonnull NSNumber *)objectID senderId : (NSString *)senderId trackId : (
+    NSString *)trackId resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -67,12 +62,8 @@ RCT_EXPORT_METHOD(senderReplaceTrack
     resolve(@true);
 }
 
-RCT_EXPORT_METHOD(senderSetParameters
-                  : (nonnull NSNumber *)objectID senderId
-                  : (NSString *)senderId options
-                  : (NSDictionary *)options resolver
-                  : (RCTPromiseResolveBlock)resolve rejecter
-                  : (RCTPromiseRejectBlock)reject) {
+RCT_EXPORT_METHOD(senderSetParameters : (nonnull NSNumber *)objectID senderId : (NSString *)senderId options : (
+    NSDictionary *)options resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -102,12 +93,8 @@ RCT_EXPORT_METHOD(senderSetParameters
     resolve([SerializeUtils parametersToJSON:sender.parameters]);
 }
 
-RCT_EXPORT_METHOD(transceiverSetDirection
-                  : (nonnull NSNumber *)objectID senderId
-                  : (NSString *)senderId direction
-                  : (NSString *)direction resolver
-                  : (RCTPromiseResolveBlock)resolve rejecter
-                  : (RCTPromiseRejectBlock)reject) {
+RCT_EXPORT_METHOD(transceiverSetDirection : (nonnull NSNumber *)objectID senderId : (NSString *)senderId direction : (
+    NSString *)direction resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -140,11 +127,8 @@ RCT_EXPORT_METHOD(transceiverSetDirection
     }
 }
 
-RCT_EXPORT_METHOD(transceiverStop
-                  : (nonnull NSNumber *)objectID senderId
-                  : (NSString *)senderId resolver
-                  : (RCTPromiseResolveBlock)resolve rejecter
-                  : (RCTPromiseRejectBlock)reject) {
+RCT_EXPORT_METHOD(transceiverStop : (nonnull NSNumber *)objectID senderId : (NSString *)
+                      senderId resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -172,10 +156,8 @@ RCT_EXPORT_METHOD(transceiverStop
     resolve(@true);
 }
 
-RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(transceiverSetCodecPreferences
-                                       : (nonnull NSNumber *)objectID senderId
-                                       : (NSString *)senderId codecPreferences
-                                       : (NSArray *)codecPreferences) {
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(transceiverSetCodecPreferences : (nonnull NSNumber *)objectID senderId : (
+    NSString *)senderId codecPreferences : (NSArray *)codecPreferences) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -220,7 +202,7 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(transceiverSetCodecPreferences
             }];
         }
     }
-    
+
     // Convert JSON codec capabilities to the actual objects.
     // Codec preferences is order sensitive.
     NSMutableArray *codecsToSet = [NSMutableArray new];

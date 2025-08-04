@@ -4,7 +4,10 @@
 import type { AudioFrame } from '@livekit/rtc-node';
 import type { TypedEventEmitter as TypedEmitter } from '@livekit/typed-emitter';
 import { EventEmitter } from 'node:events';
+import type { ReadableStream } from 'node:stream/web';
+import { log } from '../log.js';
 import type { TTSMetrics } from '../metrics/base.js';
+import { DeferredReadableStream } from '../stream/deferred_stream.js';
 import { AsyncIterableQueue, mergeFrames } from '../utils.js';
 
 /** SynthesizedAudio is a packet of speech synthesis as returned by the TTS. */
@@ -32,12 +35,8 @@ export interface TTSCapabilities {
   streaming: boolean;
 }
 
-export enum TTSEvent {
-  METRICS_COLLECTED,
-}
-
 export type TTSCallbacks = {
-  [TTSEvent.METRICS_COLLECTED]: (metrics: TTSMetrics) => void;
+  ['metrics_collected']: (metrics: TTSMetrics) => void;
 };
 
 /**
@@ -118,15 +117,54 @@ export abstract class SynthesizeStream
   #metricsPendingTexts: string[] = [];
   #metricsText = '';
   #monitorMetricsTask?: Promise<void>;
+  protected abortController = new AbortController();
+
+  private deferredInputStream: DeferredReadableStream<
+    string | typeof SynthesizeStream.FLUSH_SENTINEL
+  >;
+  private logger = log();
 
   constructor(tts: TTS) {
     this.#tts = tts;
+    this.deferredInputStream = new DeferredReadableStream();
+    this.mainTask();
+    this.abortController.signal.addEventListener('abort', () => {
+      this.deferredInputStream.detachSource();
+      // TODO (AJS-36) clean this up when we refactor with streams
+      this.input.close();
+      this.output.close();
+      this.closed = true;
+    });
+  }
+
+  // TODO(AJS-37) Remove when refactoring TTS to use streams
+  protected async mainTask() {
+    const reader = this.deferredInputStream.stream.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done || value === SynthesizeStream.FLUSH_SENTINEL) {
+          break;
+        }
+        this.pushText(value);
+      }
+      this.endInput();
+    } catch (error) {
+      this.logger.error(error, 'Error reading deferred input stream');
+    } finally {
+      reader.releaseLock();
+      // Ensure output is closed when the stream ends
+      if (!this.#monitorMetricsTask) {
+        // No text was received, close the output directly
+        this.output.close();
+      }
+    }
   }
 
   protected async monitorMetrics() {
     const startTime = process.hrtime.bigint();
     let audioDuration = 0;
-    let ttfb: bigint | undefined;
+    let ttfb: bigint = BigInt(-1);
     let requestId = '';
 
     const emit = () => {
@@ -134,27 +172,32 @@ export abstract class SynthesizeStream
         const text = this.#metricsPendingTexts.shift()!;
         const duration = process.hrtime.bigint() - startTime;
         const metrics: TTSMetrics = {
+          type: 'tts_metrics',
           timestamp: Date.now(),
           requestId,
-          ttfb: Math.trunc(Number((ttfb || BigInt(0)) / BigInt(1000000))),
+          ttfb: ttfb === BigInt(-1) ? -1 : Math.trunc(Number(ttfb / BigInt(1000000))),
           duration: Math.trunc(Number(duration / BigInt(1000000))),
           charactersCount: text.length,
           audioDuration,
-          cancelled: false, // XXX(nbsp)
-          label: this.label,
+          cancelled: this.abortController.signal.aborted,
+          label: this.#tts.label,
           streamed: false,
         };
-        this.#tts.emit(TTSEvent.METRICS_COLLECTED, metrics);
+        this.#tts.emit('metrics_collected', metrics);
       }
     };
 
     for await (const audio of this.queue) {
+      if (this.abortController.signal.aborted) {
+        break;
+      }
       this.output.put(audio);
       if (audio === SynthesizeStream.END_OF_STREAM) continue;
       requestId = audio.requestId;
-      if (!ttfb) {
+      if (ttfb === BigInt(-1)) {
         ttfb = process.hrtime.bigint() - startTime;
       }
+      // TODO(AJS-102): use frame.durationMs once available in rtc-node
       audioDuration += audio.frame.samplesPerChannel / audio.frame.sampleRate;
       if (audio.final) {
         emit();
@@ -164,13 +207,19 @@ export abstract class SynthesizeStream
     if (requestId) {
       emit();
     }
-    this.output.close();
+  }
+
+  updateInputStream(text: ReadableStream<string>) {
+    this.deferredInputStream.setSource(text);
   }
 
   /** Push a string of text to the TTS */
+  /** @deprecated Use `updateInputStream` instead */
   pushText(text: string) {
     if (!this.#monitorMetricsTask) {
       this.#monitorMetricsTask = this.monitorMetrics();
+      // Close output when metrics task completes
+      this.#monitorMetricsTask.finally(() => this.output.close());
     }
     this.#metricsText += text;
 
@@ -200,6 +249,7 @@ export abstract class SynthesizeStream
 
   /** Mark the input as ended and forbid additional pushes */
   endInput() {
+    this.flush();
     if (this.input.closed) {
       throw new Error('Input is closed');
     }
@@ -215,9 +265,7 @@ export abstract class SynthesizeStream
 
   /** Close both the input and output of the TTS stream */
   close() {
-    this.input.close();
-    this.output.close();
-    this.closed = true;
+    this.abortController.abort();
   }
 
   [Symbol.asyncIterator](): SynthesizeStream {
@@ -263,7 +311,7 @@ export abstract class ChunkedStream implements AsyncIterableIterator<Synthesized
     for await (const audio of this.queue) {
       this.output.put(audio);
       requestId = audio.requestId;
-      if (ttfb === BigInt(-1)) {
+      if (!ttfb) {
         ttfb = process.hrtime.bigint() - startTime;
       }
       audioDuration += audio.frame.samplesPerChannel / audio.frame.sampleRate;
@@ -272,17 +320,18 @@ export abstract class ChunkedStream implements AsyncIterableIterator<Synthesized
 
     const duration = process.hrtime.bigint() - startTime;
     const metrics: TTSMetrics = {
+      type: 'tts_metrics',
       timestamp: Date.now(),
       requestId,
       ttfb: ttfb === BigInt(-1) ? -1 : Math.trunc(Number(ttfb / BigInt(1000000))),
       duration: Math.trunc(Number(duration / BigInt(1000000))),
       charactersCount: this.#text.length,
       audioDuration,
-      cancelled: false, // XXX(nbsp)
-      label: this.label,
+      cancelled: false, // TODO(AJS-186): support ChunkedStream with 1.0 - add this.abortController.signal.aborted here
+      label: this.#tts.label,
       streamed: false,
     };
-    this.#tts.emit(TTSEvent.METRICS_COLLECTED, metrics);
+    this.#tts.emit('metrics_collected', metrics);
   }
 
   /** Collect every frame into one in a single call */

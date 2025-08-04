@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 LiveKit
+ * Copyright 2025 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,13 @@ import LiveKit
 import UIKit
 
 class ParticipantCell: UICollectionViewCell {
-    public static let reuseIdentifier: String = "ParticipantCell"
+    static let reuseIdentifier: String = "ParticipantCell"
 
-    public static var instanceCounter: Int = 0
+    static var instanceCounter: Int = 0
 
-    public let cellId: Int
+    let cellId: Int
 
-    public let videoView: VideoView = {
+    let videoView: VideoView = {
         let r = VideoView()
         r.layoutMode = .fit
         r.backgroundColor = .darkGray
@@ -33,14 +33,14 @@ class ParticipantCell: UICollectionViewCell {
         return r
     }()
 
-    public let labelView: UILabel = {
+    let labelView: UILabel = {
         let r = UILabel()
         r.textColor = .white
         return r
     }()
 
     // weak reference to the Participant
-    public weak var participant: Participant? {
+    weak var participant: Participant? {
         didSet {
             guard oldValue != participant else { return }
 

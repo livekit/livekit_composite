@@ -84,7 +84,6 @@ export interface Tool {
     type: 'object';
     properties: {
       [prop: string]: {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         [prop: string]: any;
       };
     };
@@ -97,6 +96,8 @@ export type TurnDetectionType = {
   threshold?: number; // 0.0 to 1.0, default: 0.5
   prefix_padding_ms?: number; // default: 300
   silence_duration_ms?: number; // default: 200
+  create_response?: boolean; // default: true
+  interrupt_response?: boolean; // default: true
 };
 
 export type InputAudioTranscription = {
@@ -243,6 +244,7 @@ export interface ResponseResource {
   status_details: ResponseStatusDetails;
   output: ItemResource[];
   usage?: ModelUsage;
+  metadata?: Record<string, string>;
 }
 
 // Client Events
@@ -254,6 +256,7 @@ interface BaseClientEvent {
 export interface SessionUpdateEvent extends BaseClientEvent {
   type: 'session.update';
   session: Partial<{
+    model: Model;
     modalities: ['text', 'audio'] | ['text'];
     instructions: string;
     voice: Voice;
@@ -265,6 +268,7 @@ export interface SessionUpdateEvent extends BaseClientEvent {
     tool_choice: ToolChoice;
     temperature: number;
     max_response_output_tokens?: number | 'inf';
+    speed?: number;
   }>;
 }
 
@@ -282,24 +286,28 @@ export interface InputAudioBufferClearEvent extends BaseClientEvent {
 }
 
 export interface UserItemCreate {
+  id: string;
   type: 'message';
   role: 'user';
   content: (InputTextContent | InputAudioContent)[];
 }
 
 export interface AssistantItemCreate {
+  id: string;
   type: 'message';
   role: 'assistant';
   content: TextContent[];
 }
 
 export interface SystemItemCreate {
+  id: string;
   type: 'message';
   role: 'system';
   content: InputTextContent[];
 }
 
 export interface FunctionCallOutputItemCreate {
+  id: string;
   type: 'function_call_output';
   call_id: string;
   output: string;
@@ -340,6 +348,7 @@ export interface ResponseCreateEvent extends BaseClientEvent {
     tool_choice: ToolChoice;
     temperature: number;
     max_output_tokens: number | 'inf';
+    metadata?: Record<string, string>;
   }>;
 }
 
@@ -412,6 +421,7 @@ export interface InputAudioBufferSpeechStoppedEvent extends BaseServerEvent {
 
 export interface ConversationItemCreatedEvent extends BaseServerEvent {
   type: 'conversation.item.created';
+  previous_item_id: string;
   item: ItemResource;
 }
 
@@ -482,6 +492,7 @@ export interface ResponseContentPartAddedEvent extends BaseServerEvent {
 export interface ResponseContentPartDoneEvent extends BaseServerEvent {
   type: 'response.content_part.done';
   response_id: string;
+  item_id: string;
   output_index: number;
   content_index: number;
   part: ContentPart;
@@ -506,6 +517,7 @@ export interface ResponseTextDoneEvent extends BaseServerEvent {
 export interface ResponseAudioTranscriptDeltaEvent extends BaseServerEvent {
   type: 'response.audio_transcript.delta';
   response_id: string;
+  item_id: string;
   output_index: number;
   content_index: number;
   delta: string;
@@ -522,6 +534,7 @@ export interface ResponseAudioTranscriptDoneEvent extends BaseServerEvent {
 export interface ResponseAudioDeltaEvent extends BaseServerEvent {
   type: 'response.audio.delta';
   response_id: string;
+  item_id: string;
   output_index: number;
   content_index: number;
   delta: AudioBase64Bytes;

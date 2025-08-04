@@ -64,12 +64,53 @@ compileOptions {
 }
 ```
 
-## R8/ProGuard Support
+## Set audio category (output) to media
 
-In `android/app/proguard-rules.pro` add the following on a new line.
+The audio is considered calls by default. If you don't want your audio to be treated as a call stream you need to change the category. To set the category:
 
-```proguard
--keep class org.webrtc.** { *; }
+if your Android files are written in Java, modify `MainApplication.java`:
+```java
+// add imports
+import com.oney.WebRTCModule.WebRTCModuleOptions;
+import android.media.AudioAttributes;
+import org.webrtc.audio.JavaAudioDeviceModule;
+
+public class MainApplication extends Application implements ReactApplication {
+	@Override
+	public void onCreate() {
+		// append this before WebRTCModule initializes
+		WebRTCModuleOptions options = WebRTCModuleOptions.getInstance();
+		AudioAttributes audioAttributes = AudioAttributes.Builder()
+		    .setUsage(AudioAttributes.USAGE_MEDIA)
+		    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+		    .build();
+		options.audioDeviceModule = JavaAudioDeviceModule.builder(this)
+		.setAudioAttributes(audioAttributes)
+		.createAudioDeviceModule();
+	}
+}
+```
+
+if your Android files are written in Kotlin, modify `MainApplication.kt`:
+```kt
+// add imports
+import com.oney.WebRTCModule.WebRTCModuleOptions;
+import android.media.AudioAttributes
+import org.webrtc.audio.JavaAudioDeviceModule;
+
+class MainApplication : Application(), ReactApplication {
+	override fun onCreate() {
+		// append this before WebRTCModule initializes
+		val options = WebRTCModuleOptions.getInstance()
+		val audioAttributes = AudioAttributes.Builder()
+			.setUsage(AudioAttributes.USAGE_MEDIA)
+			.setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+			.build()
+		options.audioDeviceModule = JavaAudioDeviceModule.builder(this)
+			.setAudioAttributes(audioAttributes)
+			.createAudioDeviceModule()
+	}
+}
 ```
 
 ## Fatal Exception: java.lang.UnsatisfiedLinkError

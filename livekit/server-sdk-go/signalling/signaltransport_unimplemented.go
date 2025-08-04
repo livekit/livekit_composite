@@ -18,6 +18,7 @@ import (
 	"context"
 
 	protoLogger "github.com/livekit/protocol/logger"
+	"github.com/pion/webrtc/v4"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -26,6 +27,8 @@ var _ SignalTransport = (*signalTransportUnimplemented)(nil)
 type signalTransportUnimplemented struct{}
 
 func (s *signalTransportUnimplemented) SetLogger(l protoLogger.Logger) {}
+
+func (s *signalTransportUnimplemented) SetAsyncTransport(asyncTransport SignalTransport) {}
 
 func (s *signalTransportUnimplemented) Start() {}
 
@@ -40,6 +43,7 @@ func (s *signalTransportUnimplemented) Join(
 	url string,
 	token string,
 	connectParams ConnectParams,
+	publisherOffer webrtc.SessionDescription,
 ) error {
 	return ErrUnimplemented
 }

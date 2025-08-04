@@ -1,6 +1,6 @@
 {
   "name": "@livekit/agents-plugin-openai",
-  "version": "0.9.3",
+  "version": "0.9.1",
   "description": "OpenAI plugin for LiveKit Node Agents",
   "main": "dist/index.js",
   "require": "dist/index.cjs",
@@ -37,19 +37,21 @@
     "@livekit/agents": "workspace:^x",
     "@livekit/agents-plugin-silero": "workspace:^x",
     "@livekit/agents-plugins-test": "workspace:^x",
-    "@livekit/rtc-node": "^0.13.11",
+    "@livekit/rtc-node": "^0.13.12",
     "@microsoft/api-extractor": "^7.35.0",
     "@types/ws": "^8.5.10",
     "tsup": "^8.3.5",
     "typescript": "^5.0.0"
   },
   "dependencies": {
+    "@livekit/mutex": "^1.1.1",
+    "@std/async": "npm:@jsr/std__async@^1.0.13",
     "openai": "^4.91.1",
     "sharp": "^0.33.5",
     "ws": "^8.16.0"
   },
   "peerDependencies": {
     "@livekit/agents": "workspace:^x",
-    "@livekit/rtc-node": "^0.13.11"
+    "@livekit/rtc-node": "^0.13.12"
   }
 }

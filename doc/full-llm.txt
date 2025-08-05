@@ -16145,10 +16145,8 @@ Use the active speech handle to coordinate with the speaking state. For instance
 @function_tool
 async def end_call(self, ctx: RunContext):
    """Use this tool when the user has signaled they wish to end the current call. The session ends automatically after invoking this tool."""
-   # let the agent finish speaking
-   current_speech = ctx.session.current_speech
-   if current_speech:
-      await current_speech.wait_for_playout()
+   await ctx.wait_for_playout() # let the agent finish speaking
+
 
    # call API to delete_room
    ...
@@ -20744,6 +20742,10 @@ session = AgentSession(
 
 ```
 
+> 🔥 **Limitations with Gemini 2.5**
+> 
+> Gemini 2.5 Live is currently in preview and does not handle function calling correctly. The Gemini team is actively working on a fix. See [GH issue](https://github.com/googleapis/python-genai/issues/843).
+
 ### Parameters
 
 This section describes some of the available parameters. For a complete reference of all available parameters, see the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/google/beta/realtime/index.html.md).
@@ -20788,7 +20790,26 @@ session = AgentSession(
 
 ## Turn detection
 
-The Gemini Live API includes built-in VAD-based turn detection, which is currently the only supported turn detection method.
+The Gemini Live API includes built-in VAD-based turn detection, enabled by default. To use LiveKit’s turn detection model instead, configure the model to disable automatic activity detection. A separate streaming STT model is required in order to use LiveKit’s turn detection model.
+
+```python
+from google.genai import types
+from livekit.agents import AgentSession
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
+session = AgentSession(
+   turn_detection=MultilingualModel(),
+   llm=google.beta.realtime.RealtimeModel(
+      realtime_input_config=types.RealtimeInputConfig(
+      automatic_activity_detection=types.AutomaticActivityDetection(
+         disabled=True,
+      ),
+   ),
+   input_audio_transcription=None,
+   stt=deepgram.STT(),
+)
+
+```
 
 ## Usage with separate TTS
 
@@ -22658,6 +22679,8 @@ The following are the core plugin types used in LiveKit Agents, to handle the pr
 
 - **[Text-to-speech (TTS)](https://docs.livekit.io/agents/integrations/tts.md)**: Plugins for text-to-speech solutions like Cartesia, ElevenLabs, and more.
 
+- **[Virtual Avatars](https://docs.livekit.io/agents/integrations/avatar.md)**: Plugins for virtual avatar solutions like Hedra, Tavus, and more.
+
 ## Additional plugins
 
 LiveKit Agents also includes the following additional specialized plugins, which are recommended for most voice AI use cases. Each runs locally and requires no additional API keys.
@@ -22801,6 +22824,10 @@ session = AgentSession(
 
 ```
 
+> 🔥 **Limitations with Gemini 2.5**
+> 
+> Gemini 2.5 Live is currently in preview and does not handle function calling correctly. The Gemini team is actively working on a fix. See [GH issue](https://github.com/googleapis/python-genai/issues/843).
+
 ### Parameters
 
 This section describes some of the available parameters. For a complete reference of all available parameters, see the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/google/beta/realtime/index.html.md).
@@ -22845,7 +22872,26 @@ session = AgentSession(
 
 ## Turn detection
 
-The Gemini Live API includes built-in VAD-based turn detection, which is currently the only supported turn detection method.
+The Gemini Live API includes built-in VAD-based turn detection, enabled by default. To use LiveKit’s turn detection model instead, configure the model to disable automatic activity detection. A separate streaming STT model is required in order to use LiveKit’s turn detection model.
+
+```python
+from google.genai import types
+from livekit.agents import AgentSession
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
+session = AgentSession(
+   turn_detection=MultilingualModel(),
+   llm=google.beta.realtime.RealtimeModel(
+      realtime_input_config=types.RealtimeInputConfig(
+      automatic_activity_detection=types.AutomaticActivityDetection(
+         disabled=True,
+      ),
+   ),
+   input_audio_transcription=None,
+   stt=deepgram.STT(),
+)
+
+```
 
 ## Usage with separate TTS
 
@@ -26155,7 +26201,7 @@ async def entrypoint(ctx: agents.JobContext):
 
     async def send_audio(audio_stream: AsyncIterable[SynthesizedAudio]):
         async for a in audio_stream:
-            await audio_source.capture_frame(e.audio.frame)
+            await audio_source.capture_frame(a.audio.frame)
 
 if __name__ == "__main__":
     agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
@@ -27054,6 +27100,12 @@ This section describes some of the available parameters. See the [plugin referen
 
 - **`voice`** _(string)_ (optional) - Default: `"Ashley"`: ID of the voice to use for generation. Use the [List voices API endpoint](https://docs.inworld.ai/api-reference/ttsAPI/texttospeech/list-voices) for possible values.
 
+- **`temperature`** _(float)_ (optional) - Default: `0.8`: Controls randomness in the output. Recommended to set between 0.6 and 1.0. See [docs](https://docs.inworld.ai/docs/tts/tts#additional-configurations).
+
+- **`speaking_rate`** _(float)_ (optional) - Default: `1.0`: Controls how fast the voice speaks. 1.0 is the normal native speed, while 0.5 is half the normal speed and 1.5 is 1.5x faster than the normal speed. See [docs](https://docs.inworld.ai/docs/tts/tts#additional-configurations).
+
+- **`pitch`** _(float)_ (optional) - Default: `0.0`: Adjusts how high or low the voice sounds. Negative values make the voice deeper/lower, while positive values make it higher/squeakier. See [docs](https://docs.inworld.ai/docs/tts/tts#additional-configurations).
+
 ## Additional resources
 
 The following resources provide more information about using Inworld with LiveKit Agents.
@@ -27767,9 +27819,11 @@ The following providers are available. Choose a provider from this list for a st
 
 | Provider | Plugin | Notes |
 | -------- | ------ | ----- |
+| [Anam](https://docs.livekit.io/agents/integrations/avatar/anam.md) | `anam` |  |
 | [Beyond Presence](https://docs.livekit.io/agents/integrations/avatar/bey.md) | `bey` |  |
 | [bitHuman](https://docs.livekit.io/agents/integrations/avatar/bithuman.md) | `bithuman` |  |
 | [Hedra](https://docs.livekit.io/agents/integrations/avatar/hedra.md) | `hedra` |  |
+| [Simli](https://docs.livekit.io/agents/integrations/avatar/simli.md) | `simli` |  |
 | [Tavus](https://docs.livekit.io/agents/integrations/avatar/tavus.md) | `tavus` |  |
 
 Have another provider in mind? LiveKit is open source and welcomes [new plugin contributions](https://docs.livekit.io/agents/integrations.md#contribute).
@@ -27788,21 +27842,20 @@ To add a virtual avatar:
 
 ## Sample code
 
-Here is an example using [Tavus](https://docs.livekit.io/agents/integrations/avatar/tavus.md):
+Here is an example using [Hedra Realtime Avatars](https://docs.livekit.io/agents/integrations/avatar/hedra.md):
 
 ```python
 from livekit import agents
 from livekit.agents import AgentSession, RoomOutputOptions
-from livekit.plugins import tavus
+from livekit.plugins import hedra
 
 async def entrypoint(ctx: agents.JobContext):
    session = AgentSession(
       # ... stt, llm, tts, etc.
    )
 
-   avatar = tavus.AvatarSession(
-      replica_id="...",  # ID of the Tavus replica to use
-      persona_id="...",  # ID of the Tavus persona to use (see preceding section for configuration details)
+   avatar = hedra.AvatarSession(
+      avatar_id="...",  # ID of the Hedra avatar to use
    )
 
    # Start the avatar and wait for it to join
@@ -27810,12 +27863,7 @@ async def entrypoint(ctx: agents.JobContext):
 
    # Start your agent session with the user
    await session.start(
-      room=ctx.room,
-      room_output_options=RoomOutputOptions(
-         # Disable audio output to the room. The avatar plugin publishes audio separately.
-         audio_enabled=False,
-      ),
-      # ... agent, room_input_options, etc....
+      # ... room, agent, room_input_options, etc....
    )
 
 ```
@@ -27876,6 +27924,104 @@ The following [frontend starter apps](https://docs.livekit.io/agents/start/front
 - **[Web and mobile frontends](https://docs.livekit.io/agents/start/frontend.md)**: Guide to adding web or mobile frontends to your agent.
 
 - **[Vision](https://docs.livekit.io/agents/build/vision.md)**: Give your agent the ability to see you, too.
+
+---
+
+---
+
+## Anam
+
+## Overview
+
+[Anam](https://anam.ai/) provides lifelike avatars for realtime conversational AI. You can use the open source Anam integration for LiveKit Agents to enable seamless integration of Anam avatars into your voice AI app.
+
+## Quick reference
+
+This section includes a basic usage example and some reference material. For links to more detailed documentation, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[anam]~=1.0"
+
+```
+
+### Authentication
+
+The Anam plugin requires an [Anam API key](https://lab.anam.ai/api-keys).
+
+Set `ANAM_API_KEY` in your `.env` file.
+
+### Usage
+
+Use the plugin in an `AgentSession`. For example, you can use this avatar in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit import agents
+from livekit.agents import AgentSession, RoomOutputOptions
+from livekit.plugins import anam
+
+async def entrypoint(ctx: agents.JobContext):
+   session = AgentSession(
+      # ... stt, llm, tts, etc.
+   )
+
+   avatar = anam.AvatarSession(
+      persona_config=anam.PersonaConfig(
+         name="...",  # Name of the avatar to use.
+         avatarId="...",  # ID of the avatar to use. See "Avatar setup" for details.
+      ),
+   )
+
+   # Start the avatar and wait for it to join
+   await avatar.start(session, room=ctx.room)
+
+   # Start your agent session with the user
+   await session.start(
+      # ... room, agent, room_input_options, etc....
+   )
+
+```
+
+Preview the avatar in the [Agents Playground](https://docs.livekit.io/agents/start/playground.md) or a frontend [starter app](https://docs.livekit.io/agents/start/frontend.md#starter-apps) that you build.
+
+### Avatar setup
+
+You can use stock avatars provided by Anam or create your own custom avatars using Anam Lab.
+
+- **Stock Avatars**: Browse a collection of ready-to-use avatars in the [Avatar Gallery](https://docs.anam.ai/resources/avatar-gallery).
+- **Custom Avatars**: Create your own personalized avatar using [Anam Lab](https://lab.anam.ai/avatars).
+
+To use a stock avatar, copy the avatar ID from the gallery and use it in your `PersonaConfig`. For custom avatars, create them in the lab and use the generated avatar ID.
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/anam/index.html.md#livekit.plugins.anam.AvatarSession) for a complete list of all available parameters.
+
+- **`persona_config`** _(anam.PersonaConfig)_ (optional): Configuration for the avatar to use.
+
+- - **`name`** _(string)_: Name of the avatar to use. See [Avatar setup](#avatar-setup) for details.
+- - **`avatarId`** _(string)_: ID of the avatar to use. See [Avatar setup](#avatar-setup) for details.
+
+- **`avatar_participant_name`** _(string)_ (optional) - Default: `anam-avatar-agent`: The participant name to use for the avatar.
+
+## Additional resources
+
+The following resources provide more information about using Anam with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-anam/)**: The `livekit-plugins-anam` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/anam/index.html.md)**: Reference for the Anam avatar plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-anam)**: View the source or contribute to the LiveKit Anam avatar plugin.
+
+- **[Anam API docs](https://docs.anam.ai/third-party-integrations/livekit)**: Anam's LiveKit integration docs.
+
+- **[Agents Playground](https://docs.livekit.io/agents/start/playground.md)**: A virtual workbench to test your avatar agent.
+
+- **[Frontend starter apps](https://docs.livekit.io/agents/start/frontend.md#starter-apps)**: Ready-to-use frontend apps with avatar support.
 
 ---
 
@@ -27984,15 +28130,15 @@ pip install "livekit-agents[bithuman]~=1.0"
 
 ### Authentication
 
-The bitHuman plugin requires a [bitHuman API Secret](https://console.bithuman.io/develop).
+The bitHuman plugin requires a [bitHuman API Secret](https://imaginex.bithuman.ai/#api).
 
 Set `BITHUMAN_API_SECRET` in your `.env` file.
 
 ### Model installation
 
-The bitHuman integration requires a locally download model. Download a [sample model](https://docs.bithuman.io/api-reference/sdk/quick-start#demo-models) or create your own.
+Each bitHuman avatar comes as a `.imx` file, which you must download locally for your agent. You can create and download avatar models from the [bitHuman ImagineX console](https://imaginex.bithuman.ai).
 
-Follow the guide below to pass it to the avatar session, or set `BITHUMAN_MODEL_PATH` in your `.env` file.
+You can pass the model path to the avatar session, or set the `BITHUMAN_MODEL_PATH` environment variable.
 
 ### Usage
 
@@ -28025,7 +28171,7 @@ Preview the avatar in the [Agents Playground](https://docs.livekit.io/agents/sta
 
 This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/bithuman/index.html.md#livekit.plugins.bithuman.AvatarSession) for a complete list of all available parameters.
 
-- **`model_path`** _(string)_ - Environment: `BITHUMAN_MODEL_PATH`: Path to the bitHuman model to use. To learn more, see the [bitHuman docs](https://docs.bithuman.io/api-reference/sdk/quick-start#agent-model-setup).
+- **`model_path`** _(string)_ - Environment: `BITHUMAN_MODEL_PATH`: Path to the bitHuman model to use. To learn more, see the [bitHuman docs](https://sdk.docs.bithuman.ai/#/getting-started/overview?id=quick-setup).
 
 ## Additional resources
 
@@ -28037,7 +28183,7 @@ The following resources provide more information about using bitHuman with LiveK
 
 - **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-bithuman)**: View the source or contribute to the LiveKit bitHuman avatar plugin.
 
-- **[bitHuman docs](https://docs.bithuman.io/)**: bitHuman's full API docs site.
+- **[bitHuman docs](https://sdk.docs.bithuman.ai)**: bitHuman's full API docs site.
 
 - **[Agents Playground](https://docs.livekit.io/agents/start/playground.md)**: A virtual workbench to test your avatar agent.
 
@@ -28051,7 +28197,9 @@ The following resources provide more information about using bitHuman with LiveK
 
 ## Overview
 
-[Hedra](https://hedra.ai/) provides lifelike generative video with their Character-3 model. You can use the open source Hedra integration for LiveKit Agents to add virtual avatars to your voice AI app.
+[Hedra's](https://hedra.ai/) Realtime Avatars let you create your own avatar that can participate in live, interactive conversations. You can use the open source Hedra integration for LiveKit Agents in your voice AI app.
+
+- **[Hedra avatar examples](https://github.com/livekit-examples/python-agents-examples/tree/main/avatars/hedra)**: Multiple full-stack examples showing creative uses of Hedra Realtime Avatars with LiveKit Agents.
 
 ## Quick reference
 
@@ -28095,12 +28243,7 @@ async def entrypoint(ctx: agents.JobContext):
 
    # Start your agent session with the user
    await session.start(
-      room=ctx.room,
-      room_output_options=RoomOutputOptions(
-         # Disable audio output to the room. The avatar plugin publishes audio separately.
-         audio_enabled=False,
-      ),
-      # ... agent, room_input_options, etc....
+      # ... room, agent, room_input_options, etc....
    )
 
 ```
@@ -28196,6 +28339,105 @@ The following resources provide more information about using Hedra with LiveKit 
 
 ---
 
+## Simli
+
+## Overview
+
+[Simli](https://simli.com/) provides realtime low-latency video avatars. You can use the open source Simli integration for LiveKit Agents to add virtual avatars to your voice AI app.
+
+## Quick reference
+
+This section includes a basic usage example and some reference material. For links to more detailed documentation, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install "livekit-agents[simli]~=1.0"
+
+```
+
+### Authentication
+
+The Simli plugin requires a [Simli API key](https://app.simli.com/apikey).
+
+Set `SIMLI_API_KEY` in your `.env` file.
+
+### Usage
+
+Use the plugin in an `AgentSession`. For example, you can use this avatar in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit import agents
+from livekit.agents import AgentSession, RoomOutputOptions
+from livekit.plugins import simli
+
+async def entrypoint(ctx: agents.JobContext):
+   session = AgentSession(
+      # ... stt, llm, tts, etc.
+   )
+
+   avatar = simli.AvatarSession(
+      simli_config=simli.SimliConfig(
+         api_key=os.getenv("SIMLI_API_KEY"),
+         face_id="...",  # ID of the Simli face to use for your avatar. See "Face setup" for details.
+      ),
+   )
+
+   # Start the avatar and wait for it to join
+   await avatar.start(session, room=ctx.room)
+
+   # Start your agent session with the user
+   await session.start(
+      # ... room, agent, room_input_options, etc....
+   )
+
+```
+
+Preview the avatar in the [Agents Playground](https://docs.livekit.io/agents/start/playground.md) or a frontend [starter app](https://docs.livekit.io/agents/start/frontend.md#starter-apps) that you build.
+
+### Face setup
+
+The Simli plugin requires a face from which to generate the avatar. You can choose a face from the [default library](https://app.simli.com/create/from-existing) or [upload your own](https://app.simli.com/faces).
+
+Include the face ID in the `SimliConfig` when you create the `AvatarSession`.
+
+### Emotions
+
+Simli supports [configurable emotions](https://docs.simli.com/emotions). Pass an `emotion_id`  to the `SimliConfig` when you create the `AvatarSession`.
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/simli/index.html.md#livekit.plugins.simli.AvatarSession) for a complete list of all available parameters.
+
+- **`simli_config`** _(simli.SimliConfig)_ (optional): Configuration for the Simli face to use.
+
+- - **`face_id`** _(string)_: ID of the Simli face to use. See [Face setup](#face-setup) for details.
+- - **`emotion_id`** _(string)_: ID of the Simli emotion to use. See [Emotions](#emotions) for details.
+
+- **`avatar_participant_name`** _(string)_ (optional) - Default: `simli-avatar-agent`: The name of the participant to use for the avatar.
+
+## Additional resources
+
+The following resources provide more information about using Simli with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-simli/)**: The `livekit-plugins-simli` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/simli/index.html.md)**: Reference for the Simli avatar plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-simli)**: View the source or contribute to the LiveKit Simli avatar plugin.
+
+- **[Simli API docs](https://docs.simli.com/)**: Simli's API docs.
+
+- **[Agents Playground](https://docs.livekit.io/agents/start/playground.md)**: A virtual workbench to test your avatar agent.
+
+- **[Frontend starter apps](https://docs.livekit.io/agents/start/frontend.md#starter-apps)**: Ready-to-use frontend apps with avatar support.
+
+---
+
+---
+
 ## Tavus
 
 ## Overview
@@ -28277,14 +28519,8 @@ async def entrypoint(ctx: agents.JobContext):
 
    # Start your agent session with the user
    await session.start(
-      room=ctx.room,
-      room_output_options=RoomOutputOptions(
-         # Disable audio output to the room. The avatar plugin publishes audio separately.
-         audio_enabled=False,
-      ),
-      # ... agent, room_input_options, etc....
+      # ... room, agent, room_input_options, etc....
    )
-
 
 ```
 
@@ -28578,10 +28814,8 @@ Create an inbound trunk using the LiveKit Cloud dashboard.
 
 ```json
 {
-  "trunk": {
-     "name": "My inbound trunk",
-     "numbers": ["+15105550123"]
-  }
+  "name": "My inbound trunk",
+  "numbers": ["+15105550123"]
 }
 
 ```
@@ -33563,5 +33797,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-07-24T21:21:14.172Z.
+This document was rendered at 2025-08-04T20:17:15.612Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

@@ -91,10 +91,10 @@ public class WebRTCModule extends ReactContextBaseJavaModule {
         String fieldTrials = options.fieldTrials;
 
         PeerConnectionFactory.initialize(PeerConnectionFactory.InitializationOptions.builder(reactContext)
-                        .setFieldTrials(fieldTrials)
-                        .setNativeLibraryLoader(new LibraryLoader())
-                        .setInjectableLogger(injectableLogger, loggingSeverity)
-                        .createInitializationOptions());
+                                                 .setFieldTrials(fieldTrials)
+                                                 .setNativeLibraryLoader(new LibraryLoader())
+                                                 .setInjectableLogger(injectableLogger, loggingSeverity)
+                                                 .createInitializationOptions());
 
         if (injectableLogger == null && loggingSeverity != null) {
             Logging.enableLogToDebugOutput(loggingSeverity);

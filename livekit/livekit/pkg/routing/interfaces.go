@@ -160,14 +160,6 @@ type MessageRouter interface {
 		roomName livekit.RoomName,
 		pi ParticipantInit,
 	) (res StartParticipantSignalResults, err error)
-
-	// HandleParticipantConnectRequest handles connection request from participant
-	HandleParticipantConnectRequest(
-		ctx context.Context,
-		roomName livekit.RoomName,
-		participantIdentity livekit.ParticipantIdentity,
-		rscr *rpc.RelaySignalv2ConnectRequest,
-	) (resp *rpc.RelaySignalv2ConnectResponse, err error)
 }
 
 func CreateRouter(
@@ -205,6 +197,9 @@ type ParticipantInit struct {
 	SubscriberAllowPause *bool
 	DisableICELite       bool
 	CreateRoom           *livekit.CreateRoomRequest
+	AddTrackRequests     []*livekit.AddTrackRequest
+	PublisherOffer       *livekit.SessionDescription
+	SyncState            *livekit.SyncState
 }
 
 func (pi *ParticipantInit) MarshalLogObject(e zapcore.ObjectEncoder) error {
@@ -232,6 +227,9 @@ func (pi *ParticipantInit) MarshalLogObject(e zapcore.ObjectEncoder) error {
 	logBoolPtr("SubscriberAllowPause", pi.SubscriberAllowPause)
 	logBoolPtr("DisableICELite", &pi.DisableICELite)
 	e.AddObject("CreateRoom", logger.Proto(pi.CreateRoom))
+	e.AddArray("AddTrackRequests", logger.ProtoSlice(pi.AddTrackRequests))
+	e.AddObject("PublisherOffer", logger.Proto(pi.PublisherOffer))
+	e.AddObject("SyncState", logger.Proto(pi.SyncState))
 	return nil
 }
 
@@ -242,19 +240,22 @@ func (pi *ParticipantInit) ToStartSession(roomName livekit.RoomName, connectionI
 	}
 
 	ss := &livekit.StartSession{
-		RoomName:        string(roomName),
-		Identity:        string(pi.Identity),
-		Name:            string(pi.Name),
-		ConnectionId:    string(connectionID),
-		Reconnect:       pi.Reconnect,
-		ReconnectReason: pi.ReconnectReason,
-		AutoSubscribe:   pi.AutoSubscribe,
-		Client:          pi.Client,
-		GrantsJson:      string(claims),
-		AdaptiveStream:  pi.AdaptiveStream,
-		ParticipantId:   string(pi.ID),
-		DisableIceLite:  pi.DisableICELite,
-		CreateRoom:      pi.CreateRoom,
+		RoomName:         string(roomName),
+		Identity:         string(pi.Identity),
+		Name:             string(pi.Name),
+		ConnectionId:     string(connectionID),
+		Reconnect:        pi.Reconnect,
+		ReconnectReason:  pi.ReconnectReason,
+		AutoSubscribe:    pi.AutoSubscribe,
+		Client:           pi.Client,
+		GrantsJson:       string(claims),
+		AdaptiveStream:   pi.AdaptiveStream,
+		ParticipantId:    string(pi.ID),
+		DisableIceLite:   pi.DisableICELite,
+		CreateRoom:       pi.CreateRoom,
+		AddTrackRequests: pi.AddTrackRequests,
+		PublisherOffer:   pi.PublisherOffer,
+		SyncState:        pi.SyncState,
 	}
 	if pi.SubscriberAllowPause != nil {
 		subscriberAllowPause := *pi.SubscriberAllowPause
@@ -271,18 +272,21 @@ func ParticipantInitFromStartSession(ss *livekit.StartSession, region string) (*
 	}
 
 	pi := &ParticipantInit{
-		Identity:        livekit.ParticipantIdentity(ss.Identity),
-		Name:            livekit.ParticipantName(ss.Name),
-		Reconnect:       ss.Reconnect,
-		ReconnectReason: ss.ReconnectReason,
-		Client:          ss.Client,
-		AutoSubscribe:   ss.AutoSubscribe,
-		Grants:          claims,
-		Region:          region,
-		AdaptiveStream:  ss.AdaptiveStream,
-		ID:              livekit.ParticipantID(ss.ParticipantId),
-		DisableICELite:  ss.DisableIceLite,
-		CreateRoom:      ss.CreateRoom,
+		Identity:         livekit.ParticipantIdentity(ss.Identity),
+		Name:             livekit.ParticipantName(ss.Name),
+		Reconnect:        ss.Reconnect,
+		ReconnectReason:  ss.ReconnectReason,
+		Client:           ss.Client,
+		AutoSubscribe:    ss.AutoSubscribe,
+		Grants:           claims,
+		Region:           region,
+		AdaptiveStream:   ss.AdaptiveStream,
+		ID:               livekit.ParticipantID(ss.ParticipantId),
+		DisableICELite:   ss.DisableIceLite,
+		CreateRoom:       ss.CreateRoom,
+		AddTrackRequests: ss.AddTrackRequests,
+		PublisherOffer:   ss.PublisherOffer,
+		SyncState:        ss.SyncState,
 	}
 	if ss.SubscriberAllowPause != nil {
 		subscriberAllowPause := *ss.SubscriberAllowPause

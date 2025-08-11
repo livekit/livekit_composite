@@ -68,7 +68,7 @@ This limitation makes it difficult or impossible to safely scale down agent cont
 
 ### Recommendation:
 
-Use ECS with EC2 or other infrastructure where container lifecycle and shutdown behavior can be fully controlled. If you must use ECS, consider standalone tasks rather than long-running services, but be aware this still may not be ideal for production-grade reliability.
+Use ECS with EC2 or other infrastructure where container lifecycle and shutdown behavior can be fully controlled like EKS. If you must use ECS, consider standalone tasks rather than long-running services, but be aware this still may not be ideal for production-grade reliability.
 
 
 ## Hosting LiveKit Agents on Render.com (free) and Other Low Resource Providers:

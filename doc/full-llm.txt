@@ -14498,7 +14498,7 @@ Follow these guides bring your voice AI app to life in the real world.
 
 - **[Worker lifecycle](https://docs.livekit.io/agents/worker.md)**: Learn how to manage your agents with workers and jobs.
 
-- **[Deploying to production](https://docs.livekit.io/agents/ops/deployment.md)**: Guide to deploying your voice agent in a production environment.
+- **[Deploying to production](https://docs.livekit.io/agents/ops/deployment.md)**: Deploy your new voice agent to production.
 
 - **[Integration guides](https://docs.livekit.io/agents/integrations.md)**: Explore the full list of AI providers available for LiveKit Agents.
 
@@ -15992,10 +15992,6 @@ session = AgentSession(
 > ℹ️ **Note**
 > 
 > Preemptive generation doesn't guarantee reduced latency. Use [logging, metrics, and telemetry](https://docs.livekit.io/agents/build/metrics.md)  to validate and fine tune agent performance.
-
-### Example
-
-- **[Preemptive generation example](https://github.com/livekit/agents/blob/main/examples/voice_agents/preemptive_generation.py)**: An example of an agent using preemptive generation.
 
 ## Initiating speech
 
@@ -17886,6 +17882,8 @@ The following parameters related to turn detection and interruptions are availab
 
 - **`min_interruption_duration`** _(float)_ (optional) - Default: `0.5`: Minimum detected speech duration before triggering an interruption.
 
+- **`min_interruption_words`** _(int)_ (optional) - Default: `0`: Minimum number of words to consider an interruption, only used if STT is enabled.
+
 ## Turn-taking events
 
 The `AgentSession` exposes user and agent state events to monitor the flow of a conversation:
@@ -18463,6 +18461,8 @@ The following examples show how to implement RAG and other techniques:
 LiveKit Agents provides built-in support for logging, collecting, and analyzing metrics to help you monitor and optimize your agent's performance. Agent sessions emit structured metrics events that can be logged in real time or aggregated to analyze latency and usage patterns.
 
 In addition to per-event metrics, LiveKit’s OpenTelemetry integration provides trace-based observability. This enables you to capture the execution flow of an agents's lifecycle—from session start to individual [node](https://docs.livekit.io/agents/build/nodes.md) operations. You can use any OpenTelemetry-compatible provider to collect and analyze telemetry data, giving you  insight into conversation latency, tool usage, and performance bottlenecks.
+
+For information on log levels, see the [worker options](https://docs.livekit.io/agents/worker/options.md#log-levels) page.
 
 ## Logging events
 
@@ -19764,16 +19764,16 @@ opts = WorkerOptions(
     request_fnc,
     # a function to perform any necessary initialization in a new process.
     prewarm_fnc,
-    # a function that reports the current system load, whether CPU or RAM, etc.
-    load_fnc,
-    # the maximum value of load_fnc, above which new processes will not spawn
-    load_threshold,
     # whether the agent can subscribe to tracks, publish data, update metadata, etc.
     permissions,
     # amount of time to wait for existing jobs to finish when SIGTERM or SIGINT is received
     drain_timeout,
     # the type of worker to create, either JT_ROOM or JT_PUBLISHER
     worker_type=WorkerType.ROOM,
+    # a function that reports the current system load, whether CPU or RAM, etc.
+    load_fnc,
+    # the maximum value of load_fnc, above which no new processes will spawn
+    load_threshold,
 )
 
 # start the worker
@@ -19847,14 +19847,14 @@ opts = WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm_fnc)
 
 ```
 
-### Load function
+### Worker load
 
-`load_fnc` and `load_threshold` control when a worker should stop accepting new jobs.
+In [custom deployments](https://docs.livekit.io/agents/ops/deployment.md), you can configure the conditions under which the worker stops accepting new jobs through the `load_fnc` and `load_threshold` parameters.
 
 - `load_fnc`: A function that returns the current load of the worker as a float between 0 and 1.0.
 - `load_threshold`: The maximum load value at which the worker will still accept new jobs.
 
-If load_fnc is not provided, it defaults to using the worker's average CPU utilization over a 5-second window.
+The default `load_fnc` is the worker's average CPU utilization over a 5-second window. The default `load_threshold` is `0.7`.
 
 The following example shows how to define a custom load function that limits the worker to 9 concurrent jobs, independent of CPU usage:
 
@@ -19870,6 +19870,10 @@ opts = WorkerOptions(
 )
 
 ```
+
+> ℹ️ **Note**
+> 
+> The `load_fnc` and `load_threshold` parameters cannot be changed in LiveKit Cloud deployments.
 
 ### Drain timeout
 
@@ -19957,6 +19961,23 @@ cli.runApp(opts);
 
 The Agents worker CLI provides two subcommands: `start` and `dev`. The former outputs raw JSON data to stdout, and is recommended for production. `dev` is recommended to use for development, as it outputs human-friendly colored logs, and supports hot reloading on Python.
 
+## Log levels
+
+By default, your worker and all of its job processes output logs at the `INFO` level or above. You can configure this behavior with the `--log-level` flag.
+
+```bash
+python agent.py start --log-level=DEBUG
+
+```
+
+The following log levels are available:
+
+- `DEBUG`: Detailed information for debugging.
+- `INFO`: Default level for general information.
+- `WARNING`: Warning messages.
+- `ERROR`: Error messages.
+- `CRITICAL`: Critical error messages.
+
 ---
 
 ### Deployment & operations
@@ -19967,17 +19988,21 @@ The Agents worker CLI provides two subcommands: `start` and `dev`. The former ou
 
 ## Overview
 
-LiveKit Agents use a worker pool model suited to a container orchestration system like Kubernetes. Each worker — an instance of `python agent.py start` — registers with LiveKit server. LiveKit server balances job dispatch across available workers. The workers themselves spawn a new sub-process for each job, and that job is where your code and agent participant run.
+LiveKit agents are ready to deploy to any container orchestration system such as Kubernetes. The framework uses a worker pool model and job dispatch is automatically balanced by LiveKit server across available workers. The workers themselves spawn a new sub-process for each job, and that job is where your code and agent participant run.
 
-Deploying to production generally requires a simple `Dockerfile` that ends in `CMD ["python", "agent.py", "start"]` and a deployment platform that scales your worker pool based on load.
+## Project setup
 
-![Diagram illustrating the LiveKit Agents worker pool with LiveKit server](/images/agents/agents-orchestration.svg)
+Deploying to a production environment generally requires a simple `Dockerfile` that builds and runs an agent worker, and a deployment platform that scales your worker pool based on load.
 
-- **[Python Voice Agent](https://github.com/livekit-examples/agent-starter-python)**: A voice AI starter project which includes a working Dockerfile and CI configuration.
+The following starter projects each include a working Dockerfile and CI configuration.
+
+- **[Python Voice Agent](https://github.com/livekit-examples/agent-starter-python)**: A production-ready voice AI starter project for Python.
+
+- **[Node.js Voice Agent](https://github.com/livekit-examples/agent-starter-node)**: A production-ready voice AI starter project for Node.js.
 
 ## Where to deploy
 
-LiveKit Agents can be deployed anywhere. The recommended approach is to use `Docker` and deploy to an orchestration service. The LiveKit team and community have found the following deployment platforms to be the easiest to deploy and autoscale workers.
+LiveKit Agents can be deployed almost anywhere. The LiveKit team and community have found the following deployment platforms to be the easiest and most cost-effective to use.
 
 - **[LiveKit Cloud Agents Beta](https://livekit.io/cloud-agents-beta)**: Run your agent on the same network and infrastructure that serves LiveKit Cloud, with builds, deployment, and scaling handled for you. Sign up for the public beta to get started.
 
@@ -20025,9 +20050,9 @@ Worker and job processes have no particular storage requirements beyond the size
 
 ## Memory and CPU
 
-Memory and CPU requirements vary significantly based on the specific details of your app. For instance, agents that apply [enhanced noise cancellation](https://docs.livekit.io/cloud/noise-cancellation.md) require more CPU and memory than those that don't.
+Memory and CPU requirements vary significantly based on the specific details of your app. For instance, agents that use [enhanced noise cancellation](https://docs.livekit.io/cloud/noise-cancellation.md) or the [LiveKit turn detector](https://docs.livekit.io/agents/build/turns/turn-detector.md) require more CPU and memory than those that don't. In some cases, the memory requirements might exceed the amount available on a cloud provider's free tier.
 
-LiveKit recommends 4 cores and 8GB of memory for every 25 concurrent sessions as a starting rule for most voice-to-voice apps.
+LiveKit recommends 4 cores and 8GB per worker as a starting rule for most voice AI apps. This worker can handle 10-25 concurrent jobs, depending on the components in use.
 
 > ℹ️ **Real world load test results**
 > 
@@ -20063,21 +20088,23 @@ LiveKit Cloud additionally exercises geographic affinity to prioritize matching 
 
 ## Worker availability
 
-Worker availability is defined by the `load_fnc` and `load_threshold` parameters in the `WorkerOptions` configuration.
+Worker availability is defined by the `load_fnc` and `load_threshold` parameters in the `WorkerOptions` configuration. The `load_fnc` must return a value between 0 and 1, indicating how busy the worker is. `load_threshold` is the load value above which the worker stops accepting new jobs.
 
-The `load_fnc` must return a value between 0 and 1, indicating how busy the worker is. `load_threshold` is the load value above which the worker stops accepting new jobs.
+The default `load_fnc` is overall CPU utilization, and the default `load_threshold` is `0.7`.
 
-The default `load_fnc` is overall CPU utilization, and the default `load_threshold` is `0.75`.
+In a custom deployment, you can override `load_fnc` and `load_threshold` to match the scaling behavior of your environment and application.
 
 ## Autoscaling
 
-To handle variable traffic patterns, add an autoscaling strategy to your deployment platform. Your autoscaler should use the same underlying metrics as your `load_fnc` (the default is CPU utilization) but should scale up at a _lower_ threshold than your worker's `load_threshold`. This ensures continuity of service by adding new workers before existing ones go out of service. For example, if your `load_threshold` is `0.75`, you should scale up at `0.50`.
+To handle variable traffic patterns, add an autoscaling strategy to your deployment platform. Your autoscaler should use the same underlying metrics as your `load_fnc` (the default is CPU utilization) but should scale up at a _lower_ threshold than your worker's `load_threshold`. This ensures continuity of service by adding new workers before existing ones go out of service. For example, if your `load_threshold` is `0.7`, you should scale up at `0.5`.
 
 Since voice agents are typically long running tasks (relative to typical web requests), rapid increases in load are more likely to be sustained. In technical terms: spikes are less spikey. For your autoscaling configuration, you should consider _reducing_ cooldown/stabilization periods when scaling up. When scaling down, consider _increasing_ cooldown/stabilization periods because workers take time to drain.
 
 For example, if deploying on Kubernetes using a Horizontal Pod Autoscaler, see [stabilizationWindowSeconds](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#default-behavior).
 
 ---
+
+#### Deploying to LiveKit Cloud
 
 ---
 
@@ -20758,7 +20785,7 @@ This section describes some of the available parameters. For a complete referenc
 
 - **`voice`** _(Voice | string)_ - Default: `Puck`: Name of the Gemini Live API voice. For a full list, see [Voices](https://ai.google.dev/gemini-api/docs/live#change-voices).
 
-- **`modalities`** _(list[Modality])_ (optional) - Default: `["AUDIO"]`: List of response modalities to use, such as `["TEXT", "AUDIO"]`. Set to `["TEXT"]` to use the model in text-only mode with a [separate TTS plugin](#separate-tts).
+- **`modalities`** _(list[Modality])_ (optional) - Default: `["AUDIO"]`: List of response modalities to use. Set to `["TEXT"]` to use the model in text-only mode with a [separate TTS plugin](#separate-tts).
 
 - **`vertexai`** _(boolean)_ - Default: `false`: If set to true, use Vertex AI.
 
@@ -22840,7 +22867,7 @@ This section describes some of the available parameters. For a complete referenc
 
 - **`voice`** _(Voice | string)_ - Default: `Puck`: Name of the Gemini Live API voice. For a full list, see [Voices](https://ai.google.dev/gemini-api/docs/live#change-voices).
 
-- **`modalities`** _(list[Modality])_ (optional) - Default: `["AUDIO"]`: List of response modalities to use, such as `["TEXT", "AUDIO"]`. Set to `["TEXT"]` to use the model in text-only mode with a [separate TTS plugin](#separate-tts).
+- **`modalities`** _(list[Modality])_ (optional) - Default: `["AUDIO"]`: List of response modalities to use. Set to `["TEXT"]` to use the model in text-only mode with a [separate TTS plugin](#separate-tts).
 
 - **`vertexai`** _(boolean)_ - Default: `false`: If set to true, use Vertex AI.
 
@@ -33797,5 +33824,5 @@ Enum. Valid values are as follows:
 
 ---
 
-This document was rendered at 2025-08-04T20:17:15.612Z.
+This document was rendered at 2025-08-11T01:03:09.624Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

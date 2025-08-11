@@ -82,6 +82,12 @@ var (
 		Hidden:   true,
 	}
 
+	skipSDKCheckFlag = &cli.BoolFlag{
+		Name:     "skip-sdk-check",
+		Required: false,
+		Hidden:   true,
+	}
+
 	AgentCommands = []*cli.Command{
 		{
 			Name:    "agent",
@@ -98,8 +104,12 @@ var (
 						secretsFileFlag,
 						silentFlag,
 						regionFlag,
+						skipSDKCheckFlag,
 					},
-					ArgsUsage: "[working-dir]",
+					// NOTE: since secrets may contain commas, or indeed any special character we might want to treat as a flag separator,
+					// we disable it entirely here and require multiple --secrets flags to be used.
+					DisableSliceFlagSeparator: true,
+					ArgsUsage:                 "[working-dir]",
 				},
 				{
 					Name:   "config",
@@ -119,8 +129,12 @@ var (
 					Flags: []cli.Flag{
 						secretsFlag,
 						secretsFileFlag,
+						skipSDKCheckFlag,
 					},
-					ArgsUsage: "[working-dir]",
+					// NOTE: since secrets may contain commas, or indeed any special character we might want to treat as a flag separator,
+					// we disable it entirely here and require multiple --secrets flags to be used.
+					DisableSliceFlagSeparator: true,
+					ArgsUsage:                 "[working-dir]",
 				},
 				{
 					Name:   "status",
@@ -141,7 +155,10 @@ var (
 						secretsFlag,
 						secretsFileFlag,
 					},
-					ArgsUsage: "[working-dir]",
+					// NOTE: since secrets may contain commas, or indeed any special character we might want to treat as a flag separator,
+					// we disable it entirely here and require multiple --secrets flags to be used.
+					DisableSliceFlagSeparator: true,
+					ArgsUsage:                 "[working-dir]",
 				},
 				{
 					Name:   "restart",
@@ -237,7 +254,10 @@ var (
 							Value:    false,
 						},
 					},
-					ArgsUsage: "[working-dir]",
+					// NOTE: since secrets may contain commas, or indeed any special character we might want to treat as a flag separator,
+					// we disable it entirely here and require multiple --secrets flags to be used.
+					DisableSliceFlagSeparator: true,
+					ArgsUsage:                 "[working-dir]",
 				},
 			},
 		},
@@ -293,11 +313,11 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// We have a configured project, but don't need to double-confirm if it was
-	// set via a command line flag, because intent it clear.
+	// set via a command line flag, because intent is clear.
 	if !cmd.IsSet("project") {
 		useProject := true
 		if err := huh.NewForm(huh.NewGroup(huh.NewConfirm().
-			Title(fmt.Sprintf("Use project [%s] with subdomain [%s] to create agent?", project.Name, subdomainMatches[1])).
+			Title(fmt.Sprintf("Use [%s] (%s) to create agent deployment?", project.Name, project.URL)).
 			Value(&useProject).
 			Inline(false).
 			WithTheme(util.Theme))).
@@ -357,12 +377,21 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	if err := requireDockerfile(ctx, cmd, workingDir, settingsMap); err != nil {
+	projectType, err := agentfs.DetectProjectType(workingDir)
+	if err != nil {
+		return fmt.Errorf("unable to determine project type: %w, please use a supported project type, or create your own Dockerfile in the current directory", err)
+	}
+
+	if err := requireDockerfile(ctx, cmd, workingDir, projectType, settingsMap); err != nil {
 		return err
 	}
 
-	if err := agentfs.CheckSDKVersion(workingDir, settingsMap); err != nil {
-		return err
+	if err := agentfs.CheckSDKVersion(workingDir, projectType, settingsMap); err != nil {
+		if cmd.Bool("skip-sdk-check") {
+			fmt.Printf("Error checking SDK version: %v, skipping...\n", err)
+		} else {
+			return err
+		}
 	}
 
 	req := &lkproto.CreateAgentRequest{
@@ -411,7 +440,7 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 		).Run(); err != nil {
 			return err
 		} else if viewLogs {
-			fmt.Println("Tailing logs...safe to exit at any time")
+			fmt.Println("Tailing runtime logs...safe to exit at any time")
 			return agentfs.LogHelper(ctx, lkConfig.Agent.ID, "deploy", project)
 		}
 	}
@@ -494,7 +523,7 @@ func createAgentConfig(ctx context.Context, cmd *cli.Command) error {
 func deployAgent(ctx context.Context, cmd *cli.Command) error {
 	var req *lkproto.DeployAgentRequest
 
-	agentId, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentId, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
@@ -509,6 +538,24 @@ func deployAgent(ctx context.Context, cmd *cli.Command) error {
 	}
 	if len(secrets) > 0 {
 		req.Secrets = secrets
+	}
+
+	projectType, err := agentfs.DetectProjectType(workingDir)
+	if err != nil {
+		return fmt.Errorf("unable to determine project type: %w, please use a supported project type, or create your own Dockerfile in the current directory", err)
+	}
+
+	settingsMap, err := getClientSettings(ctx, cmd.Bool("silent"))
+	if err != nil {
+		return err
+	}
+
+	if err := agentfs.CheckSDKVersion(workingDir, projectType, settingsMap); err != nil {
+		if cmd.Bool("skip-sdk-check") {
+			fmt.Printf("Error checking SDK version: %v, skipping...\n", err)
+		} else {
+			return err
+		}
 	}
 
 	resp, err := agentsClient.DeployAgent(ctx, req)
@@ -542,7 +589,7 @@ func deployAgent(ctx context.Context, cmd *cli.Command) error {
 }
 
 func getAgentStatus(ctx context.Context, cmd *cli.Command) error {
-	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
@@ -603,7 +650,7 @@ func getAgentStatus(ctx context.Context, cmd *cli.Command) error {
 }
 
 func restartAgent(ctx context.Context, cmd *cli.Command) error {
-	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
@@ -675,7 +722,7 @@ func updateAgent(ctx context.Context, cmd *cli.Command) error {
 }
 
 func rollbackAgent(ctx context.Context, cmd *cli.Command) error {
-	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
@@ -707,7 +754,7 @@ func rollbackAgent(ctx context.Context, cmd *cli.Command) error {
 }
 
 func getLogs(ctx context.Context, cmd *cli.Command) error {
-	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, true)
 	if err != nil {
 		return err
 	}
@@ -716,7 +763,7 @@ func getLogs(ctx context.Context, cmd *cli.Command) error {
 }
 
 func deleteAgent(ctx context.Context, cmd *cli.Command) error {
-	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
@@ -739,27 +786,25 @@ func deleteAgent(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	var res *lkproto.DeleteAgentResponse
-	var innerErr error
+	var agentErr error
 	if err := util.Await(
 		"Deleting agent ["+util.Accented(agentID)+"]",
 		func() {
-			if res, innerErr = agentsClient.DeleteAgent(ctx, &lkproto.DeleteAgentRequest{
+			res, agentErr = agentsClient.DeleteAgent(ctx, &lkproto.DeleteAgentRequest{
 				AgentId: agentID,
-			}); err != nil {
-
-			}
+			})
 		},
 	); err != nil {
 		return err
 	}
 
-	if innerErr != nil {
-		if twerr, ok := err.(twirp.Error); ok {
+	if agentErr != nil {
+		if twerr, ok := agentErr.(twirp.Error); ok {
 			if twerr.Code() == twirp.PermissionDenied {
 				return fmt.Errorf("agent hosting is disabled for this project -- join the beta program here [%s]", cloudAgentsBetaSignupURL)
 			}
 		}
-		return err
+		return agentErr
 	}
 
 	if !res.Success {
@@ -771,7 +816,7 @@ func deleteAgent(ctx context.Context, cmd *cli.Command) error {
 }
 
 func listAgentVersions(ctx context.Context, cmd *cli.Command) error {
-	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
@@ -870,7 +915,7 @@ func listAgents(ctx context.Context, cmd *cli.Command) error {
 }
 
 func listAgentSecrets(ctx context.Context, cmd *cli.Command) error {
-	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
@@ -905,7 +950,7 @@ func listAgentSecrets(ctx context.Context, cmd *cli.Command) error {
 }
 
 func updateAgentSecrets(ctx context.Context, cmd *cli.Command) error {
-	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename)
+	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
@@ -939,7 +984,7 @@ func updateAgentSecrets(ctx context.Context, cmd *cli.Command) error {
 	return fmt.Errorf("failed to update agent secrets: %s", resp.Message)
 }
 
-func getAgentID(ctx context.Context, cmd *cli.Command, agentDir string, tomlFileName string) (string, error) {
+func getAgentID(ctx context.Context, cmd *cli.Command, agentDir string, tomlFileName string, excludeEmptyVersion bool) (string, error) {
 	agentID := cmd.String("id")
 	if agentID == "" {
 		configExists, err := requireConfig(agentDir, tomlFileName)
@@ -953,7 +998,7 @@ func getAgentID(ctx context.Context, cmd *cli.Command, agentDir string, tomlFile
 			}
 			agentID = lkConfig.Agent.ID
 		} else {
-			agentID, err = selectAgent(ctx, cmd)
+			agentID, err = selectAgent(ctx, cmd, excludeEmptyVersion)
 			if err != nil {
 				return "", err
 			}
@@ -970,7 +1015,7 @@ func getAgentID(ctx context.Context, cmd *cli.Command, agentDir string, tomlFile
 	return agentID, nil
 }
 
-func selectAgent(ctx context.Context, _ *cli.Command) (string, error) {
+func selectAgent(ctx context.Context, _ *cli.Command, excludeEmptyVersion bool) (string, error) {
 	var agents *lkproto.ListAgentsResponse
 	var err error
 
@@ -992,6 +1037,9 @@ func selectAgent(ctx context.Context, _ *cli.Command) (string, error) {
 
 	var agentNames []huh.Option[string]
 	for _, agent := range agents.Agents {
+		if excludeEmptyVersion && agent.Version == "---" {
+			continue
+		}
 		name := agent.AgentId + " " + util.Dimmed("deployed "+agent.DeployedAt.AsTime().Format(time.RFC3339))
 		agentNames = append(agentNames, huh.Option[string]{Key: name, Value: agent.AgentId})
 	}
@@ -1012,13 +1060,18 @@ func selectAgent(ctx context.Context, _ *cli.Command) (string, error) {
 func requireSecrets(_ context.Context, cmd *cli.Command, required, lazy bool) ([]*lkproto.AgentSecret, error) {
 	silent := cmd.Bool("silent")
 	secrets := make(map[string]*lkproto.AgentSecret)
-	for _, secret := range cmd.StringSlice("secrets") {
-		secret := strings.Split(secret, "=")
-		agentSecret := &lkproto.AgentSecret{
-			Name:  secret[0],
-			Value: []byte(secret[1]),
+
+	if values, err := parseKeyValuePairs(cmd, "secrets"); err != nil {
+		return nil, fmt.Errorf("failed to parse secrets: %w", err)
+	} else {
+		for key, val := range values {
+			agentSecret := &lkproto.AgentSecret{
+				Name:  key,
+				Value: []byte(val),
+			}
+			secrets[key] = agentSecret
 		}
-		secrets[secret[0]] = agentSecret
+
 	}
 
 	shouldReadFromDisk := cmd.IsSet("secrets-file") || !lazy || (required && len(secrets) == 0)
@@ -1065,7 +1118,7 @@ func requireSecrets(_ context.Context, cmd *cli.Command, required, lazy bool) ([
 	return secretsSlice, nil
 }
 
-func requireDockerfile(ctx context.Context, cmd *cli.Command, workingDir string, settingsMap map[string]string) error {
+func requireDockerfile(_ context.Context, cmd *cli.Command, workingDir string, projectType agentfs.ProjectType, settingsMap map[string]string) error {
 	dockerfileExists, err := agentfs.HasDockerfile(workingDir)
 	if err != nil {
 		return err
@@ -1077,7 +1130,7 @@ func requireDockerfile(ctx context.Context, cmd *cli.Command, workingDir string,
 			if err := util.Await(
 				"Creating Dockerfile...",
 				func() {
-					innerErr = agentfs.CreateDockerfile(workingDir, settingsMap)
+					innerErr = agentfs.CreateDockerfile(workingDir, projectType, settingsMap)
 				},
 			); err != nil {
 				return err
@@ -1087,7 +1140,7 @@ func requireDockerfile(ctx context.Context, cmd *cli.Command, workingDir string,
 			}
 			fmt.Println("Created [" + util.Accented("Dockerfile") + "]")
 		} else {
-			if err := agentfs.CreateDockerfile(workingDir, settingsMap); err != nil {
+			if err := agentfs.CreateDockerfile(workingDir, projectType, settingsMap); err != nil {
 				return err
 			}
 		}

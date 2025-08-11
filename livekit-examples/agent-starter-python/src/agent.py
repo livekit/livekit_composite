@@ -2,19 +2,20 @@ import logging
 
 from dotenv import load_dotenv
 from livekit.agents import (
+    NOT_GIVEN,
     Agent,
+    AgentFalseInterruptionEvent,
     AgentSession,
     JobContext,
     JobProcess,
+    MetricsCollectedEvent,
     RoomInputOptions,
-    RoomOutputOptions,
     RunContext,
     WorkerOptions,
     cli,
     metrics,
 )
 from livekit.agents.llm import function_tool
-from livekit.agents.voice import MetricsCollectedEvent
 from livekit.plugins import cartesia, deepgram, noise_cancellation, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
@@ -28,7 +29,7 @@ class Assistant(Agent):
         super().__init__(
             instructions="""You are a helpful voice AI assistant.
             You eagerly assist users with their questions by providing information from your extensive knowledge.
-            Your responses are concise, to the point, and without any complex formatting or punctuation.
+            Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
             You are curious, friendly, and have a sense of humor.""",
         )
 
@@ -75,6 +76,9 @@ async def entrypoint(ctx: JobContext):
         # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
+        # allow the LLM to generate a response while waiting for the end of turn
+        # See more at https://docs.livekit.io/agents/build/audio/#preemptive-generation
+        preemptive_generation=True,
     )
 
     # To use a realtime model instead of a voice pipeline, use the following session setup instead:
@@ -82,6 +86,13 @@ async def entrypoint(ctx: JobContext):
     #     # See all providers at https://docs.livekit.io/agents/integrations/realtime/
     #     llm=openai.realtime.RealtimeModel()
     # )
+
+    # sometimes background noise could interrupt the agent session, these are considered false positive interruptions
+    # when it's detected, you may resume the agent's speech
+    @session.on("agent_false_interruption")
+    def _on_agent_false_interruption(ev: AgentFalseInterruptionEvent):
+        logger.info("false positive interruption, resuming")
+        session.generate_reply(instructions=ev.extra_instructions or NOT_GIVEN)
 
     # Metrics collection, to measure pipeline performance
     # For more information, see https://docs.livekit.io/agents/build/metrics/

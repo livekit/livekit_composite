@@ -34,8 +34,12 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(receiverGetCapabilities : (NSString *)kin
     return params;
 }
 
-RCT_EXPORT_METHOD(senderReplaceTrack : (nonnull NSNumber *)objectID senderId : (NSString *)senderId trackId : (
-    NSString *)trackId resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
+RCT_EXPORT_METHOD(senderReplaceTrack
+                  : (nonnull NSNumber *)objectID senderId
+                  : (NSString *)senderId trackId
+                  : (NSString *)trackId resolver
+                  : (RCTPromiseResolveBlock)resolve rejecter
+                  : (RCTPromiseRejectBlock)reject) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -62,8 +66,12 @@ RCT_EXPORT_METHOD(senderReplaceTrack : (nonnull NSNumber *)objectID senderId : (
     resolve(@true);
 }
 
-RCT_EXPORT_METHOD(senderSetParameters : (nonnull NSNumber *)objectID senderId : (NSString *)senderId options : (
-    NSDictionary *)options resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
+RCT_EXPORT_METHOD(senderSetParameters
+                  : (nonnull NSNumber *)objectID senderId
+                  : (NSString *)senderId options
+                  : (NSDictionary *)options resolver
+                  : (RCTPromiseResolveBlock)resolve rejecter
+                  : (RCTPromiseRejectBlock)reject) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -93,8 +101,12 @@ RCT_EXPORT_METHOD(senderSetParameters : (nonnull NSNumber *)objectID senderId : 
     resolve([SerializeUtils parametersToJSON:sender.parameters]);
 }
 
-RCT_EXPORT_METHOD(transceiverSetDirection : (nonnull NSNumber *)objectID senderId : (NSString *)senderId direction : (
-    NSString *)direction resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
+RCT_EXPORT_METHOD(transceiverSetDirection
+                  : (nonnull NSNumber *)objectID senderId
+                  : (NSString *)senderId direction
+                  : (NSString *)direction resolver
+                  : (RCTPromiseResolveBlock)resolve rejecter
+                  : (RCTPromiseRejectBlock)reject) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -127,8 +139,11 @@ RCT_EXPORT_METHOD(transceiverSetDirection : (nonnull NSNumber *)objectID senderI
     }
 }
 
-RCT_EXPORT_METHOD(transceiverStop : (nonnull NSNumber *)objectID senderId : (NSString *)
-                      senderId resolver : (RCTPromiseResolveBlock)resolve rejecter : (RCTPromiseRejectBlock)reject) {
+RCT_EXPORT_METHOD(transceiverStop
+                  : (nonnull NSNumber *)objectID senderId
+                  : (NSString *)senderId resolver
+                  : (RCTPromiseResolveBlock)resolve rejecter
+                  : (RCTPromiseRejectBlock)reject) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {
@@ -156,8 +171,10 @@ RCT_EXPORT_METHOD(transceiverStop : (nonnull NSNumber *)objectID senderId : (NSS
     resolve(@true);
 }
 
-RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(transceiverSetCodecPreferences : (nonnull NSNumber *)objectID senderId : (
-    NSString *)senderId codecPreferences : (NSArray *)codecPreferences) {
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(transceiverSetCodecPreferences
+                                       : (nonnull NSNumber *)objectID senderId
+                                       : (NSString *)senderId codecPreferences
+                                       : (NSArray *)codecPreferences) {
     RTCPeerConnection *peerConnection = self.peerConnections[objectID];
 
     if (peerConnection == nil) {

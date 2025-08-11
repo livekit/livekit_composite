@@ -8,9 +8,6 @@ import android.util.Pair;
 import androidx.annotation.Nullable;
 import androidx.core.util.Consumer;
 
-import androidx.annotation.Nullable;
-import androidx.core.util.Consumer;
-
 import com.facebook.react.bridge.ReadableMap;
 import com.facebook.react.bridge.WritableMap;
 

@@ -68,7 +68,7 @@ pnpm dev
 
 And open http://localhost:3000 in your browser.
 
-You'll also need an agent to speak with. Try our [Voice AI Quickstart](https://docs.livekit.io/start/voice-ai) for the easiest way to get started.
+You'll also need an agent to speak with. Try our starter agent for [Python](https://github.com/livekit-examples/agent-starter-python), [Node.js](https://github.com/livekit-examples/agent-starter-node), or [create your own from scratch](https://docs.livekit.io/agents/start/voice-ai/).
 
 ## Configuration
 

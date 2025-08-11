@@ -54,7 +54,6 @@ import (
 	"github.com/livekit/livekit-server/pkg/sfu"
 	"github.com/livekit/livekit-server/pkg/sfu/buffer"
 	"github.com/livekit/livekit-server/pkg/sfu/connectionquality"
-	"github.com/livekit/livekit-server/pkg/sfu/datachannel"
 	"github.com/livekit/livekit-server/pkg/sfu/mime"
 	"github.com/livekit/livekit-server/pkg/sfu/pacer"
 	"github.com/livekit/livekit-server/pkg/sfu/streamallocator"
@@ -201,7 +200,6 @@ type ParticipantParams struct {
 	DisableSenderReportPassThrough bool
 	MetricConfig                   metric.MetricConfig
 	UseOneShotSignallingMode       bool
-	SynchronousLocalCandidatesMode bool
 	EnableMetrics                  bool
 	DataChannelMaxBufferedAmount   uint64
 	DatachannelSlowThreshold       int
@@ -1052,7 +1050,6 @@ func (p *ParticipantImpl) synthesizeAddTrackRequests(offer webrtc.SessionDescrip
 			Stereo:     false,
 			Stream:     "camera",
 		}
-		// ONE-SHOT-SIGNALLING-MODE-TODO: simulcsat layer mapping
 		if strings.EqualFold(m.MediaName.Media, "video") {
 			if ridsOk {
 				// add simulcast layers, NOTE: only quality can be set as dimensions/fps is not available
@@ -1245,6 +1242,7 @@ func (p *ParticipantImpl) handleMigrateTracks() []*MediaTrack {
 // AddTrack is called when client intends to publish track.
 // records track details and lets client know it's ok to proceed
 func (p *ParticipantImpl) AddTrack(req *livekit.AddTrackRequest) {
+	p.params.Logger.Debugw("add track request", "trackID", req.Cid, "request", logger.Proto(req))
 	if !p.CanPublishSource(req.Source) {
 		p.pubLogger.Warnw("no permission to publish track", nil, "trackID", req.Sid, "kind", req.Type)
 		return
@@ -1781,23 +1779,6 @@ func (h PublisherTransportHandler) OnDataMessageUnlabeled(data []byte) {
 	h.p.onReceivedDataMessageUnlabeled(data)
 }
 
-func (h PublisherTransportHandler) OnDataChannelOpenSignalling(dc *datachannel.DataChannelWriter[*webrtc.DataChannel]) {
-	sink := signalling.NewDataChannelMessageSink(signalling.DataChannelMessageSinkParams{
-		Logger:      h.p.params.Logger,
-		DataChannel: dc,
-	})
-	h.p.signaller.SetResponseSink(sink)
-}
-
-func (h PublisherTransportHandler) OnDataChannelCloseSignalling(dc *datachannel.DataChannelWriter[*webrtc.DataChannel]) {
-	// SIGNALLING-V2-TODO: check that the closed data channel is actually the same as response sink
-	h.p.signaller.SetResponseSink(nil)
-}
-
-func (h PublisherTransportHandler) OnDataMessageSignalling(data []byte) {
-	h.p.signalHandler.HandleEncodedMessage(data)
-}
-
 func (h PublisherTransportHandler) OnDataSendError(err error) {
 	h.p.onDataSendError(err)
 }
@@ -1841,33 +1822,17 @@ func (h PrimaryTransportHandler) OnFullyEstablished() {
 }
 
 func (p *ParticipantImpl) setupSignalling() {
-	// SIGNALLING-V2-TODO: do proper types to decide which signalling components to instantiate
-	if !p.params.SynchronousLocalCandidatesMode {
-		p.signalling = signalling.NewSignalling(signalling.SignallingParams{
-			Logger: p.params.Logger,
-		})
-		p.signalHandler = signalling.NewSignalHandler(signalling.SignalHandlerParams{
-			Logger:      p.params.Logger,
-			Participant: p,
-		})
-		p.signaller = signalling.NewSignallerAsync(signalling.SignallerAsyncParams{
-			Logger:      p.params.Logger,
-			Participant: p,
-		})
-	} else {
-		p.signalling = signalling.NewSignallingv2(signalling.Signallingv2Params{
-			Logger: p.params.Logger,
-		})
-		p.signalHandler = signalling.NewSignalHandlerv2(signalling.SignalHandlerv2Params{
-			Logger:      p.params.Logger,
-			Participant: p,
-			Signalling:  p.signalling,
-		})
-		p.signaller = signalling.NewSignallerv2Async(signalling.Signallerv2AsyncParams{
-			Logger:      p.params.Logger,
-			Participant: p,
-		})
-	}
+	p.signalling = signalling.NewSignalling(signalling.SignallingParams{
+		Logger: p.params.Logger,
+	})
+	p.signalHandler = signalling.NewSignalHandler(signalling.SignalHandlerParams{
+		Logger:      p.params.Logger,
+		Participant: p,
+	})
+	p.signaller = signalling.NewSignallerAsync(signalling.SignallerAsyncParams{
+		Logger:      p.params.Logger,
+		Participant: p,
+	})
 }
 
 func (p *ParticipantImpl) setupTransportManager() error {
@@ -1889,30 +1854,29 @@ func (p *ParticipantImpl) setupTransportManager() error {
 	params := TransportManagerParams{
 		// primary connection does not change, canSubscribe can change if permission was updated
 		// after the participant has joined
-		SubscriberAsPrimary:            subscriberAsPrimary,
-		Config:                         p.params.Config,
-		Twcc:                           p.twcc,
-		ProtocolVersion:                p.params.ProtocolVersion,
-		CongestionControlConfig:        p.params.CongestionControlConfig,
-		EnabledPublishCodecs:           p.enabledPublishCodecs,
-		EnabledSubscribeCodecs:         p.enabledSubscribeCodecs,
-		SimTracks:                      p.params.SimTracks,
-		ClientInfo:                     p.params.ClientInfo,
-		Migration:                      p.params.Migration,
-		AllowTCPFallback:               p.params.AllowTCPFallback,
-		TCPFallbackRTTThreshold:        p.params.TCPFallbackRTTThreshold,
-		AllowUDPUnstableFallback:       p.params.AllowUDPUnstableFallback,
-		TURNSEnabled:                   p.params.TURNSEnabled,
-		AllowPlayoutDelay:              p.params.PlayoutDelay.GetEnabled(),
-		DataChannelMaxBufferedAmount:   p.params.DataChannelMaxBufferedAmount,
-		DatachannelSlowThreshold:       p.params.DatachannelSlowThreshold,
-		Logger:                         p.params.Logger.WithComponent(sutils.ComponentTransport),
-		PublisherHandler:               pth,
-		SubscriberHandler:              sth,
-		DataChannelStats:               p.dataChannelStats,
-		UseOneShotSignallingMode:       p.params.UseOneShotSignallingMode,
-		SynchronousLocalCandidatesMode: p.params.SynchronousLocalCandidatesMode,
-		FireOnTrackBySdp:               p.params.FireOnTrackBySdp,
+		SubscriberAsPrimary:          subscriberAsPrimary,
+		Config:                       p.params.Config,
+		Twcc:                         p.twcc,
+		ProtocolVersion:              p.params.ProtocolVersion,
+		CongestionControlConfig:      p.params.CongestionControlConfig,
+		EnabledPublishCodecs:         p.enabledPublishCodecs,
+		EnabledSubscribeCodecs:       p.enabledSubscribeCodecs,
+		SimTracks:                    p.params.SimTracks,
+		ClientInfo:                   p.params.ClientInfo,
+		Migration:                    p.params.Migration,
+		AllowTCPFallback:             p.params.AllowTCPFallback,
+		TCPFallbackRTTThreshold:      p.params.TCPFallbackRTTThreshold,
+		AllowUDPUnstableFallback:     p.params.AllowUDPUnstableFallback,
+		TURNSEnabled:                 p.params.TURNSEnabled,
+		AllowPlayoutDelay:            p.params.PlayoutDelay.GetEnabled(),
+		DataChannelMaxBufferedAmount: p.params.DataChannelMaxBufferedAmount,
+		DatachannelSlowThreshold:     p.params.DatachannelSlowThreshold,
+		Logger:                       p.params.Logger.WithComponent(sutils.ComponentTransport),
+		PublisherHandler:             pth,
+		SubscriberHandler:            sth,
+		DataChannelStats:             p.dataChannelStats,
+		UseOneShotSignallingMode:     p.params.UseOneShotSignallingMode,
+		FireOnTrackBySdp:             p.params.FireOnTrackBySdp,
 	}
 	if p.params.SyncStreams && p.params.PlayoutDelay.GetEnabled() && p.params.ClientInfo.isFirefox() {
 		// we will disable playout delay for Firefox if the user is expecting
@@ -2618,7 +2582,7 @@ func (p *ParticipantImpl) onSubscribedMaxQualityChange(
 			Sid:  trackInfo.Sid,
 			Type: trackInfo.Type,
 		}
-		for _, layer := range trackInfo.Layers {
+		for _, layer := range buffer.GetVideoLayersForMimeType(maxSubscribedQuality.CodecMime, trackInfo) {
 			if layer.Quality == maxSubscribedQuality.Quality {
 				ti.Width = layer.Width
 				ti.Height = layer.Height
@@ -2662,7 +2626,7 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 			return nil
 		}
 
-		track.(*MediaTrack).UpdateCodecCid(req.SimulcastCodecs)
+		track.(*MediaTrack).UpdateCodecInfo(req.SimulcastCodecs)
 		ti := track.ToProto()
 		return ti
 	}
@@ -2670,6 +2634,14 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 	backupCodecPolicy := req.BackupCodecPolicy
 	if backupCodecPolicy != livekit.BackupCodecPolicy_SIMULCAST && p.params.DisableCodecRegression {
 		backupCodecPolicy = livekit.BackupCodecPolicy_SIMULCAST
+	}
+
+	cloneLayers := func(layers []*livekit.VideoLayer) []*livekit.VideoLayer {
+		clonedLayers := make([]*livekit.VideoLayer, 0, len(layers))
+		for _, l := range layers {
+			clonedLayers = append(clonedLayers, utils.CloneProto(l))
+		}
+		return clonedLayers
 	}
 
 	ti := &livekit.TrackInfo{
@@ -2680,7 +2652,7 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 		Muted:             req.Muted,
 		DisableDtx:        req.DisableDtx,
 		Source:            req.Source,
-		Layers:            req.Layers,
+		Layers:            cloneLayers(req.Layers),
 		DisableRed:        req.DisableRed,
 		Stereo:            req.Stereo,
 		Encryption:        req.Encryption,
@@ -2704,26 +2676,39 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 			// clients not supporting simulcast codecs, synthesise a codec
 			ti.Codecs = append(ti.Codecs, &livekit.SimulcastCodecInfo{
 				Cid:    req.Cid,
-				Layers: req.Layers,
+				Layers: cloneLayers(req.Layers),
 			})
 		}
 	} else {
 		seenCodecs := make(map[string]struct{})
 		for _, codec := range req.SimulcastCodecs {
+			if codec.Codec == "" {
+				continue
+			}
+
 			mimeType := codec.Codec
+			videoLayerMode := codec.VideoLayerMode
 			if req.Type == livekit.TrackType_VIDEO {
 				if !mime.IsMimeTypeStringVideo(mimeType) {
 					mimeType = mime.MimeTypePrefixVideo + mimeType
 				}
 				if !IsCodecEnabled(p.enabledPublishCodecs, webrtc.RTPCodecCapability{MimeType: mimeType}) {
 					altCodec := selectAlternativeVideoCodec(p.enabledPublishCodecs)
-					p.pubLogger.Infow("falling back to alternative codec",
+					p.pubLogger.Infow(
+						"falling back to alternative codec",
 						"codec", mimeType,
 						"altCodec", altCodec,
 						"trackID", ti.Sid,
 					)
 					// select an alternative MIME type that's generally supported
 					mimeType = altCodec
+				}
+				if videoLayerMode == livekit.VideoLayer_MODE_UNUSED {
+					if mime.IsMimeTypeStringSVC(mimeType) {
+						videoLayerMode = livekit.VideoLayer_MULTIPLE_SPATIAL_LAYERS_PER_STREAM
+					} else {
+						videoLayerMode = livekit.VideoLayer_ONE_SPATIAL_LAYER_PER_STREAM
+					}
 				}
 			} else if req.Type == livekit.TrackType_AUDIO && !mime.IsMimeTypeStringAudio(mimeType) {
 				mimeType = mime.MimeTypePrefixAudio + mimeType
@@ -2734,15 +2719,40 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 			}
 			seenCodecs[mimeType] = struct{}{}
 
-			clonedLayers := make([]*livekit.VideoLayer, 0, len(req.Layers))
-			for _, l := range req.Layers {
-				clonedLayers = append(clonedLayers, utils.CloneProto(l))
-			}
 			ti.Codecs = append(ti.Codecs, &livekit.SimulcastCodecInfo{
-				MimeType: mimeType,
-				Cid:      codec.Cid,
-				Layers:   clonedLayers,
+				MimeType:       mimeType,
+				Cid:            codec.Cid,
+				VideoLayerMode: videoLayerMode,
 			})
+		}
+
+		// set up layers with codec specific layers,
+		// fall back to common layers if codec specific layer is not available
+		for idx, codec := range ti.Codecs {
+			found := false
+			for _, simulcastCodec := range req.SimulcastCodecs {
+				if mime.GetMimeTypeCodec(codec.MimeType) != mime.NormalizeMimeTypeCodec(simulcastCodec.Codec) {
+					continue
+				}
+
+				if len(simulcastCodec.Layers) != 0 {
+					codec.Layers = cloneLayers(simulcastCodec.Layers)
+				} else {
+					codec.Layers = cloneLayers(req.Layers)
+				}
+				found = true
+				break
+			}
+
+			if !found {
+				// could happen if an alternate codec is selected and that is not in the simulcast codecs list
+				codec.Layers = cloneLayers(req.Layers)
+			}
+
+			// populate simulcast flag for compatibility, true if primary codec is not SVC and has multiple layers
+			if idx == 0 && codec.VideoLayerMode != livekit.VideoLayer_MULTIPLE_SPATIAL_LAYERS_PER_STREAM && len(codec.Layers) > 1 {
+				ti.Simulcast = true
+			}
 		}
 	}
 
@@ -2928,15 +2938,17 @@ func (p *ParticipantImpl) mediaTrackReceived(track sfu.TrackRemote, rtpReceiver 
 			ti.Version = p.params.VersionGenerator.Next().ToProto()
 		}
 
+		mimeType := mime.NormalizeMimeType(ti.MimeType)
 		for _, layer := range ti.Layers {
-			layer.SpatialLayer = buffer.VideoQualityToSpatialLayer(layer.Quality, ti)
-			layer.Rid = buffer.VideoQualityToRid(layer.Quality, ti, sdpRids)
+			layer.SpatialLayer = buffer.VideoQualityToSpatialLayer(mimeType, layer.Quality, ti)
+			layer.Rid = buffer.VideoQualityToRid(mimeType, layer.Quality, ti, sdpRids)
 		}
 
 		for _, codec := range ti.Codecs {
+			mimeType := mime.NormalizeMimeType(codec.MimeType)
 			for _, layer := range codec.Layers {
-				layer.SpatialLayer = buffer.VideoQualityToSpatialLayer(layer.Quality, ti)
-				layer.Rid = buffer.VideoQualityToRid(layer.Quality, ti, sdpRids)
+				layer.SpatialLayer = buffer.VideoQualityToSpatialLayer(mimeType, layer.Quality, ti)
+				layer.Rid = buffer.VideoQualityToRid(mimeType, layer.Quality, ti, sdpRids)
 			}
 		}
 
@@ -3042,8 +3054,6 @@ func (p *ParticipantImpl) addMigratedTrack(cid string, ti *livekit.TrackInfo) *M
 			}
 		}
 	}
-	mt.SetSimulcast(ti.Simulcast)
-	mt.SetMuted(ti.Muted)
 
 	return mt
 }

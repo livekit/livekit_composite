@@ -95,9 +95,10 @@ func (s *signalTransportWebSocket) Join(
 	url string,
 	token string,
 	connectParams ConnectParams,
+	addTrackRequests []*livekit.AddTrackRequest,
 	publisherOffer webrtc.SessionDescription,
 ) error {
-	msg, err := s.connect(ctx, url, token, connectParams, publisherOffer, "")
+	msg, err := s.connect(ctx, url, token, connectParams, addTrackRequests, publisherOffer, "")
 	if err != nil {
 		return err
 	}
@@ -120,6 +121,7 @@ func (s *signalTransportWebSocket) Reconnect(
 		url,
 		token,
 		connectParams,
+		nil,
 		webrtc.SessionDescription{},
 		participantSID,
 	)
@@ -179,14 +181,10 @@ func (s *signalTransportWebSocket) connect(
 	urlPrefix string,
 	token string,
 	connectParams ConnectParams,
+	addTrackRequests []*livekit.AddTrackRequest,
 	publisherOffer webrtc.SessionDescription,
 	participantSID string,
 ) (proto.Message, error) {
-	if joinMethod := s.params.Signalling.JoinMethod(); joinMethod != joinMethodQueryParams {
-		// SIGNALLING-V2-TODO: add WebSocket support for v2 signalling
-		return nil, ErrUnsupportedSignalling
-	}
-
 	if urlPrefix == "" {
 		return nil, ErrURLNotProvided
 	}
@@ -196,6 +194,8 @@ func (s *signalTransportWebSocket) connect(
 		s.params.Version,
 		s.params.Protocol,
 		&connectParams,
+		addTrackRequests,
+		publisherOffer,
 		participantSID,
 	)
 	if err != nil {

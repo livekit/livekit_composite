@@ -16,3 +16,20 @@ jobs:
     - name: Check if the git repository is clean
       run: $(exit $(git status --porcelain --untracked-files=no | head -255 | wc -l)) || (echo "Dirty git tree"; git diff; exit 1)
     - run: npm run lint
+  clang:
+    name: Clang-Format Check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        path:
+          - 'ios'
+          - 'android'
+    steps:
+    - uses: actions/checkout@v4
+    - uses: jidicula/clang-format-action@v4.15.0
+      with:
+        clang-format-version: '17'
+        check-path: ${{ matrix.path }}
+        include-regex: '^.*(\.h|\.m|\.java)'

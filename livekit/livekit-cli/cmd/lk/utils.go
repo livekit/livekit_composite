@@ -17,15 +17,16 @@ package main
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/twitchtv/twirp"
 	"github.com/urfave/cli/v3"
 
 	"github.com/livekit/protocol/utils/interceptors"
-
-	lksdk "github.com/livekit/server-sdk-go/v2"
+	"github.com/livekit/server-sdk-go/v2/signalling"
 
 	"github.com/livekit/livekit-cli/v2/pkg/config"
 	"github.com/livekit/livekit-cli/v2/pkg/util"
@@ -127,7 +128,7 @@ func withDefaultClientOpts(c *config.ProjectConfig) []twirp.ClientOption {
 		ics  []twirp.Interceptor
 	)
 	if printCurl {
-		ics = append(ics, interceptors.NewCurlPrinter(os.Stdout, lksdk.ToHttpURL(c.URL)))
+		ics = append(ics, interceptors.NewCurlPrinter(os.Stdout, signalling.ToHttpURL(c.URL)))
 	}
 	if len(ics) != 0 {
 		opts = append(opts, twirp.WithClientInterceptors(ics...))
@@ -159,6 +160,24 @@ func extractFlagOrArg(c *cli.Command, flag string) (string, error) {
 		value = argValue
 	}
 	return value, nil
+}
+
+func parseKeyValuePairs(c *cli.Command, flag string) (map[string]string, error) {
+	pairs := c.StringSlice(flag)
+	if len(pairs) == 0 {
+		return nil, nil
+	}
+
+	result := make(map[string]string, len(pairs))
+
+	for _, pair := range pairs {
+		if m, err := godotenv.Unmarshal(pair); err != nil {
+			return nil, fmt.Errorf("invalid key-value pair: %s: %w", pair, err)
+		} else {
+			maps.Copy(result, m)
+		}
+	}
+	return result, nil
 }
 
 type loadParams struct {

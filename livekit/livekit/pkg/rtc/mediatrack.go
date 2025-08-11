@@ -39,6 +39,8 @@ import (
 	util "github.com/livekit/mediatransportutil"
 )
 
+var _ types.LocalMediaTrack = (*MediaTrack)(nil)
+
 // MediaTrack represents a WebRTC track that needs to be forwarded
 // Implements MediaTrack and PublishedTrack interface
 type MediaTrack struct {
@@ -134,7 +136,7 @@ func NewMediaTrack(params MediaTrackParams, ti *livekit.TrackInfo) *MediaTrack {
 				t.dynacastManager.NotifySubscriberMaxQuality(
 					subscriberID,
 					mimeType,
-					buffer.GetVideoQualityForSpatialLayer(layer, t.MediaTrackReceiver.TrackInfo()),
+					buffer.GetVideoQualityForSpatialLayer(mimeType, layer, t.MediaTrackReceiver.TrackInfo()),
 				)
 			},
 		)
@@ -143,6 +145,7 @@ func NewMediaTrack(params MediaTrackParams, ti *livekit.TrackInfo) *MediaTrack {
 		})
 	}
 
+	t.SetMuted(ti.Muted)
 	return t
 }
 
@@ -166,7 +169,9 @@ func (t *MediaTrack) OnSubscribedMaxQualityChange(
 		for _, q := range maxSubscribedQualities {
 			receiver := t.Receiver(q.CodecMime)
 			if receiver != nil {
-				receiver.SetMaxExpectedSpatialLayer(buffer.GetSpatialLayerForVideoQuality(q.Quality, t.MediaTrackReceiver.TrackInfo()))
+				receiver.SetMaxExpectedSpatialLayer(
+					buffer.GetSpatialLayerForVideoQuality(q.CodecMime, q.Quality, t.MediaTrackReceiver.TrackInfo()),
+				)
 			}
 		}
 	}
@@ -206,10 +211,6 @@ func (t *MediaTrack) HasSdpCid(cid string) bool {
 
 func (t *MediaTrack) ToProto() *livekit.TrackInfo {
 	return t.MediaTrackReceiver.TrackInfoClone()
-}
-
-func (t *MediaTrack) UpdateCodecCid(codecs []*livekit.SimulcastCodec) {
-	t.MediaTrackReceiver.UpdateCodecCid(codecs)
 }
 
 // AddReceiver adds a new RTP receiver to the track, returns true when receiver represents a new codec
@@ -265,7 +266,7 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 	t.lock.Lock()
 	var regressCodec bool
 	mimeType := mime.NormalizeMimeType(track.Codec().MimeType)
-	layer := buffer.GetSpatialLayerForRid(track.RID(), ti)
+	layer := buffer.GetSpatialLayerForRid(mimeType, track.RID(), ti)
 	if layer < 0 {
 		t.params.Logger.Warnw(
 			"AddReceiver failed due to negative layer", nil,
@@ -371,13 +372,13 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 			}
 		})
 
-		newWR.OnMaxLayerChange(func(maxLayer int32) {
+		newWR.OnMaxLayerChange(func(mimeType mime.MimeType, maxLayer int32) {
 			// send for only one codec, either primary (priority == 0) OR regressed codec
 			t.lock.RLock()
 			regressionTargetCodecReceived := t.regressionTargetCodecReceived
 			t.lock.RUnlock()
 			if priority == 0 || regressionTargetCodecReceived {
-				t.MediaTrackReceiver.NotifyMaxLayerChange(maxLayer)
+				t.MediaTrackReceiver.NotifyMaxLayerChange(mimeType, maxLayer)
 			}
 		})
 		// SIMULCAST-CODEC-TODO END: these need to be receiver/mime aware, setting it up only for primary now
@@ -441,15 +442,10 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 		return newCodec, false
 	}
 
-	// LK-TODO: can remove this completely when VideoLayers protocol becomes the default as it has info from client or if we decide to use TrackInfo.Simulcast
-	if t.numUpTracks.Inc() > 1 || track.RID() != "" {
-		// cannot only rely on numUpTracks since we fire metadata events immediately after the first layer
-		t.SetSimulcast(true)
-	}
-
 	var bitrates int
-	if layer >= 0 && len(ti.Layers) > int(layer) {
-		bitrates = int(ti.Layers[layer].GetBitrate())
+	layers := buffer.GetVideoLayersForMimeType(mimeType, ti)
+	if layer >= 0 && len(layers) > int(layer) {
+		bitrates = int(layers[layer].GetBitrate())
 	}
 
 	t.MediaTrackReceiver.SetLayerSsrc(mimeType, track.RID(), uint32(track.SSRC()))

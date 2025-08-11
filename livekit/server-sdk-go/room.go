@@ -39,14 +39,6 @@ import (
 )
 
 var (
-	signallingVersion signalling.SignallingVersion = signalling.SignallingVersionV1
-)
-
-func WithSignallingVersion(v signalling.SignallingVersion) {
-	signallingVersion = v
-}
-
-var (
 	_ engineHandler = (*Room)(nil)
 )
 
@@ -146,6 +138,12 @@ func WithDisableRegionDiscovery() ConnectOption {
 	}
 }
 
+func WithMetadata(metadata string) ConnectOption {
+	return func(p *signalling.ConnectParams) {
+		p.Metadata = metadata
+	}
+}
+
 func WithExtraAttributes(attrs map[string]string) ConnectOption {
 	return func(p *signalling.ConnectParams) {
 		if len(attrs) != 0 && p.Attributes == nil {
@@ -212,7 +210,7 @@ func NewRoom(callback *RoomCallback) *Room {
 	}
 	r.callback.Merge(callback)
 
-	r.engine = NewRTCEngine(signallingVersion, r, r.getLocalParticipantSID)
+	r.engine = NewRTCEngine(r, r.getLocalParticipantSID)
 	r.LocalParticipant = newLocalParticipant(r.engine, r.callback, r.serverInfo)
 	return r
 }

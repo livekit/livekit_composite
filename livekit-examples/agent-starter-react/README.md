@@ -56,7 +56,7 @@ agent-starter-react/
 Run the following command to automatically clone this template.
 
 ```bash
-lk app create --template agent-starter-react
+lk app create --template voice-assistant-frontend
 ```
 
 Then run the app with:

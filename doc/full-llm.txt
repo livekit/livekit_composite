@@ -8999,7 +8999,7 @@ LiveKit [Room Composite Egress](https://docs.livekit.io/room-composite.md) enabl
 
 The recording feature in LiveKit is built on a web-based architecture, utilizing a headless Chrome instance to render and capture output. The default view is built using LiveKit's [React Components](https://docs.livekit.io/reference/components/react.md). There are a handful of configuration options available including:
 
-- [layout](https://docs.livekit.io/room-composite.md#Default-layouts) to control how the participants are arranged in the view. (You can set or change the layout using either [`StartRoomCompositeEgress()`](https://docs.livekit.io/overview.md#StartRoomCompositeEgress) or [`UpdateLayout()`](https://docs.livekit.io/overview.md#UpdateLayout).)
+- [layout](https://docs.livekit.io/room-composite.md#Default-layouts) to control how the participants are arranged in the view. (You can set or change the layout using either [`StartRoomCompositeEgress()`](https://docs.livekit.io/home/egress/api.md#startroomcompositeegress) or [`UpdateLayout()`](https://docs.livekit.io/home/egress/api.md#updatelayout).)
 - [Encoding options](https://docs.livekit.io/overview.md#EncodingOptions) to control the quality of the audio and/or video captured
 
 For more advanced customization, LiveKit supports configuring the URL of the web application that will generate the page to be recorded, allowing full customization of the recording view.
@@ -14277,7 +14277,7 @@ Install the following packages to build a complete voice AI agent with your STT-
 
 ```shell
 pip install \
-  "livekit-agents[deepgram,openai,cartesia,silero,turn-detector]~=1.0" \
+  "livekit-agents[deepgram,openai,cartesia,silero,turn-detector]~=1.2" \
   "livekit-plugins-noise-cancellation~=0.2" \
   "python-dotenv"
 
@@ -14291,7 +14291,7 @@ Install the following packages to build a complete voice AI agent with your real
 
 ```shell
 pip install \
-  "livekit-agents[openai]~=1.0" \
+  "livekit-agents[openai]~=1.2" \
   "livekit-plugins-noise-cancellation~=0.2" \
   "python-dotenv"
 
@@ -17029,7 +17029,7 @@ LiveKit Agents has full support for [MCP](https://modelcontextprotocol.io/) serv
 To use it, first install the `mcp` optional dependencies:
 
 ```shell
-pip install livekit-agents[mcp]~=1.0
+pip install livekit-agents[mcp]~=1.2
 
 ```
 
@@ -17956,7 +17956,7 @@ For production deployments, use compute-optimized instances (such as AWS c6i or 
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[turn-detector]~=1.0"
+pip install "livekit-agents[turn-detector]~=1.2"
 
 ```
 
@@ -18113,7 +18113,7 @@ The model runs locally on the CPU and requires minimal system resources.
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[silero]~=1.0"
+pip install "livekit-agents[silero]~=1.2"
 
 ```
 
@@ -20297,7 +20297,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the OpenAI plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -20457,7 +20457,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -20530,7 +20530,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -20603,7 +20603,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -20680,7 +20680,7 @@ Use the Voice AI quickstart to build a voice AI app with Gemini. Select an STT-L
 Install the Google plugin:
 
 ```shell
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -20743,7 +20743,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the Google plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -20890,7 +20890,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -20995,7 +20995,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -21071,7 +21071,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -21150,7 +21150,7 @@ Use the voice AI quickstart to build a voice AI app with Azure OpenAI. Select a 
 Install the OpenAI plugin:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -21218,7 +21218,7 @@ This section provides a brief overview of the Azure Speech TTS plugin. For more 
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[azure]~=1.0"
+pip install "livekit-agents[azure]~=1.2"
 
 ```
 
@@ -21317,7 +21317,7 @@ This section provides a brief overview of the Azure Speech STT plugin. For more 
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[azure]~=1.0"
+pip install "livekit-agents[azure]~=1.2"
 
 ```
 
@@ -21409,7 +21409,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the OpenAI plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -21559,7 +21559,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -21639,7 +21639,7 @@ Support for Azure OpenAI TTS is available in the `openai` plugin.
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -21734,7 +21734,7 @@ Support for Azure OpenAI STT is available in the `openai` plugin.
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -21835,7 +21835,7 @@ Use the voice AI quickstart to build a voice AI app with AWS services. Select a 
 Install the AWS plugin:
 
 ```bash
-pip install "livekit-agents[aws]~=1.0"
+pip install "livekit-agents[aws]~=1.2"
 
 ```
 
@@ -21881,7 +21881,7 @@ session = AgentSession(
 Or use Amazon Nova Sonic, a state of the art speech-to-speech model:
 
 ```bash
-pip install "livekit-agents-aws[realtime]~=1.0"
+pip install "livekit-agents-aws[realtime]~=1.2"
 
 ```
 
@@ -21928,7 +21928,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[aws]~=1.0"
+pip install "livekit-agents[aws]~=1.2"
 
 ```
 
@@ -22012,7 +22012,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[aws]~=1.0"
+pip install "livekit-agents[aws]~=1.2"
 
 ```
 
@@ -22092,7 +22092,7 @@ This section provides a brief overview of the Amazon Transcribe STT plugin. For 
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[aws]~=1.0"
+pip install "livekit-agents[aws]~=1.2"
 
 ```
 
@@ -22260,7 +22260,7 @@ Use the Voice AI quickstart to build a voice AI app with Groq. Select an STT-LLM
 Install the Groq plugin:
 
 ```shell
-pip install "livekit-agents[groq]~=1.0"
+pip install "livekit-agents[groq]~=1.2"
 
 ```
 
@@ -22329,7 +22329,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[groq]~=1.0"
+pip install "livekit-agents[groq]~=1.2"
 
 ```
 
@@ -22402,7 +22402,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[groq]~=1.0"
+pip install "livekit-agents[groq]~=1.2"
 
 ```
 
@@ -22472,7 +22472,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[groq]~=1.0"
+pip install "livekit-agents[groq]~=1.2"
 
 ```
 
@@ -22544,7 +22544,7 @@ Use the Voice AI quickstart to build a voice AI app with Cerebras. Select an STT
 Install the OpenAI plugin:
 
 ```shell
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -22632,7 +22632,7 @@ Each provider is available as a separate plugin package, included as an optional
 For example, to install the SDK with the Cartesia, Deepgram, and OpenAI plugins, run the following command:
 
 ```shell
-pip install "livekit-agents[cartesia,deepgram,openai]~=1.0"
+pip install "livekit-agents[cartesia,deepgram,openai]~=1.2"
 
 ```
 
@@ -22640,10 +22640,10 @@ You may also install plugins as individual packages. For example, this is equiva
 
 ```shell
 pip install \
-  "livekit-agents~=1.0" \
-  "livekit-plugins-cartesia~=1.0" \
-  "livekit-plugins-deepgram~=1.0" \
-  "livekit-plugins-openai~=1.0"
+  "livekit-agents~=1.2" \
+  "livekit-plugins-cartesia~=1.2" \
+  "livekit-plugins-deepgram~=1.2" \
+  "livekit-plugins-openai~=1.2"
 
 ```
 
@@ -22825,7 +22825,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the Google plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -23054,7 +23054,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the OpenAI plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -23214,7 +23214,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the OpenAI plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -23457,7 +23457,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[anthropic]~=1.0"
+pip install "livekit-agents[anthropic]~=1.2"
 
 ```
 
@@ -23531,7 +23531,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[aws]~=1.0"
+pip install "livekit-agents[aws]~=1.2"
 
 ```
 
@@ -23615,7 +23615,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[baseten]~=1.0"
+pip install "livekit-agents[baseten]~=1.2"
 
 ```
 
@@ -23693,7 +23693,7 @@ The following resources provide more information about using Baseten with LiveKi
 Install the OpenAI plugin to add Cerebras support:
 
 ```shell
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -23764,7 +23764,7 @@ The following links provide more information about the Cerebras LLM integration.
 Use the OpenAI plugin's `with_deepseek` method to set the default agent session LLM to DeepSeek:
 
 ```shell
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -23828,7 +23828,7 @@ The following links provide more information about the DeepSeek LLM integration.
 Install the OpenAI plugin to add Fireworks AI support:
 
 ```shell
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -23901,7 +23901,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -24006,7 +24006,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[groq]~=1.0"
+pip install "livekit-agents[groq]~=1.2"
 
 ```
 
@@ -24157,7 +24157,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the OpenAI plugin to add Letta support:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -24220,7 +24220,7 @@ The following links provide more information about the Letta LLM plugin.
 Install the OpenAI plugin to add Ollama support:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -24286,7 +24286,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -24361,7 +24361,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -24433,7 +24433,7 @@ The following links provide more information about the Azure OpenAI LLM plugin.
 Install the OpenAI plugin to add Perplexity support:
 
 ```shell
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -24502,7 +24502,7 @@ The following links provide more information about the Perplexity LLM integratio
 Install the OpenAI plugin to add Telnyx support:
 
 ```shell
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -24571,7 +24571,7 @@ The following links provide more information about the Telnyx LLM integration.
 Install the OpenAI plugin to add Together AI support:
 
 ```shell
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -24640,7 +24640,7 @@ The following links provide more information about the Together AI LLM integrati
 Install the OpenAI plugin to add xAI support:
 
 ```shell
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -24873,7 +24873,7 @@ This section provides a brief overview of the AssemblyAI STT plugin. For more in
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[assemblyai]~=1.0"
+pip install "livekit-agents[assemblyai]~=1.2"
 
 ```
 
@@ -24960,7 +24960,7 @@ This section provides a brief overview of the Amazon Transcribe STT plugin. For 
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[aws]~=1.0"
+pip install "livekit-agents[aws]~=1.2"
 
 ```
 
@@ -25046,7 +25046,7 @@ This section provides a brief overview of the Azure Speech STT plugin. For more 
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[azure]~=1.0"
+pip install "livekit-agents[azure]~=1.2"
 
 ```
 
@@ -25136,7 +25136,7 @@ Support for Azure OpenAI STT is available in the `openai` plugin.
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -25228,7 +25228,7 @@ This section provides a quick reference for the Baseten STT plugin. For more inf
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[baseten]~=1.0"
+pip install "livekit-agents[baseten]~=1.2"
 
 ```
 
@@ -25321,7 +25321,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[cartesia]~=1.0"
+pip install "livekit-agents[cartesia]~=1.2"
 
 ```
 
@@ -25390,7 +25390,7 @@ This section provides a brief overview of the CLOVA STT plugin. For more informa
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[clova]~=1.0"
+pip install "livekit-agents[clova]~=1.2"
 
 ```
 
@@ -25459,7 +25459,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[deepgram]~=1.0"
+pip install "livekit-agents[deepgram]~=1.2"
 
 ```
 
@@ -25532,7 +25532,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[fal]~=1.0"
+pip install "livekit-agents[fal]~=1.2"
 
 ```
 
@@ -25597,7 +25597,7 @@ This section provides a brief overview of the Gladia STT plugin. For more inform
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[gladia]~=1.0"
+pip install "livekit-agents[gladia]~=1.2"
 
 ```
 
@@ -25699,7 +25699,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -25771,7 +25771,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[groq]~=1.0"
+pip install "livekit-agents[groq]~=1.2"
 
 ```
 
@@ -25843,7 +25843,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -25912,7 +25912,7 @@ This section provides a quick reference for the Sarvam STT plugin. For more info
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[sarvam]~=1.0"
+pip install "livekit-agents[sarvam]~=1.2"
 
 ```
 
@@ -25982,7 +25982,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[speechmatics]~=1.0"
+pip install "livekit-agents[speechmatics]~=1.2"
 
 ```
 
@@ -26083,7 +26083,7 @@ This section provides a quick reference for the Spitch STT plugin. For more info
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[spitch]~=1.0"
+pip install "livekit-agents[spitch]~=1.2"
 
 ```
 
@@ -26263,7 +26263,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[aws]~=1.0"
+pip install "livekit-agents[aws]~=1.2"
 
 ```
 
@@ -26345,7 +26345,7 @@ This section provides a brief overview of the Azure Speech TTS plugin. For more 
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[azure]~=1.0"
+pip install "livekit-agents[azure]~=1.2"
 
 ```
 
@@ -26448,7 +26448,7 @@ Support for Azure OpenAI TTS is available in the `openai` plugin.
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -26541,7 +26541,7 @@ This section provides a quick reference for the Baseten TTS plugin. For more inf
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[baseten]~=1.0"
+pip install "livekit-agents[baseten]~=1.2"
 
 ```
 
@@ -26624,7 +26624,7 @@ This section includes a brief overview of the Cartesia TTS plugin. For more info
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[cartesia]~=1.0"
+pip install "livekit-agents[cartesia]~=1.2"
 
 ```
 
@@ -26704,7 +26704,7 @@ This section provides a quick reference for the Deepgram TTS plugin. For more in
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[deepgram]~=1.0"
+pip install "livekit-agents[deepgram]~=1.2"
 
 ```
 
@@ -26775,7 +26775,7 @@ This section provides a quick reference for the ElevenLabs TTS plugin. For more 
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[elevenlabs]~=1.0"
+pip install "livekit-agents[elevenlabs]~=1.2"
 
 ```
 
@@ -26867,7 +26867,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[google]~=1.0"
+pip install "livekit-agents[google]~=1.2"
 
 ```
 
@@ -26943,7 +26943,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[groq]~=1.0"
+pip install "livekit-agents[groq]~=1.2"
 
 ```
 
@@ -27013,7 +27013,7 @@ This section includes a brief overview of the Hume TTS plugin. For more informat
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[hume]~=1.0"
+pip install "livekit-agents[hume]~=1.2"
 
 ```
 
@@ -27098,7 +27098,7 @@ This section includes a brief overview of the Inworld TTS plugin. For more infor
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[inworld]~=1.0"
+pip install "livekit-agents[inworld]~=1.2"
 
 ```
 
@@ -27167,7 +27167,7 @@ This section provides a quick reference for the LMNT TTS plugin. For more inform
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[lmnt]~=1.0"
+pip install "livekit-agents[lmnt]~=1.2"
 
 ```
 
@@ -27240,7 +27240,7 @@ This section includes a brief overview of the Neuphonic TTS plugin. For more inf
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[neuphonic]~=1.0"
+pip install "livekit-agents[neuphonic]~=1.2"
 
 ```
 
@@ -27313,7 +27313,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[openai]~=1.0"
+pip install "livekit-agents[openai]~=1.2"
 
 ```
 
@@ -27388,7 +27388,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[playai]~=1.0"
+pip install "livekit-agents[playai]~=1.2"
 
 ```
 
@@ -27469,7 +27469,7 @@ This section includes a brief overview of the Resemble AI TTS plugin. For more i
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[resemble]~=1.0"
+pip install "livekit-agents[resemble]~=1.2"
 
 ```
 
@@ -27538,7 +27538,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[rime]~=1.0"
+pip install "livekit-agents[rime]~=1.2"
 
 ```
 
@@ -27624,7 +27624,7 @@ This section provides a quick reference for the Sarvam TTS plugin. For more info
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[sarvam]~=1.0"
+pip install "livekit-agents[sarvam]~=1.2"
 
 ```
 
@@ -27702,7 +27702,7 @@ This section includes a brief overview of the Speechify TTS plugin. For more inf
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[speechify]~=1.0"
+pip install "livekit-agents[speechify]~=1.2"
 
 ```
 
@@ -27780,7 +27780,7 @@ This section provides a quick reference for the Spitch TTS plugin. For more info
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[spitch]~=1.0"
+pip install "livekit-agents[spitch]~=1.2"
 
 ```
 
@@ -27974,7 +27974,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[anam]~=1.0"
+pip install "livekit-agents[anam]~=1.2"
 
 ```
 
@@ -28072,7 +28072,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[bey]~=1.0"
+pip install "livekit-agents[bey]~=1.2"
 
 ```
 
@@ -28154,7 +28154,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[bithuman]~=1.0"
+pip install "livekit-agents[bithuman]~=1.2"
 
 ```
 
@@ -28240,7 +28240,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[hedra]~=1.0"
+pip install "livekit-agents[hedra]~=1.2"
 
 ```
 
@@ -28384,7 +28384,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[simli]~=1.0"
+pip install "livekit-agents[simli]~=1.2"
 
 ```
 
@@ -28485,7 +28485,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the plugin from PyPI:
 
 ```bash
-pip install "livekit-agents[tavus]~=1.0"
+pip install "livekit-agents[tavus]~=1.2"
 
 ```
 
@@ -33934,5 +33934,5 @@ Check with your SIP trunking provider and verify you're using the correct SIP en
 
 ---
 
-This document was rendered at 2025-08-12T03:19:37.850Z.
+This document was rendered at 2025-08-13T00:33:34.089Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

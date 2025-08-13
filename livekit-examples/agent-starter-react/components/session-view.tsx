@@ -39,7 +39,9 @@ export const SessionView = ({
   const { messages, send } = useChatAndTranscription();
   const room = useRoomContext();
 
-  useDebugMode();
+  useDebugMode({
+    enabled: process.env.NODE_END !== 'production',
+  });
 
   async function handleSendMessage(message: string) {
     await send(message);

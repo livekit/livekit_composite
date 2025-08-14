@@ -4,7 +4,7 @@
   url: "https://github.com/livekit-examples/agent-starter-python"
   created_at: "2025-07-18T00:00:00Z"
   updated_at: "2025-07-18T00:00:00Z"
-  requires: ["voice-assistant-frontend", "agent-starter-android", "agent-starter-swift", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  requires: ["agent-starter-react", "agent-starter-android", "agent-starter-swift", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
   is_enabled: true
   is_sandbox: false
   category: "agent-starter-backend"
@@ -24,7 +24,7 @@
   url: "https://github.com/livekit-examples/agent-starter-node"
   created_at: "2025-07-18T00:00:00Z"
   updated_at: "2025-07-18T00:00:00Z"
-  requires: ["voice-assistant-frontend", "agent-starter-android", "agent-starter-swift", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  requires: ["agent-starter-react", "agent-starter-android", "agent-starter-swift", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
   is_enabled: true
   is_sandbox: false
   category: "agent-starter-backend"
@@ -38,7 +38,7 @@
     Tools: "Python >=3.9"
     License: "Apache-2.0"
 
-- name: "voice-assistant-frontend"
+- name: "agent-starter-react"
   display_name: "Next.js Voice Agent"
   desc: "A starter app for Next.js, featuring a flexible voice AI frontend"
   url: "https://github.com/livekit-examples/agent-starter-react"
@@ -278,7 +278,7 @@
   desc: "A team of writing coach agents demonstrating multi-agent workflows"
   url: "https://github.com/livekit-examples/multi-agent-python"
   created_at: "2025-04-10T00:00:00Z"
-  requires: ["voice-assistant-frontend", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
   is_enabled: true
   is_sandbox: false
   category: "voice-assistant"
@@ -298,7 +298,7 @@
   desc: "A voice assistant using S2S and multimodal capabilities"
   url: "https://github.com/livekit-examples/multimodal-agent-node"
   created_at: "2024-09-30T00:00:00Z"
-  requires: ["voice-assistant-frontend", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
   is_enabled: true
   is_sandbox: false
   is_hidden: true
@@ -319,7 +319,7 @@
   desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
   url: "https://github.com/livekit-examples/voice-pipeline-agent-node"
   created_at: "2024-11-11T00:00:00Z"
-  requires: ["voice-assistant-frontend", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
   is_enabled: true
   is_sandbox: false
   is_hidden: true
@@ -360,7 +360,7 @@
   desc: "A voice assistant using S2S and multimodal capabilities"
   url: "https://github.com/livekit-examples/multimodal-agent-python"
   created_at: "2024-09-30T00:00:00Z"
-  requires: ["voice-assistant-frontend", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
   is_enabled: true
   is_sandbox: false
   is_hidden: true
@@ -381,7 +381,7 @@
   desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
   url: "https://github.com/livekit-examples/voice-pipeline-agent-python"
   created_at: "2024-09-18T00:00:00Z"
-  requires: ["voice-assistant-frontend", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
   is_enabled: true
   is_sandbox: false
   is_hidden: true

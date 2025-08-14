@@ -680,7 +680,7 @@ export interface TrackToggleProps<T extends ToggleSource> extends Omit<React_2.B
     source: T;
 }
 
-// @alpha (undocumented)
+// @alpha @deprecated (undocumented)
 export interface TrackTranscriptionOptions {
     bufferSize?: number;
     onTranscription?: (newSegments: TranscriptionSegment[]) => void;
@@ -1079,6 +1079,15 @@ export interface UseRoomInfoOptions {
 }
 
 // @public
+export function useSequentialRoomConnectDisconnect<R extends Room | undefined>(room: R): UseSequentialRoomConnectDisconnectResults<R>;
+
+// @public (undocumented)
+export type UseSequentialRoomConnectDisconnectResults<R extends Room | undefined> = {
+    connect: typeof Room.prototype.connect & (R extends undefined ? null : unknown);
+    disconnect: typeof Room.prototype.disconnect & (R extends undefined ? null : unknown);
+};
+
+// @public
 export function useSortedParticipants(participants: Array<Participant>): Participant[];
 
 // @public
@@ -1185,7 +1194,7 @@ export function useTrackToggle<T extends ToggleSource>({ source, onChange, initi
 export interface UseTrackToggleProps<T extends ToggleSource> extends Omit<TrackToggleProps<T>, 'showIcon'> {
 }
 
-// @alpha (undocumented)
+// @alpha @deprecated (undocumented)
 export function useTrackTranscription(trackRef: TrackReferenceOrPlaceholder | undefined, options?: TrackTranscriptionOptions): {
     segments: ReceivedTranscriptionSegment[];
 };

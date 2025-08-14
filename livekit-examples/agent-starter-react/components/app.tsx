@@ -21,11 +21,12 @@ interface AppProps {
 export function App({ appConfig }: AppProps) {
   const room = useMemo(() => new Room(), []);
   const [sessionStarted, setSessionStarted] = useState(false);
-  const { fetchConnectionDetails } = useConnectionDetails();
+  const { refreshConnectionDetails, existingOrRefreshConnectionDetails } = useConnectionDetails();
 
   useEffect(() => {
     const onDisconnected = () => {
       setSessionStarted(false);
+      refreshConnectionDetails();
     };
     const onMediaDevicesError = (error: Error) => {
       toastAlert({
@@ -39,7 +40,7 @@ export function App({ appConfig }: AppProps) {
       room.off(RoomEvent.Disconnected, onDisconnected);
       room.off(RoomEvent.MediaDevicesError, onMediaDevicesError);
     };
-  }, [room]);
+  }, [room, refreshConnectionDetails]);
 
   useEffect(() => {
     let aborted = false;
@@ -48,7 +49,7 @@ export function App({ appConfig }: AppProps) {
         room.localParticipant.setMicrophoneEnabled(true, undefined, {
           preConnectBuffer: appConfig.isPreConnectBufferEnabled,
         }),
-        fetchConnectionDetails().then((connectionDetails) =>
+        existingOrRefreshConnectionDetails().then((connectionDetails) =>
           room.connect(connectionDetails.serverUrl, connectionDetails.participantToken)
         ),
       ]).catch((error) => {
@@ -71,7 +72,7 @@ export function App({ appConfig }: AppProps) {
       aborted = true;
       room.disconnect();
     };
-  }, [room, sessionStarted, fetchConnectionDetails, appConfig.isPreConnectBufferEnabled]);
+  }, [room, sessionStarted, appConfig.isPreConnectBufferEnabled]);
 
   const { startButtonText } = appConfig;
 

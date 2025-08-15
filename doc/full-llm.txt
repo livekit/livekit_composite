@@ -946,7 +946,7 @@ The `--template` flag may be omitted to see a list of all available templates, o
 
 | **Template Name** | **Language/Framework** | **Description** |
 | [agent-starter-python](https://github.com/livekit-examples/agent-starter-python) | Python | A starter project for Python, featuring a simple voice agent implementation |
-| [voice-assistant-frontend](https://github.com/livekit-examples/agent-starter-react) | TypeScript/Next.js | A starter app for Next.js, featuring a flexible voice AI frontend |
+| [agent-starter-react](https://github.com/livekit-examples/agent-starter-react) | TypeScript/Next.js | A starter app for Next.js, featuring a flexible voice AI frontend |
 | [agent-starter-android](https://github.com/livekit-examples/agent-starter-android) | Kotlin/Android | A starter project for Android, featuring a flexible voice AI frontend |
 | [agent-starter-swift](https://github.com/livekit-examples/agent-starter-swift) | Swift | A starter project for Swift, featuring a flexible voice AI frontend |
 | [agent-starter-flutter](https://github.com/livekit-examples/agent-starter-flutter) | Flutter | A starter project for Flutter, featuring a flexible voice AI frontend |
@@ -18432,15 +18432,17 @@ For more information and examples, see the following articles:
 
 Sometimes the best way to get the most relevant results is to fine-tune a model for your specific use case. You can explore the available [LLM integrations](https://docs.livekit.io/agents/integrations/llm.md) to find a provider that supports fine-tuning, or use [Ollama](https://docs.livekit.io/agents/integrations/llm/ollama.md) to integrate a custom model.
 
-## RAG providers and services
+## External services
 
-You can integrate with any RAG provider or tool of your choice to enhance your agent with additional context. Suggested providers and tools include:
+Many providers offer services to provide memory or other capabilities to your agents. Some suggested services that work well with LiveKit Agents include:
 
-- [LlamaIndex](https://www.llamaindex.ai/) - Framework for connecting custom data to LLMs.
-- [Mem0](https://mem0.ai) - Memory layer for AI assistants.
-- [TurboPuffer](https://turbopuffer.com/) - Fast serverless vector search built on object storage.
-- [Pinecone](https://pinecone.io/) - Managed vector database for AI applications.
-- [Annoy](https://github.com/spotify/annoy) - Open source Python library from Spotify for nearest neighbor search.
+- **[Letta](https://docs.livekit.io/agents/integrations/llm/letta.md)**: Build and deploy stateful AI agents that maintain memory and context across long-running conversations.
+
+- **[AgentMail](https://docs.agentmail.to/integrate-livekit-agents)**: Give your agents their own email inboxes.
+
+- **[LlamaIndex](https://www.llamaindex.ai/)**: Framework for connecting custom data to LLMs.
+
+- **[Mem0](https://mem0.ai)**: Self-improving memory layer for AI agents.
 
 ## Additional examples
 
@@ -27052,7 +27054,7 @@ This section describes some of the available parameters. See the [plugin referen
 
 - **`instant_mode`** _(bool)_ (optional) - Default: `true`: Enables ultra-low latency streaming, reducing time to first chunk. Recommended for real-time applications. Only for streaming endpoints. With this enabled, requests incur 10% higher cost.
 
-Instant mode is automatically disabled when a voice is specified in the request.
+Instant mode is automatically enabled when a voice is specified in the request.
 
 ## Updating utterance options
 
@@ -28659,6 +28661,15 @@ LiveKit SIP supports the following functionality.
 | SIP headers | You can map custom `X-*` SIP headers to participant attributes. For example, custom headers can be used to route calls to different workflows. To learn more, see [Custom attributes](https://docs.livekit.io/sip/sip-participant.md#custom-attributes). |
 | Noise cancellation | You can enable noise cancellation for callers and callees using Krisp. To learn more, see [Noise cancellation for calls](#noise-cancellation-for-calls). |
 | Region pinning | You can restrict incoming and outgoing calls to a specific region to comply with local telephony regulations. To learn more, see [Region pinning for SIP](https://docs.livekit.io/sip/cloud.md#region-pinning). |
+| Secure trunking | You can enable encryption for signaling traffic and media using TLS and SRTP for SIP calls. To learn more, see [Secure trunking](https://docs.livekit.io/sip/secure-trunking.md). |
+
+### Supported protocols
+
+LiveKit SIP supports the following protocols:
+
+| Protocol | Description |
+| TCP, UDP, TLS | Transport protocols for SIP signaling. |
+| RTP, SRTP | Network protocols for delivering audio and video media. |
 
 ### Noise cancellation for calls
 
@@ -28766,10 +28777,6 @@ lk sip outbound create outbound-trunk.json
 ```
 
 To learn more, see [Outbound trunks](https://docs.livekit.io/sip/trunk-outbound.md).
-
-### Considerations
-
-When you enable region pinning, you turn off automatic failover to the nearest region in the case of an outage.
 
 ### Available regions
 
@@ -32260,7 +32267,7 @@ func main() {
 
 **LiveKit Cloud**:
 
-Update and replace functions are the same in the LiveKit Cloud dashboard. For an example, see the [replace an outbound trunk](#replace-an-outbound-trunk) section.
+Update and replace functions are the same in the LiveKit Cloud dashboard. For an example, see the [replace an outbound trunk](#replace-trunk) section.
 
 ### Replace an outbound trunk
 
@@ -33128,6 +33135,202 @@ Currently, Twilio does not support HD voice. If you find other providers that su
 
 ---
 
+---
+
+## Secure trunking
+
+LiveKit SIP supports secure trunking using Transport Layer Security (TLS) to encrypt signaling traffic, and Secure Real-time Transport (SRTP) to encrypt media traffic. Encryption ensures that an Internet Service Provider (ISP) or a eavesdropping attacker (man-in-the-middle) cannot listen in on the conversation.
+
+> ℹ️ **SIP REFER is not supported when using TLS.**
+> 
+> Transferring calls with SIP REFER is not currently supported over TLS.
+
+## Configure secure trunking for SIP calls
+
+Setting up secure trunking requires multiple steps and includes enabling SRTP and TLS on your SIP trunking provider side, and enabling media encryption on your LiveKit trunks or on a per-call basis. The following sections provide instructions for enabling secure trunking with Twilio and Telnyx and setting up your LiveKit SIP trunks.
+
+To secure calls you must complete all of the following steps:
+
+1. Enable secure trunking with your SIP trunking provider.
+2. Update your SIP URIs to use TLS for transport.
+3. Enable media encryption for your LiveKit SIP trunks.
+
+## Step 1: Enable secure trunking with your SIP trunking provider
+
+Depending on your SIP trunking provider, you might need to explicitly enable secure trunking. The following instructions provide steps for Twilio and Telnyx. If you're using a different provider, check with them to see if you need to enable secure trunking.
+
+### Enable secure trunking with Twilio and Telnyx
+
+The following instructions assume you have already configured trunking with your SIP provider. If you haven't, see the [SIP trunk setup](https://docs.livekit.io/sip/quickstarts/configuring-sip-trunk.md) quickstart or select your provider-specific instructions from the navigation menu.
+
+**Twilio**:
+
+1. Sign in to the [Twilio Console](https://console.twilio.com/).
+2. Select **Develop** tab → **Elastic SIP Trunking** → **Manage** → **Trunks**.
+3. Select the trunk you want to edit.
+4. On the **General Settings** page, under **Features**, enable **Secure Trunking**.
+5. Save your changes.
+
+---
+
+**Telnyx**:
+
+1. Sign in to the [Telnyx Portal](https://portal.telnyx.com/).
+2. Select **Real-Time Communications** → **Voice** → **SIP Trunking**.
+3. Select the trunk you want to edit.
+4. Select the **Inbound** tab.
+5. For **SIP transport protocol**, select **TLS**.
+6. For **Encrypted media**, select **SRTP**.
+7. Save your changes.
+
+## Step 2: Update your SIP URIs to use TLS
+
+The following instructions apply to inbound calls for Twilio or Telnyx. For other providers, set the origination URI to your SIP URI with `;transport=tls` appended to it. For example, if your SIP URI is:
+
+`sip:bwwn08a2m4o.sip.livekit.cloud`
+
+Set the origination URI to:
+
+`sip:bwwn08a2m4o.sip.livekit.cloud;transport=tls`.
+
+You can find your SIP URI on your LiveKit Cloud [project settings](https://cloud.livekit.io/projects/p_/settings) page.
+
+If your provider doesn't support a SIP URI with URI parameters, you must enable TLS another way:
+
+- Enable TLS in the trunk settings (required).
+- If supported, set the port to `5061`, the default port for SIP over TLS.
+
+> ℹ️ **TLS must be enabled**
+> 
+> Changing only the port number without enabling TLS is not enough. Some providers might treat port `5061` as a non-standard port for insecure UDP or TCP traffic.
+
+Check your provider's documentation for exact steps.
+
+For outbound calls, you must set the transport protocol to TLS in the outbound trunk settings in the following section.
+
+**Twilio**:
+
+1. Sign in to the [Twilio Console](https://console.twilio.com/).
+2. Select the **Develop** tab → **Elastic SIP Trunking** → **Manage** → **Trunks**.
+3. Select the trunk you want to edit → **Origination**.
+4. Update the **Origination URI** to include `;transport=tls`.
+5. Save your changes.
+
+---
+
+**Telnyx**:
+
+1. Sign in to the [Telnyx Portal](https://portal.telnyx.com/).
+2. Select **Real-Time Communications** → **Voice** → **SIP Trunking**.
+3. Select the edit icon for your trunk → **Inbound settings**.
+4. Select **Authentication and routing**.
+5. In the **FQDN** section, select **Add FQDN**.
+6. Add your SIP domain and port `5061` for TLS and save.
+7. In the **Inbound calls routing** section, select the option you just added with port `5061`.
+8. Save your changes.
+
+## Step 3: Enable media encryption for your SIP trunks
+
+Set the `media_encryption` parameter for your inbound or outbound trunks to either allow or require encryption. Valid values are as follows:
+
+- `SIP_MEDIA_ENCRYPT_ALLOW`: Use media encryption if available.
+- `SIP_MEDIA_ENCRYPT_REQUIRE`: Require media encryption.
+
+By default, media encryption is turned off. To see all options, see the [API reference](https://docs.livekit.io/sip/api.md#sipmediaencryption).
+
+### Create an inbound trunk
+
+Create an inbound trunk with media encryption enabled. To edit a trunk instead, see [Edit an existing trunk](#edit-trunk).
+
+1. Sign in to your [Telephony configuration](https://cloud.livekit.io/projects/p_/telephony/config) dashboard.
+2. Select **Create new** → **Trunk**.
+3. Select the **JSON editor** tab and copy and paste the following contents. Replace the phone number with the one purchased from your SIP trunking provider.
+
+```json
+{
+    "name": "My trunk",
+    "numbers": [
+      "+15105550100"
+    ],
+    "krispEnabled": true,
+    "mediaEncryption": "SIP_MEDIA_ENCRYPT_ALLOW"
+}
+
+```
+4. Select **Create**.
+
+### Create an outbound trunk
+
+For outbound calls, create an outbound trunk with media encryption enabled and [transport](https://docs.livekit.io/sip/api.md#siptransport) protocol set to `SIP_TRANSPORT_TLS`. All calls made using this trunk use TLS and SRTP.
+
+You can also enable media encryption on a [call-by-call basis](#per-call-encryption) by setting the `media_encryption` parameter in the `CreateSIPParticipant` request. However, you should still enable TLS for calls on the outbound trunk.
+
+Use the following instructions to create a new wildcard outbound trunk with SRTP and TLSenabled. The wildcard allows all calls to be routed to the same trunk. To edit a trunk instead, see [Edit an existing trunk](#edit-trunk).
+
+1. Sign in to your [Telephony configuration](https://cloud.livekit.io/projects/p_/telephony/config) dashboard.
+2. Select **Create new** → **Trunk**.
+3. Select the **JSON editor** → select **Outbound** for **Trunk direction**.
+4. Copy and paste the following contents. Replace the SIP trunking provider endpoint, and username and password for authentication.
+
+```json
+{
+"name": "My outbound trunk",
+"address": "<sip-trunking-provider-endpoint>",
+"transport": "SIP_TRANSPORT_TLS",
+"numbers": [
+   "*"
+],
+"authUsername": "<username>",
+"authPassword": "<password>",
+"mediaEncryption": "SIP_MEDIA_ENCRYPT_ALLOW"
+}
+
+```
+5. Select **Create**.
+
+### Edit an existing trunk
+
+Edit an existing inbound or outbound trunk to enable media encryption using the LiveKit Cloud dashboard.
+
+- Sign in to your [Telephony configuration](https://cloud.livekit.io/projects/p_/telephony/config) dashboard.
+- Navigate to the **Inbound** or **Outbound** section on the page.
+- Select the more menu (**⋮**) next to the trunk you want to edit → **Configure trunk**.
+- For _outbound_ trunks, for **Transport** select **TLS**.
+- Expand the **Optional settings** section. Select either **Media encryption enabled** or **Media encryption required**.
+- Select **Update**.
+
+### Enable media encryption per call
+
+You can enable media encryption on a per-call basis by setting the `media_encryption` parameter in the `CreateSIPParticipant` request.
+
+> ℹ️ **SRTP must be enabled**
+> 
+> You must also enable SRTP on the SIP trunking provider side. If you haven't already enabled this, see [Step 1: Enable secure trunking with your SIP trunking provider](#enable-secure-trunking).
+
+1. Create a `sip-participant.json` file with the following participant details:
+
+```json
+{
+  "sip_trunk_id": "<your-outbound-trunk-id>",
+  "sip_call_to": "<phone-number-to-dial>",
+  "room_name": "my-sip-room",
+  "participant_identity": "sip-test",
+  "participant_name": "Test Caller",
+  "krisp_enabled": true,
+  "wait_until_answered": true,
+  "media_encryption": "SIP_MEDIA_ENCRYPT_ALLOW"
+}
+
+```
+2. Create the SIP Participant using the CLI. After you run this command, a call is made to the `<phone-number-to-dial>` number from the number configured in your outbound trunk.
+
+```shell
+lk sip participant create sip-participant.json
+
+```
+
+---
+
 ### Reference
 
 ---
@@ -33928,11 +34131,11 @@ For example, the SIP endpoint for Telnyx is `sip.telnyx.com`. If you include a s
 
 #### Solution
 
-Check with your SIP trunking provider and verify you're using the correct SIP endpoint in the `address` field for your outbound trunk. To learn more, see [Create an outbound trunk](https://docs.livekit.io/sip/trunk-outbound.md#create-an-outbound-trunk).
+Check with your SIP trunking provider and verify you're using the correct SIP endpoint in the `address` field for your outbound trunk. To learn more, see [Create an outbound trunk](https://docs.livekit.io/sip/trunk-outbound.md#create).
 
 ---
 
 ---
 
-This document was rendered at 2025-08-13T00:33:34.089Z.
+This document was rendered at 2025-08-15T03:43:54.205Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

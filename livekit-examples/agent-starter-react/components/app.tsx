@@ -21,7 +21,8 @@ interface AppProps {
 export function App({ appConfig }: AppProps) {
   const room = useMemo(() => new Room(), []);
   const [sessionStarted, setSessionStarted] = useState(false);
-  const { refreshConnectionDetails, existingOrRefreshConnectionDetails } = useConnectionDetails();
+  const { refreshConnectionDetails, existingOrRefreshConnectionDetails } =
+    useConnectionDetails(appConfig);
 
   useEffect(() => {
     const onDisconnected = () => {
@@ -77,13 +78,13 @@ export function App({ appConfig }: AppProps) {
   const { startButtonText } = appConfig;
 
   return (
-    <>
+    <main>
       <MotionWelcome
         key="welcome"
         startButtonText={startButtonText}
         onStartCall={() => setSessionStarted(true)}
         disabled={sessionStarted}
-        initial={{ opacity: 0 }}
+        initial={{ opacity: 1 }}
         animate={{ opacity: sessionStarted ? 0 : 1 }}
         transition={{ duration: 0.5, ease: 'linear', delay: sessionStarted ? 0 : 0.5 }}
       />
@@ -108,6 +109,6 @@ export function App({ appConfig }: AppProps) {
       </RoomContext.Provider>
 
       <Toaster />
-    </>
+    </main>
   );
 }

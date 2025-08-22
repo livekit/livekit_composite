@@ -39,7 +39,7 @@
     License: "Apache-2.0"
 
 - name: "agent-starter-react"
-  display_name: "Next.js Voice Agent"
+  display_name: "Web Voice Agent"
   desc: "A starter app for Next.js, featuring a flexible voice AI frontend"
   url: "https://github.com/livekit-examples/agent-starter-react"
   image: "https://raw.githubusercontent.com/livekit-examples/agent-starter-react/refs/heads/main/.github/assets/template-graphic.svg"
@@ -111,6 +111,9 @@
       type: string
       description: "Connection button label text"
       default: "Start call"
+    agentName:
+      type: string
+      description: "Set agent name to enable explicit dispatch"
 
 - name: "agent-starter-android"
   display_name: "Android Voice Agent"
@@ -209,6 +212,10 @@
     Type: "Frontend"
     Tools: "Next.js, TypeScript, HTML, CSS"
     License: "Apache-2.0"
+  inputs:
+    agentName:
+      type: string
+      description: "Optional - dispatch only agents with this name"
 
 - name: "token-server"
   display_name: "Token server"

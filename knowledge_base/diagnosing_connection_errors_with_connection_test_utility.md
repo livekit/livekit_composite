@@ -30,7 +30,12 @@ First, if you are using LiveKit React Components, you can run connection checks 
 ```
 
 
-### Available Tests
+### On App Start
+
+Some customers run these tests proactively at the beginning of a session.
+
+
+## Available Tests
 
 
 - WebRTC connectivity ( [source](https://github. com/livekit/client-sdk-js/blob/main/src/connectionHelper/checks/webrtc. ts) | [ConnectionCheck. checkWebRTC()](https://github. com/livekit/client-sdk-js/blob/52e207cea1d9637f50703d4013deaa8f43506a47/src/connectionHelper/ConnectionCheck. ts#L72-L74))Verifies a WebRTC connection to the LiveKit servers can be made successfully

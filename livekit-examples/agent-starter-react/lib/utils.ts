@@ -50,14 +50,17 @@ export const getAppConfig = cache(async (headers: Headers): Promise<AppConfig> =
       });
 
       const remoteConfig: SandboxConfig = await response.json();
-      const config: AppConfig = { ...APP_CONFIG_DEFAULTS };
+      const config: AppConfig = { sandboxId, ...APP_CONFIG_DEFAULTS };
 
       for (const [key, entry] of Object.entries(remoteConfig)) {
         if (entry === null) continue;
+        // Only include app config entries that are declared in defaults and, if set,
+        // share the same primitive type as the default value.
         if (
-          key in config &&
-          typeof config[key as keyof AppConfig] === entry.type &&
-          typeof config[key as keyof AppConfig] === typeof entry.value
+          (key in APP_CONFIG_DEFAULTS &&
+            APP_CONFIG_DEFAULTS[key as keyof AppConfig] === undefined) ||
+          (typeof config[key as keyof AppConfig] === entry.type &&
+            typeof config[key as keyof AppConfig] === typeof entry.value)
         ) {
           // @ts-expect-error I'm not sure quite how to appease TypeScript, but we've thoroughly checked types above
           config[key as keyof AppConfig] = entry.value as AppConfig[keyof AppConfig];

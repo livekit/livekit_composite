@@ -14,30 +14,16 @@
  * limitations under the License.
  */
 
-import AVFoundation
+import AVKit
 import LiveKit
 import SwiftUI
-
-// Make custom renderer view usable in SwiftUI
-struct MySwiftUICustomRendererView: NativeViewRepresentable {
-    let track: VideoTrack
-
-    func makeView(context: Context) -> MyCustomRendererView {
-        let view = MyCustomRendererView()
-        updateView(view, context: context)
-        return view
-    }
-
-    func updateView(_ view: MyCustomRendererView, context _: Context) {
-        track.add(videoRenderer: view)
-    }
-
-    static func dismantleView(_: MyCustomRendererView, coordinator _: ()) {}
-}
 
 struct MyRemoteVideoTrackView: View {
     @EnvironmentObject var room: Room
     @State var track: LocalVideoTrack?
+    @State var pip = false
+    
+    @State var pipSupported = AVPictureInPictureController.isPictureInPictureSupported()
 
     var body: some View {
         // For remote tracks:
@@ -46,12 +32,24 @@ struct MyRemoteVideoTrackView: View {
         //     .compactMap { $0.track as? RemoteVideoTrack }
         //     .first
         Group {
-            if let track {
-                MySwiftUICustomRendererView(track: track)
+            if let track, pipSupported {
+                PiPView(track: track, pip: pip)
+                    .ignoresSafeArea()
             } else {
                 Text("No Video track")
             }
-        }.onAppear {
+        }
+        .overlay(alignment: .bottom) {
+            Button {
+                pip.toggle()
+            } label: {
+                Label("Toggle PiP", systemImage: "photo.on.rectangle")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.extraLarge)
+            .sensoryFeedback(.success, trigger: pip)
+        }
+        .onAppear {
             track = LocalVideoTrack.createCameraTrack()
             Task {
                 if let cameraCapturer = track?.capturer as? CameraCapturer {
@@ -59,7 +57,8 @@ struct MyRemoteVideoTrackView: View {
                 }
                 try await track?.start()
             }
-        }.onDisappear {
+        }
+        .onDisappear {
             Task {
                 try await track?.stop()
             }

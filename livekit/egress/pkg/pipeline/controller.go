@@ -24,6 +24,7 @@ import (
 
 	"github.com/frostbyte73/core"
 	"github.com/go-gst/go-gst/gst"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
 	"github.com/livekit/egress/pkg/config"
@@ -66,6 +67,12 @@ type Controller struct {
 	eosTimer    *time.Timer
 	eosReceived core.Fuse
 	stopped     core.Fuse
+	stats       controllerStats
+}
+
+type controllerStats struct {
+	droppedAudioBuffers  atomic.Uint64
+	droppedAudioDuration atomic.Duration
 }
 
 func New(ctx context.Context, conf *config.PipelineConfig, ipcServiceClient ipc.EgressServiceClient) (*Controller, error) {
@@ -82,7 +89,7 @@ func New(ctx context.Context, conf *config.PipelineConfig, ipcServiceClient ipc.
 			BuildReady: make(chan struct{}),
 		},
 		sinks:   make(map[types.EgressType][]sink.Sink),
-		monitor: stats.NewHandlerMonitor(conf.NodeID, conf.ClusterID, conf.Info.EgressId),
+		monitor: stats.NewHandlerMonitor(conf.NodeID, conf.ClusterID),
 	}
 	c.callbacks.SetOnError(c.OnError)
 	c.callbacks.SetOnEOSSent(c.onEOSSent)
@@ -165,6 +172,13 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 	defer span.End()
 
 	defer c.Close()
+
+	defer func() {
+		logger.Debugw("Audio QoS stats",
+			"audio buffers dropped", c.stats.droppedAudioBuffers.Load(),
+			"total audio duration dropped", c.stats.droppedAudioDuration.Load(),
+		)
+	}()
 
 	// session limit timer
 	c.startSessionLimitTimer(ctx)

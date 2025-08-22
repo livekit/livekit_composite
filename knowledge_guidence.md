@@ -75,7 +75,7 @@ Use ECS with EC2 or other infrastructure where container lifecycle and shutdown 
 
 LiveKit agents that use features like BVC or multilingual turn detection require more memory than Render.com’s free plan provides. These features are resource-intensive and will fail to run on low-memory instances.
 
-Also note, LiveKit will soon offer a fully hosted agent cloud. We encouraging the use of LiveKit’s hosted agent cloud for a smoother, one-click deployment experience.
+Also note, LiveKit offers a fully hosted agent cloud. We encouraging the use of LiveKit’s [Cloud Agents](https://docs.livekit.io/agents/ops/deployment/) for a smoother, one-click deployment experience.
 
 
 ## Self Hosting LiveKit Server

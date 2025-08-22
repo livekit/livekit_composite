@@ -153,11 +153,9 @@ export class SynthesizeStream extends tts.SynthesizeStream {
     };
     Object.entries(params).forEach(([k, v]) => this.streamURL.searchParams.append(k, v));
     this.streamURL.protocol = this.streamURL.protocol.replace('http', 'ws');
-
-    this.#run();
   }
 
-  async #run() {
+  protected async run() {
     const segments = new AsyncIterableQueue<tokenize.WordStream>();
 
     const tokenizeInput = async () => {
@@ -323,7 +321,10 @@ export class SynthesizeStream extends tts.SynthesizeStream {
             }
           });
         } catch (err) {
-          this.#logger.warn({ err }, 'Error in listenTask from ElevenLabs WebSocket');
+          // skip log error for normal websocket close
+          if (err instanceof Error && !err.message.includes('WebSocket closed')) {
+            this.#logger.error({ err }, 'Error in listenTask from ElevenLabs WebSocket');
+          }
           break;
         }
       }

@@ -48,6 +48,7 @@ type AppWriter struct {
 	logger    logger.Logger
 	csvLogger *logging.CSVLogger[logging.TrackStats]
 	drift     atomic.Duration
+	maxDrift  atomic.Duration
 
 	pub       lksdk.TrackPublication
 	track     *webrtc.TrackRemote
@@ -75,6 +76,11 @@ type AppWriter struct {
 	draining     core.Fuse
 	endStream    core.Fuse
 	finished     core.Fuse
+	stats        appWriterStats
+}
+
+type appWriterStats struct {
+	packetsDropped atomic.Uint64
 }
 
 func NewAppWriter(
@@ -106,7 +112,7 @@ func NewAppWriter(
 		} else {
 			w.csvLogger = csvLogger
 			w.TrackSynchronizer.OnSenderReport(func(drift time.Duration) {
-				w.drift.Store(drift)
+				w.updateDrift(drift)
 			})
 		}
 	}
@@ -141,7 +147,7 @@ func NewAppWriter(
 	w.buffer = jitter.NewBuffer(
 		depacketizer,
 		conf.Latency.JitterBufferLatency,
-		w.samples,
+		w.onPacket,
 		jitter.WithLogger(w.logger),
 		jitter.WithPacketLossHandler(w.sendPLI),
 	)
@@ -251,6 +257,17 @@ func (w *AppWriter) handleReadError(err error) {
 	}
 }
 
+func (w *AppWriter) onPacket(sample []*rtp.Packet) {
+	select {
+	case w.samples <- sample:
+		// ok
+	default:
+		w.stats.packetsDropped.Add(uint64(len(sample)))
+		w.logger.Warnw("buffer full, dropping sample", nil)
+	}
+
+}
+
 func (w *AppWriter) pushSamples() {
 	select {
 	case <-w.playing.Watch():
@@ -281,11 +298,13 @@ func (w *AppWriter) pushPacket(pkt *rtp.Packet) error {
 	// get PTS
 	pts, err := w.GetPTS(pkt)
 	if err != nil {
+		w.stats.packetsDropped.Inc()
 		return err
 	}
 
 	p, err := pkt.Marshal()
 	if err != nil {
+		w.stats.packetsDropped.Inc()
 		w.logger.Errorw("could not marshal packet", err)
 		return err
 	}
@@ -293,6 +312,7 @@ func (w *AppWriter) pushPacket(pkt *rtp.Packet) error {
 	b := gst.NewBufferFromBytes(p)
 	b.SetPresentationTimestamp(gst.ClockTime(uint64(pts)))
 	if flow := w.src.PushBuffer(b); flow != gst.FlowOK {
+		w.stats.packetsDropped.Inc()
 		w.logger.Infow("unexpected flow return", "flow", flow)
 	}
 	w.lastPushed.Store(time.Now())
@@ -327,28 +347,44 @@ func (w *AppWriter) logStats() {
 	for {
 		select {
 		case <-ended:
-			w.writeStats()
+			stats := w.getStats()
+			w.csvLogger.Write(stats)
 			w.csvLogger.Close()
+			w.logger.Debugw("appwriter stats ", "stats", stats)
 			return
 
 		case <-ticker.C:
-			w.writeStats()
+			stats := w.getStats()
+			w.csvLogger.Write(stats)
 		}
 	}
 }
 
-func (w *AppWriter) writeStats() {
+func (w *AppWriter) getStats() *logging.TrackStats {
 	stats := w.buffer.Stats()
-
-	w.csvLogger.Write(&logging.TrackStats{
+	return &logging.TrackStats{
 		Timestamp:       time.Now().Format(time.DateTime),
 		PacketsReceived: stats.PacketsPushed,
 		PaddingReceived: stats.PaddingPushed,
 		LastReceived:    w.lastReceived.Load().Format(time.DateTime),
-		PacketsDropped:  stats.PacketsDropped,
+		PacketsDropped:  stats.PacketsDropped + w.stats.packetsDropped.Load(),
 		PacketsPushed:   stats.PacketsPopped,
 		SamplesPushed:   stats.SamplesPopped,
 		LastPushed:      w.lastPushed.Load().Format(time.DateTime),
 		Drift:           w.drift.Load(),
-	})
+		MaxDrift:        w.maxDrift.Load(),
+	}
+}
+
+func (w *AppWriter) updateDrift(drift time.Duration) {
+	w.drift.Store(drift)
+	for {
+		maxDrift := w.maxDrift.Load()
+		if drift.Abs() <= maxDrift.Abs() {
+			break
+		}
+		if w.maxDrift.CompareAndSwap(maxDrift, drift) {
+			break
+		}
+	}
 }

@@ -5,30 +5,29 @@ yarn-error.log
 pnpm-debug.log
 
 # Build outputs
-dist/
-build/
-coverage/
+dist
+build
+coverage
 
-# Logs and temp files
+# Local environment & config files
+.env
+.env.local
+.DS_Store
+
+# Logs & temp files
 *.log
 *.gz
 *.tgz
 .tmp
 .cache
 
-# Environment variables
-.env
-.env.*
+# Docker artifacts
+Dockerfile*
+.dockerignore
 
-# VCS, editor, OS
+# Git & Editor files
 .git
 .gitignore
-.gitattributes
-.github/
-.idea/
-.vscode/
-.DS_Store
+.idea
+.vscode
 
-# Project docs and misc
-README.md
-LICENSE

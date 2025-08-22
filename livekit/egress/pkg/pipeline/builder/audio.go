@@ -25,6 +25,7 @@ import (
 	"github.com/livekit/egress/pkg/gstreamer"
 	"github.com/livekit/egress/pkg/types"
 	"github.com/livekit/protocol/livekit"
+	"github.com/livekit/protocol/logger"
 	lksdk "github.com/livekit/server-sdk-go/v2"
 )
 
@@ -32,6 +33,9 @@ const (
 	audioChannelStereo = 0
 	audioChannelLeft   = 1
 	audioChannelRight  = 2
+
+	leakyQueue    = true
+	blockingQueue = false
 )
 
 type AudioBin struct {
@@ -75,7 +79,7 @@ func BuildAudioBin(pipeline *gstreamer.Pipeline, p *config.PipelineConfig) error
 			return err
 		}
 	} else {
-		queue, err := gstreamer.BuildQueue("audio_queue", p.Latency.PipelineLatency, true)
+		queue, err := gstreamer.BuildQueue("audio_queue", p.Latency.PipelineLatency, leakyQueue)
 		if err != nil {
 			return errors.ErrGstPipelineError(err)
 		}
@@ -130,7 +134,7 @@ func (b *AudioBin) buildWebInput() error {
 		return err
 	}
 
-	if err = addAudioConverter(b.bin, b.conf, audioChannelStereo); err != nil {
+	if err = addAudioConverter(b.bin, b.conf, audioChannelStereo, leakyQueue); err != nil {
 		return err
 	}
 	if b.conf.AudioTranscoding {
@@ -210,7 +214,7 @@ func (b *AudioBin) addAudioAppSrcBin(ts *config.TrackSource) error {
 		return errors.ErrNotSupported(string(ts.MimeType))
 	}
 
-	if err := addAudioConverter(appSrcBin, b.conf, b.getChannel(ts)); err != nil {
+	if err := addAudioConverter(appSrcBin, b.conf, b.getChannel(ts), blockingQueue); err != nil {
 		return err
 	}
 
@@ -262,6 +266,11 @@ func (b *AudioBin) addAudioTestSrcBin() error {
 		return errors.ErrGstPipelineError(err)
 	}
 
+	// 20 ms @ 48 kHz
+	if err = audioTestSrc.SetProperty("samplesperbuffer", 960); err != nil {
+		return errors.ErrGstPipelineError(err)
+	}
+
 	audioCaps, err := newAudioCapsFilter(b.conf, audioChannelStereo)
 	if err != nil {
 		return err
@@ -286,6 +295,8 @@ func (b *AudioBin) addMixer() error {
 	if err != nil {
 		return err
 	}
+
+	subscribeForQoS(audioMixer)
 
 	return b.bin.AddElements(audioMixer, mixedCaps)
 }
@@ -320,8 +331,8 @@ func (b *AudioBin) addEncoder() error {
 	}
 }
 
-func addAudioConverter(b *gstreamer.Bin, p *config.PipelineConfig, channel int) error {
-	audioQueue, err := gstreamer.BuildQueue("audio_input_queue", p.Latency.PipelineLatency, true)
+func addAudioConverter(b *gstreamer.Bin, p *config.PipelineConfig, channel int, isLeaky bool) error {
+	audioQueue, err := gstreamer.BuildQueue("audio_input_queue", p.Latency.PipelineLatency, isLeaky)
 	if err != nil {
 		return err
 	}
@@ -377,4 +388,12 @@ func newAudioCapsFilter(p *config.PipelineConfig, channel int) (*gst.Element, er
 	}
 
 	return capsFilter, nil
+}
+
+func subscribeForQoS(mixer *gst.Element) {
+	mixer.Connect("pad-added", func(_ *gst.Element, pad *gst.Pad) {
+		if err := pad.SetProperty("qos-messages", true); err != nil {
+			logger.Errorw("failed to set QoS messages on pad", err)
+		}
+	})
 }

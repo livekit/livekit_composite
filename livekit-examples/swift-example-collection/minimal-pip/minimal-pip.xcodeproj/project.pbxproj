@@ -12,7 +12,7 @@
 		689115752BBAD81900631EE5 /* RoomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689115742BBAD81900631EE5 /* RoomView.swift */; };
 		689115772BBAD81A00631EE5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 689115762BBAD81A00631EE5 /* Assets.xcassets */; };
 		6891157B2BBAD81A00631EE5 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6891157A2BBAD81A00631EE5 /* Preview Assets.xcassets */; };
-		68FC34332BBC04C6005B2C4D /* MyCustomRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68FC34322BBC04C6005B2C4D /* MyCustomRenderer.swift */; };
+		AC0E5D5F2E49E21B008EBB5E /* PiP.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC0E5D5E2E49E217008EBB5E /* PiP.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,7 +23,7 @@
 		689115782BBAD81A00631EE5 /* minimal-pip.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "minimal-pip.entitlements"; sourceTree = "<group>"; };
 		6891157A2BBAD81A00631EE5 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		68E1C2FB2BBED9C5007DFB54 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
-		68FC34322BBC04C6005B2C4D /* MyCustomRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MyCustomRenderer.swift; sourceTree = "<group>"; };
+		AC0E5D5E2E49E217008EBB5E /* PiP.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PiP.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,10 +57,10 @@
 		689115712BBAD81900631EE5 /* minimal-pip */ = {
 			isa = PBXGroup;
 			children = (
+				AC0E5D5E2E49E217008EBB5E /* PiP.swift */,
 				68E1C2FB2BBED9C5007DFB54 /* Info.plist */,
 				689115722BBAD81900631EE5 /* minimalPIP.swift */,
 				689115742BBAD81900631EE5 /* RoomView.swift */,
-				68FC34322BBC04C6005B2C4D /* MyCustomRenderer.swift */,
 				689115762BBAD81A00631EE5 /* Assets.xcassets */,
 				689115782BBAD81A00631EE5 /* minimal-pip.entitlements */,
 				689115792BBAD81A00631EE5 /* Preview Content */,
@@ -153,7 +153,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				689115752BBAD81900631EE5 /* RoomView.swift in Sources */,
-				68FC34332BBC04C6005B2C4D /* MyCustomRenderer.swift in Sources */,
+				AC0E5D5F2E49E21B008EBB5E /* PiP.swift in Sources */,
 				689115732BBAD81900631EE5 /* minimalPIP.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -308,7 +308,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "io.livekit.minimal-pip";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -348,7 +349,8 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "io.livekit.minimal-pip";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = auto;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -384,7 +386,7 @@
 			repositoryURL = "https://github.com/livekit/client-sdk-swift";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 2.0.5;
+				minimumVersion = 2.6.0;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

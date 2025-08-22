@@ -2,4 +2,4 @@
 "@livekit/protocol": patch
 ---
 
-Redact external_id field
+update agents observability codegen

@@ -208,6 +208,7 @@ type ParticipantParams struct {
 	DisableCodecRegression         bool
 	LastPubReliableSeq             uint32
 	Country                        string
+	PreferVideoSizeFromMedia       bool
 }
 
 type ParticipantImpl struct {
@@ -2741,7 +2742,12 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 		seenCodecs := make(map[string]struct{})
 		for _, codec := range req.SimulcastCodecs {
 			if codec.Codec == "" {
-				continue
+				p.pubLogger.Warnw(
+					"simulcast codec without mime type", nil,
+					"trackID", ti.Sid,
+					"track", logger.Proto(ti),
+					"addTrackRequest", logger.Proto(req),
+				)
 			}
 
 			mimeType := codec.Codec
@@ -3133,6 +3139,7 @@ func (p *ParticipantImpl) addMediaTrack(signalCid string, ti *livekit.TrackInfo)
 		ShouldRegressCodec: func() bool {
 			return p.helper().ShouldRegressCodec()
 		},
+		PreferVideoSizeFromMedia: p.params.PreferVideoSizeFromMedia,
 	}, ti)
 
 	mt.OnSubscribedMaxQualityChange(p.onSubscribedMaxQualityChange)

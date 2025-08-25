@@ -3594,7 +3594,11 @@ fmt.Printf("Sent text with stream ID: %s\n", info.ID)
 
 ```kotlin
 val text = "Lorem ipsum dolor sit amet..."
-room.localParticipant.sendText(text, StreamTextOptions(topic = "my-topic"))
+val result = room.localParticipant.sendText(text, StreamTextOptions(topic = "my-topic"))
+
+result.onSuccess { info ->
+  Log.i("Datastream", "sent text id: ${info.id}")
+}
 
 ```
 
@@ -4172,7 +4176,10 @@ fmt.Printf("Sent file with stream ID: %s\n", info.ID)
 
 ```kotlin
 val file = File("path/to/file.jpg")
-room.localParticipant.sendFile(file, StreamBytesOptions(topic = "my-topic"))
+val result = room.localParticipant.sendFile(file, StreamBytesOptions(topic = "my-topic"))
+result.onSuccess { info ->
+    Log.i("Datastream", "sent file id: ${info.id}")
+}
 
 ```
 
@@ -36431,5 +36438,5 @@ Check with your SIP trunking provider and verify you're using the correct SIP en
 
 ---
 
-This document was rendered at 2025-08-20T23:00:24.403Z.
+This document was rendered at 2025-08-25T15:05:37.538Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

@@ -28,6 +28,11 @@ type MultiPortsUDPMux struct {
 	// for each IP, only return one addr (one port) for each GetListenAddresses call to
 	// avoid duplicate ip candidates be gathered for a single ice agent.
 	multiPortsAddresses []*multiPortsAddress
+
+	// StandalonePortMuxes are muxes that listen on standalone ports, e.g. 3478 for STUN
+	// These muxes are not part of the port balancing logic and will all be returned in GetListenAddresses
+	// then the ice agent can gather candidates from them.
+	standalonePortMuxes []ice.UDPMux
 }
 
 type addrMux struct {
@@ -47,8 +52,8 @@ func (mpa *multiPortsAddress) next() net.Addr {
 
 // NewMultiUDPMuxDefault creates an instance of MultiUDPMuxDefault that
 // uses the provided UDPMux instances.
-func NewMultiPortsUDPMux(muxes ...ice.UDPMux) *MultiPortsUDPMux {
-	mux := ice.NewMultiUDPMuxDefault(muxes...)
+func NewMultiPortsUDPMux(muxes []ice.UDPMux, standalonePortMuxes []ice.UDPMux) *MultiPortsUDPMux {
+	mux := ice.NewMultiUDPMuxDefault(append(muxes, standalonePortMuxes...)...)
 
 	ipToAddrs := make(map[string]*multiPortsAddress)
 	for _, mux := range muxes {
@@ -72,16 +77,20 @@ func NewMultiPortsUDPMux(muxes ...ice.UDPMux) *MultiPortsUDPMux {
 	return &MultiPortsUDPMux{
 		MultiUDPMuxDefault:  mux,
 		multiPortsAddresses: multiPortsAddresses,
+		standalonePortMuxes: standalonePortMuxes,
 	}
 }
 
 // GetListenAddresses returns the list of addresses that this mux is listening on,
 // if there are multiple muxes listening to different ports of the same IP addr,
-// it will return one mux of them in round robin fashion.
+// it will return one mux of them in round robin fashion and all standalone muxes.
 func (m *MultiPortsUDPMux) GetListenAddresses() []net.Addr {
-	addrs := make([]net.Addr, 0, len(m.multiPortsAddresses))
+	addrs := make([]net.Addr, 0, len(m.multiPortsAddresses)+len(m.standalonePortMuxes))
 	for _, mpa := range m.multiPortsAddresses {
 		addrs = append(addrs, mpa.next())
+	}
+	for _, mux := range m.standalonePortMuxes {
+		addrs = append(addrs, mux.GetListenAddresses()...)
 	}
 	return addrs
 }

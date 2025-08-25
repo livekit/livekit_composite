@@ -150,7 +150,15 @@ func NewWebRTCConfig(rtcConf *RTCConfig, development bool) (*WebRTCConfig, error
 				return nil, err
 			}
 
-			udpMux = transport.NewMultiPortsUDPMux(muxes...)
+			var standalonePortMuxes []ice.UDPMux
+			if rtcConf.UseStunPortAsICE {
+				standalonePortMuxes, err = transport.CreateUDPMuxesFromPorts([]int{3478}, opts...)
+				if err != nil {
+					return nil, err
+				}
+			}
+
+			udpMux = transport.NewMultiPortsUDPMux(muxes, standalonePortMuxes)
 
 			s.SetICEUDPMux(udpMux)
 			if !development {

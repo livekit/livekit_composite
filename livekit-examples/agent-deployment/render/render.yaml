@@ -17,7 +17,7 @@ services:
   - fromGroup: agent-example-env 
   region: virginia
 
-  # 300s is the standard allowed maximum. Talk to render.com support if you need this increased.
+  # 300s is the standard allowed maximum. Talk to Render support if you need this increased.
   maxShutdownDelaySeconds: 300
 
   # Sane defaults

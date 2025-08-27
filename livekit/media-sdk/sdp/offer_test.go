@@ -412,30 +412,7 @@ a=sendrecv
 }
 
 func TestParseOfferSRTP(t *testing.T) {
-	const sdpData = `v=0 
-o=lin 3723 713 IN IP4 192.168.0.2 
-s=Talk 
-c=IN IP4 192.168.0.2 
-t=0 0 
-a=rtcp-xr:rcvr-rtt=all:10000 stat-summary=loss,dup,jitt,TTL voip-metrics 
-a=record:off 
-m=audio 11200 RTP/SAVP 96 0 9 97 101 
-a=rtpmap:96 opus/48000/2 
-a=fmtp:96 useinbandfec=1 
-a=rtpmap:97 telephone-event/48000 
-a=rtpmap:101 telephone-event/8000 
-a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:pMIPxjzYIG5TQuIWfkjTnaACVrzohhFfOGhSMgV1 
-a=crypto:2 AES_CM_128_HMAC_SHA1_32 inline:ZKkTQfuCsliegVZtFSya3Z6oEVUtSwjGCfHlbrMf 
-a=crypto:3 AES_256_CM_HMAC_SHA1_80 inline:BvoLeRu5IcBkgNN14qtqaxi0r7ei2rwuBSodd0SANggS9JHsp5IU7lhEsyna1A== 
-a=crypto:4 AES_256_CM_HMAC_SHA1_32 inline:j92SDyNTUe0BNGk4LeeCsPqX0qwPP/e9TLafvd7L9waM8r4arjzgUqs7uUERyg== 
-a=crypto:5 AEAD_AES_128_GCM inline:gGetEkQgGk4NZIoKj/cbFpRkHdocmKlP0u3VMw== 
-a=crypto:6 AEAD_AES_256_GCM inline:EFFzS2FMyNoYcVcaARU+nvk+JhHmVbvdFtRxZuRi9rDmLYpLms5ySv93iy0= 
-a=rtcp-fb:* trr-int 5000 
-a=rtcp-fb:* ccm tmmbr 
-`
-	v, err := ParseOffer([]byte(sdpData))
-	require.NoError(t, err)
-	require.Equal(t, []srtp.Profile{
+	vProfiles := []srtp.Profile{
 		{
 			Index:   1,
 			Profile: "AES_CM_128_HMAC_SHA1_80",
@@ -470,6 +447,109 @@ a=rtcp-fb:* ccm tmmbr
 			Profile: "AEAD_AES_256_GCM",
 			Key:     []uint8{0x10, 0x51, 0x73, 0x4b, 0x61, 0x4c, 0xc8, 0xda, 0x18, 0x71, 0x57, 0x1a, 0x1, 0x15, 0x3e, 0x9e, 0xf9, 0x3e, 0x26, 0x11, 0xe6, 0x55, 0xbb, 0xdd, 0x16, 0xd4, 0x71, 0x66, 0xe4, 0x62, 0xf6, 0xb0, 0xe6, 0x2d, 0x8a, 0x4b, 0x9a, 0xce, 0x72, 0x4a, 0xff, 0x77, 0x8b, 0x2d},
 		},
-	},
-		v.CryptoProfiles)
+	}
+
+	t.Run("CryptoProfileBase64Padding", func(t *testing.T) {
+		const sdpData = `v=0 
+o=lin 3723 713 IN IP4 192.168.0.2 
+s=Talk 
+c=IN IP4 192.168.0.2 
+t=0 0 
+a=rtcp-xr:rcvr-rtt=all:10000 stat-summary=loss,dup,jitt,TTL voip-metrics 
+a=record:off 
+m=audio 11200 RTP/SAVP 96 0 9 97 101 
+a=rtpmap:96 opus/48000/2 
+a=fmtp:96 useinbandfec=1 
+a=rtpmap:97 telephone-event/48000 
+a=rtpmap:101 telephone-event/8000 
+a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:pMIPxjzYIG5TQuIWfkjTnaACVrzohhFfOGhSMgV1 
+a=crypto:2 AES_CM_128_HMAC_SHA1_32 inline:ZKkTQfuCsliegVZtFSya3Z6oEVUtSwjGCfHlbrMf 
+a=crypto:3 AES_256_CM_HMAC_SHA1_80 inline:BvoLeRu5IcBkgNN14qtqaxi0r7ei2rwuBSodd0SANggS9JHsp5IU7lhEsyna1A== 
+a=crypto:4 AES_256_CM_HMAC_SHA1_32 inline:j92SDyNTUe0BNGk4LeeCsPqX0qwPP/e9TLafvd7L9waM8r4arjzgUqs7uUERyg== 
+a=crypto:5 AEAD_AES_128_GCM inline:gGetEkQgGk4NZIoKj/cbFpRkHdocmKlP0u3VMw== 
+a=crypto:6 AEAD_AES_256_GCM inline:EFFzS2FMyNoYcVcaARU+nvk+JhHmVbvdFtRxZuRi9rDmLYpLms5ySv93iy0= 
+a=rtcp-fb:* trr-int 5000 
+a=rtcp-fb:* ccm tmmbr 
+`
+		v, err := ParseOffer([]byte(sdpData))
+		require.NoError(t, err)
+		require.Equal(t, vProfiles, v.CryptoProfiles)
+	})
+
+	t.Run("CryptoProfileBase64NoPadding", func(t *testing.T) {
+		const sdpData = `v=0 
+o=lin 3723 713 IN IP4 192.168.0.2 
+s=Talk 
+c=IN IP4 192.168.0.2 
+t=0 0 
+a=rtcp-xr:rcvr-rtt=all:10000 stat-summary=loss,dup,jitt,TTL voip-metrics 
+a=record:off 
+m=audio 11200 RTP/SAVP 96 0 9 97 101 
+a=rtpmap:96 opus/48000/2 
+a=fmtp:96 useinbandfec=1 
+a=rtpmap:97 telephone-event/48000 
+a=rtpmap:101 telephone-event/8000 
+a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:pMIPxjzYIG5TQuIWfkjTnaACVrzohhFfOGhSMgV1 
+a=crypto:2 AES_CM_128_HMAC_SHA1_32 inline:ZKkTQfuCsliegVZtFSya3Z6oEVUtSwjGCfHlbrMf 
+a=crypto:3 AES_256_CM_HMAC_SHA1_80 inline:BvoLeRu5IcBkgNN14qtqaxi0r7ei2rwuBSodd0SANggS9JHsp5IU7lhEsyna1A
+a=crypto:4 AES_256_CM_HMAC_SHA1_32 inline:j92SDyNTUe0BNGk4LeeCsPqX0qwPP/e9TLafvd7L9waM8r4arjzgUqs7uUERyg 
+a=crypto:5 AEAD_AES_128_GCM inline:gGetEkQgGk4NZIoKj/cbFpRkHdocmKlP0u3VMw 
+a=crypto:6 AEAD_AES_256_GCM inline:EFFzS2FMyNoYcVcaARU+nvk+JhHmVbvdFtRxZuRi9rDmLYpLms5ySv93iy0 
+a=rtcp-fb:* trr-int 5000 
+a=rtcp-fb:* ccm tmmbr 
+`
+		v, err := ParseOffer([]byte(sdpData))
+		require.NoError(t, err)
+		require.Equal(t, vProfiles, v.CryptoProfiles)
+	})
+}
+
+// TestSelectCryptoSuiteTag ensures that when selecting a crypto suite from an offer/answer pair,
+// the answer uses the same crypto suite tag as the offer, per RFC 4568 section 5.1.2 and 5.1.3.
+func TestSelectCryptoSuiteTag(t *testing.T) {
+	answerProfiles := []srtp.Profile{
+		{Index: 1, Profile: "AES_CM_128_HMAC_SHA1_80"},
+		{Index: 2, Profile: "AES_CM_128_HMAC_SHA1_32"},
+		{Index: 3, Profile: "AES_256_CM_HMAC_SHA1_80"},
+		{Index: 4, Profile: "AES_256_CM_HMAC_SHA1_32"},
+	}
+
+	cases := []struct {
+		name   string
+		offer  []srtp.Profile
+		answer []srtp.Profile
+		exp    *srtp.Profile
+	}{
+		{
+			name: "First",
+			offer: []srtp.Profile{
+				{Index: 1, Profile: "AES_CM_128_HMAC_SHA1_80"},
+				{Index: 2, Profile: "AES_CM_128_HMAC_SHA1_32"},
+				{Index: 3, Profile: "AES_256_CM_HMAC_SHA1_80"},
+				{Index: 4, Profile: "AES_256_CM_HMAC_SHA1_32"},
+			},
+			answer: answerProfiles,
+			exp:    &srtp.Profile{Index: 1, Profile: "AES_CM_128_HMAC_SHA1_80"},
+		},
+		{
+			name: "Fifth",
+			offer: []srtp.Profile{
+				{Index: 1, Profile: "AEAD_AES_256_GCM"},
+				{Index: 2, Profile: "AEAD_AES_128_GCM"},
+				{Index: 3, Profile: "AES_256_CM_HMAC_SHA1_80"},
+				{Index: 4, Profile: "AES_256_CM_HMAC_SHA1_32"},
+				{Index: 5, Profile: "AES_CM_128_HMAC_SHA1_80"},
+			},
+			answer: answerProfiles,
+			exp:    &srtp.Profile{Index: 5, Profile: "AES_CM_128_HMAC_SHA1_80"},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, got, err := SelectCrypto(c.offer, c.answer, true)
+			require.NoError(t, err)
+			require.Equal(t, *c.exp, *got)
+		})
+	}
 }

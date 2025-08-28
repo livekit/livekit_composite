@@ -11,6 +11,7 @@ from livekit.plugins import cartesia
 load_dotenv(dotenv_path=Path(__file__).parent.parent / '.env')
 
 async def entrypoint(ctx: JobContext):
+    await ctx.connect()
     session = AgentSession()
 
     # Register RPC method for frontend to retrieve transcript data

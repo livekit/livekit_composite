@@ -8,14 +8,14 @@ A complete starter project for building voice AI apps with [LiveKit Agents for N
 
 The starter project includes:
 
-- A simple voice AI assistant based on the [AI Voice Assistant quickstart](https://docs.livekit.io/agents/v0/quickstarts/voice-agent/)
-- Voice AI pipeline based on [OpenAI](https://docs.livekit.io/agents/v0/integrations/openai/overview/#llm), [Cartesia](https://docs.livekit.io/agents/v0/integrations/cartesia/#tts), and [Deepgram](https://docs.livekit.io/agents/v0/integrations/deepgram/#stt)
-  - Easily integrate your preferred [LLM](https://docs.livekit.io/agents/v0/integrations/overview/#llm-integrations), [STT](https://docs.livekit.io/agents/v0/integrations/overview/#stt-integrations), and [TTS](https://docs.livekit.io/agents/v0/integrations/overview/#tts-integrations) instead, or swap to a realtime model like the [OpenAI Realtime API](https://docs.livekit.io/agents/v0/integrations/openai/realtime/)
-- [LiveKit Turn Detector](https://docs.livekit.io/agents/v0/voice-agent/#turn-detection-model) for contextually-aware speaker detection, with multilingual support
+- A simple voice AI assistant based on the [AI Voice Assistant quickstart](https://docs.livekit.io/agents/start/voice-ai/)
+- Voice AI pipeline based on [OpenAI](https://docs.livekit.io/agents/integrations/llm/openai/), [Cartesia](https://docs.livekit.io/agents/integrations/tts/cartesia/), and [Deepgram](https://docs.livekit.io/agents/integrations/stt/deepgram/)
+  - Easily integrate your preferred [LLM](https://docs.livekit.io/agents/integrations/llm/), [STT](https://docs.livekit.io/agents/integrations/stt/), and [TTS](https://docs.livekit.io/agents/integrations/tts/) instead, or swap to a realtime model like the [OpenAI Realtime API](https://docs.livekit.io/agents/integrations/realtime/openai)
+- [LiveKit Turn Detector](https://docs.livekit.io/agents/build/turns/turn-detector/) for contextually-aware speaker detection, with multilingual support
 - [LiveKit Cloud enhanced noise cancellation](https://docs.livekit.io/home/cloud/noise-cancellation/)
 - Integrated [metrics and logging](https://docs.livekit.io/agents/v0/build/metrics/)
 
-This starter app is compatible with any [custom web/mobile frontend](https://docs.livekit.io/agents/v0/voice-agent/client-apps/) or [SIP-based telephony](https://docs.livekit.io/agents/v0/voice-agent/telephony/).
+This starter app is compatible with any [custom web/mobile frontend](https://docs.livekit.io/agents/start/frontend/) or [SIP-based telephony](https://docs.livekit.io/agents/start/telephony/).
 
 ## Dev Setup
 
@@ -33,9 +33,9 @@ Set up the environment by copying `.env.example` to `.env.local` and filling in 
 - `LIVEKIT_URL`: Use [LiveKit Cloud](https://cloud.livekit.io/) or [run your own](https://docs.livekit.io/home/self-hosting/)
 - `LIVEKIT_API_KEY`
 - `LIVEKIT_API_SECRET`
-- `OPENAI_API_KEY`: [Get a key](https://platform.openai.com/api-keys) or use your [preferred LLM provider](https://docs.livekit.io/agents/v0/integrations/overview/#llm-integrations)
-- `DEEPGRAM_API_KEY`: [Get a key](https://console.deepgram.com/) or use your [preferred STT provider](https://docs.livekit.io/agents/v0/integrations/overview/#stt-integrations)
-- `CARTESIA_API_KEY`: [Get a key](https://play.cartesia.ai/keys) or use your [preferred TTS provider](https://docs.livekit.io/agents/v0/integrations/overview/#tts-integrations)
+- `OPENAI_API_KEY`: [Get a key](https://platform.openai.com/api-keys) or use your [preferred LLM provider](https://docs.livekit.io/agents/integrations/llm/)
+- `DEEPGRAM_API_KEY`: [Get a key](https://console.deepgram.com/) or use your [preferred STT provider](https://docs.livekit.io/agents/integrations/stt/)
+- `CARTESIA_API_KEY`: [Get a key](https://play.cartesia.ai/keys) or use your [preferred TTS provider](https://docs.livekit.io/agents/integrations/tts/)
 
 You can load the LiveKit environment automatically using the [LiveKit CLI](https://docs.livekit.io/home/cli/cli-setup):
 
@@ -45,7 +45,7 @@ lk app env -w .env.local
 
 ## Run the agent
 
-Before your first run, you must download certain models such as [Silero VAD](https://docs.livekit.io/agents/v0/voice-agent/#voice-activity-detection-vad-/) and the [LiveKit turn detector](https://docs.livekit.io/agents/v0/voice-agent/#turn-detection-model):
+Before your first run, you must download certain models such as [Silero VAD](https://docs.livekit.io/agents/integrations/vad/) and the [LiveKit turn detector](https://docs.livekit.io/agents/build/turns/turn-detector/):
 
 ```console
 pnpm run download-files
@@ -75,9 +75,9 @@ Get started quickly with our pre-built frontend starter apps, or add telephony s
 | **React Native** | [`livekit-examples/voice-assistant-react-native`](https://github.com/livekit-examples/voice-assistant-react-native) | Native mobile app with React Native & Expo         |
 | **Android**      | [`livekit-examples/agent-starter-android`](https://github.com/livekit-examples/agent-starter-android)               | Native Android app with Kotlin & Jetpack Compose   |
 | **Web Embed**    | [`livekit-examples/agent-starter-embed`](https://github.com/livekit-examples/agent-starter-embed)                   | Voice AI widget for any website                    |
-| **Telephony**    | [📚 Documentation](https://docs.livekit.io/agents/v0/voice-agent/telephony/)                                        | Add inbound or outbound calling to your agent      |
+| **Telephony**    | [📚 Documentation](https://docs.livekit.io/agents/start/telephony/)                                        | Add inbound or outbound calling to your agent      |
 
-For advanced customization, see the [complete frontend guide](https://docs.livekit.io/agents/v0/voice-agent/client-apps/).
+For advanced customization, see the [complete frontend guide](https://docs.livekit.io/agents/start/frontend/).
 
 ## Using this template repo for your own project
 
@@ -89,7 +89,7 @@ Once you've started your own project based on this repo, you should:
 
 ## Deploying to production
 
-This project is production-ready and includes a working `Dockerfile`. To deploy it to LiveKit Cloud or another environment, see the [deploying to production](https://docs.livekit.io/agents/v0/deployment/) guide.
+This project is production-ready and includes a working `Dockerfile`. To deploy it to LiveKit Cloud or another environment, see the [deploying to production](https://docs.livekit.io/agents/ops/deployment/) guide.
 
 ## License
 

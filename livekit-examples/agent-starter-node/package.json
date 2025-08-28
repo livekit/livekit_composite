@@ -1,48 +1,46 @@
 {
   "name": "agent-starter-node",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "build:watch": "tsc --watch",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "lint": "eslint \"**/*.{ts,js}\"",
     "lint:fix": "eslint --fix \"**/*.{ts,js}\"",
     "format": "prettier --write \"**/*.{ts,js,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
-    "dev": "npm run build && node dist/agent.js dev",
-    "start": "npm run build && node dist/agent.js start",
-    "test": "node --test",
-    "test:watch": "node --test --watch"
+    "test": "node --test --import tsx",
+    "test:watch": "node --test --watch --import tsx",
+    "dev": "tsx src/agent.ts dev",
+    "download-files": "pnpm run build && node dist/agent.js download-files",
+    "start": "node dist/agent.js start"
   },
-  "packageManager": "pnpm@9.15.9",
   "engines": {
-    "node": ">=18.17.0",
-    "pnpm": ">=8.0.0"
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.3.1",
-    "@eslint/js": "^9.32.0",
+    "@eslint/js": "^9.34.0",
     "@trivago/prettier-plugin-sort-imports": "^5.2.2",
-    "@types/node": "^22.16.5",
-    "@typescript-eslint/eslint-plugin": "^8.38.0",
-    "eslint": "^8.57.1",
-    "eslint-config-prettier": "^9.1.2",
-    "eslint-plugin-import": "^2.32.0",
-    "eslint-plugin-prettier": "^5.5.3",
-    "typescript": "^5.8.3",
-    "@types/node": "^22.16.5"
+    "@types/node": "^22.18.0",
+    "eslint": "^9.34.0",
+    "globals": "^16.3.0",
+    "jiti": "^2.5.1",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.41.0"
   },
   "dependencies": {
-    "@livekit/agents": "^0.7.9",
-    "@livekit/agents-plugin-cartesia": "^0.1.4",
-    "@livekit/agents-plugin-deepgram": "^0.5.7",
-    "@livekit/agents-plugin-openai": "^0.9.3",
-    "@livekit/agents-plugin-silero": "^0.5.9",
-    "@livekit/rtc-node": "^0.13.18",
-    "dotenv": "^16.6.1",
+    "@livekit/agents": "^1.0.0",
+    "@livekit/agents-plugin-cartesia": "^1.0.0",
+    "@livekit/agents-plugin-deepgram": "^1.0.0",
+    "@livekit/agents-plugin-livekit": "^1.0.0",
+    "@livekit/agents-plugin-openai": "^1.0.0",
+    "@livekit/agents-plugin-silero": "^1.0.0",
+    "@livekit/noise-cancellation-node": "^0.1.9",
+    "dotenv": "^17.2.1",
     "zod": "^3.25.76"
   }
 }

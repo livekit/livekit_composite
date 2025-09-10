@@ -1,0 +1,65 @@
+# Copyright 2025 LiveKit, Inc.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+name: Sync main to production branch
+description: Sync main branch to specified production branch and increment the version tag.
+
+inputs:
+  token:
+    description: 'GitHub token for authentication'
+    type: string
+    required: true
+  production_branch:
+    description: 'The production branch to sync to'
+    type: string
+    required: false
+    default: 'sandbox-production'
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Fetch all history so we can force push
+
+    - name: Set up Git
+      run: |
+        git config --global user.name 'github-actions[bot]'
+        git config --global user.email 'github-actions[bot]@livekit.io'
+      shell: bash
+
+    - name: Sync to production branch
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+        PRODUCTION_BRANCH: ${{ inputs.production_branch }}
+      run: |
+        git checkout "$PRODUCTION_BRANCH" || git checkout -b "$PRODUCTION_BRANCH"
+        git merge --strategy-option theirs main
+        git push origin "$PRODUCTION_BRANCH"
+      shell: bash
+
+    - name: Tag the deployment
+      if: ${{ github.ref == 'refs/heads/main' }}
+      env:
+        GITHUB_TOKEN: ${{ inputs.token }}
+      run: |
+        # Increment version tag from previous tag of format vX, or use v1 if no previous tag
+        VERSION=$(git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//' | awk -F. -v OFS=. '{$NF++;print}')
+        if [ -z "$VERSION" ]; then
+          VERSION="1"
+        fi
+        git tag -a "v$VERSION" -m "Deploy v$VERSION to production"
+        git push origin "v$VERSION"
+      shell: bash

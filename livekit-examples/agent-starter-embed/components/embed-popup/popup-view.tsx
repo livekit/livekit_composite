@@ -17,6 +17,7 @@ import useChatAndTranscription from '@/hooks/use-chat-and-transcription';
 import { useDebugMode } from '@/hooks/useDebug';
 import type { EmbedErrorDetails } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { AvatarTile } from '../livekit/avatar-tile';
 import { ChatInput } from '../livekit/chat/chat-input';
 
 function isAgentAvailable(agentState: AgentState) {
@@ -37,7 +38,13 @@ export const PopupView = ({
 }: React.ComponentProps<'div'> & SessionViewProps) => {
   const room = useRoomContext();
   const transcriptRef = useRef<HTMLDivElement>(null);
-  const { state: agentState, audioTrack: agentAudioTrack } = useVoiceAssistant();
+  const {
+    state: agentState,
+    audioTrack: agentAudioTrack,
+    videoTrack: agentVideoTrack,
+  } = useVoiceAssistant();
+  const agentHasAvatar = agentVideoTrack !== undefined;
+
   const {
     micTrackRef,
     // FIXME: how do I explicitly ensure only the microphone channel is used?
@@ -101,7 +108,7 @@ export const PopupView = ({
 
   return (
     <div ref={ref} inert={disabled} className="flex h-full w-full flex-col overflow-hidden">
-      <div className="relative flex h-full shrink-1 grow-1 flex-col p-1">
+      <div className="relative flex h-full shrink-1 grow-1 flex-col py-1">
         <motion.div
           className={cn(
             'bg-bg2 dark:bg-bg1 pointer-events-none absolute z-10 flex aspect-[1.5] w-64 items-center justify-center rounded-2xl border border-transparent transition-colors',
@@ -147,7 +154,7 @@ export const PopupView = ({
         {/* Transcript */}
         <div
           ref={transcriptRef}
-          className="flex flex-1 flex-col overflow-y-auto [mask-image:linear-gradient(0deg,rgba(0,0,0,0.2)_0%,rgba(0,0,0,1)_5%,rgba(0,0,0,1)_95%,rgba(0,0,0,0)_100%)] py-2"
+          className="flex flex-1 flex-col overflow-y-auto [mask-image:linear-gradient(0deg,rgba(0,0,0,0.2)_0%,rgba(0,0,0,1)_5%,rgba(0,0,0,1)_95%,rgba(0,0,0,0)_100%)] px-1 py-2"
         >
           <div className="flex flex-1 flex-col justify-end gap-2 pt-10">
             <AnimatePresence>
@@ -166,9 +173,32 @@ export const PopupView = ({
           </div>
         </div>
 
+        <motion.div
+          initial={{ opacity: 0, scale: 0 }}
+          variants={{
+            visible: { opacity: 1, scale: 1 },
+            hidden: { opacity: 0, scale: 0 },
+          }}
+          animate={agentHasAvatar ? 'visible' : 'hidden'}
+          exit={{ opacity: 0, scale: 0 }}
+          transition={{
+            type: 'spring',
+            stiffness: 675,
+            damping: 75,
+            mass: 1,
+          }}
+          className={cn('absolute inset-1 h-full overflow-hidden rounded-t-[24px] pb-8', {
+            'pointer-events-none': !agentHasAvatar,
+          })}
+        >
+          {agentVideoTrack ? (
+            <AvatarTile videoTrack={agentVideoTrack} className="h-full object-cover" />
+          ) : null}
+        </motion.div>
+
         <div
           aria-label="Voice assistant controls"
-          className="bg-bg1 border-separator1 relative flex h-12 shrink-0 grow-0 items-center gap-1 rounded-full border px-1 drop-shadow-md"
+          className="bg-bg1 border-separator1 relative mx-1 flex h-12 shrink-0 grow-0 items-center gap-1 rounded-full border px-1 drop-shadow-md"
         >
           <div className="flex gap-1">
             {visibleControls.microphone ? (

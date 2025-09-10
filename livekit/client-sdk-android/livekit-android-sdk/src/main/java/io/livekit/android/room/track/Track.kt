@@ -21,6 +21,7 @@ import io.livekit.android.events.TrackEvent
 import io.livekit.android.util.flowDelegate
 import io.livekit.android.webrtc.RTCStatsGetter
 import io.livekit.android.webrtc.getStats
+import io.livekit.android.webrtc.peerconnection.RTCThreadToken
 import io.livekit.android.webrtc.peerconnection.executeBlockingOnRTCThread
 import livekit.LivekitModels
 import livekit.LivekitRtc
@@ -35,6 +36,7 @@ abstract class Track(
     name: String,
     kind: Kind,
     open val rtcTrack: MediaStreamTrack,
+    val rtcThreadToken: RTCThreadToken,
 ) {
     protected val eventBus = BroadcastEventBus<TrackEvent>()
     val events = eventBus.readOnly()
@@ -189,6 +191,9 @@ abstract class Track(
         }
     }
 
+    /**
+     * Ensures the track is valid before attempting to run [action].
+     */
     @OptIn(ExperimentalContracts::class)
     internal inline fun <T> withRTCTrack(crossinline action: MediaStreamTrack.() -> T) {
         contract { callsInPlace(action, InvocationKind.AT_MOST_ONCE) }
@@ -201,13 +206,13 @@ abstract class Track(
         if (isDisposed) {
             return defaultValue
         }
-        return executeBlockingOnRTCThread {
+        return executeBlockingOnRTCThread(rtcThreadToken) {
             return@executeBlockingOnRTCThread if (isDisposed) {
                 defaultValue
             } else {
                 action(rtcTrack)
             }
-        }
+        } ?: defaultValue
     }
 }
 

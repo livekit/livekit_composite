@@ -32,6 +32,7 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/atomic"
 	"go.uber.org/zap/zapcore"
+	"golang.org/x/exp/maps"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/livekit/mediatransportutil/pkg/twcc"
@@ -305,7 +306,7 @@ type ParticipantImpl struct {
 	migrateState                atomic.Value // types.MigrateState
 	migratedTracksPublishedFuse core.Fuse
 
-	onClose            func(types.LocalParticipant)
+	onClose            map[string]func(types.LocalParticipant)
 	onClaimsChanged    func(participant types.LocalParticipant)
 	onICEConfigChanged func(participant types.LocalParticipant, iceConfig *livekit.ICEConfig)
 
@@ -359,6 +360,7 @@ func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
 			joiningMessageFirstSeqs:       make(map[livekit.ParticipantID]uint32),
 			joiningMessageLastWrittenSeqs: make(map[livekit.ParticipantID]uint32),
 		},
+		onClose: make(map[string]func(types.LocalParticipant)),
 	}
 	p.setupSignalling()
 
@@ -581,7 +583,9 @@ func (p *ParticipantImpl) UpdateMetadata(update *livekit.UpdateParticipantMetada
 	lgr.Debugw("updating participant metadata")
 
 	var err error
-	requestResponse := &livekit.RequestResponse{}
+	requestResponse := &livekit.RequestResponse{
+		RequestId: update.RequestId,
+	}
 	sendRequestResponse := func() error {
 		if !fromAdmin || (update.RequestId != 0 || err != nil) {
 			requestResponse.Request = &livekit.RequestResponse_UpdateMetadata{
@@ -1048,14 +1052,18 @@ func (p *ParticipantImpl) getOnLeave() func(types.LocalParticipant, types.Partic
 	return p.onLeave
 }
 
-func (p *ParticipantImpl) OnClose(callback func(types.LocalParticipant)) {
+func (p *ParticipantImpl) AddOnClose(key string, callback func(types.LocalParticipant)) {
 	if p.isClosed.Load() {
 		go callback(p)
 		return
 	}
 
 	p.lock.Lock()
-	p.onClose = callback
+	if callback == nil {
+		delete(p.onClose, key)
+	} else {
+		p.onClose[key] = callback
+	}
 	p.lock.Unlock()
 }
 
@@ -1251,22 +1259,6 @@ func (p *ParticipantImpl) HandleOffer(sd *livekit.SessionDescription) error {
 		}
 	}
 
-	unmatchAudios, unmatchVideos := p.populateSdpCid(parsedOffer)
-	parsedOffer = p.setCodecPreferencesForPublisher(parsedOffer, unmatchAudios, unmatchVideos)
-	p.updateRidsFromSDP(parsedOffer, unmatchVideos)
-
-	// put together munged offer after setting codec preferences
-	bytes, err := parsedOffer.Marshal()
-	if err != nil {
-		lgr.Errorw("failed to marshal offer", err, "parsedOffer", parsedOffer)
-		return err
-	}
-
-	offer = webrtc.SessionDescription{
-		Type: offer.Type,
-		SDP:  string(bytes),
-	}
-
 	err = p.TransportManager.HandleOffer(offer, offerId, p.MigrateState() == types.MigrateStateInit)
 	if err != nil {
 		lgr.Warnw("could not handle offer", err, "mungedOffer", offer)
@@ -1281,6 +1273,21 @@ func (p *ParticipantImpl) HandleOffer(sd *livekit.SessionDescription) error {
 
 	p.handlePendingRemoteTracks()
 	return nil
+}
+
+func (p *ParticipantImpl) onPublisherSetRemoteDescription() {
+	offer := p.TransportManager.LastPublisherOfferPending()
+	parsedOffer, err := offer.Unmarshal()
+	if err != nil {
+		p.pubLogger.Warnw("could not parse offer", err)
+		return
+	}
+
+	// set publish codec preferences after remote description is set
+	// and required transceivers are created
+	unmatchAudios, unmatchVideos := p.populateSdpCid(parsedOffer)
+	p.setCodecPreferencesForPublisher(parsedOffer, unmatchAudios, unmatchVideos)
+	p.updateRidsFromSDP(parsedOffer, unmatchVideos)
 }
 
 func (p *ParticipantImpl) onPublisherAnswer(answer webrtc.SessionDescription, answerId uint32) error {
@@ -1505,10 +1512,10 @@ func (p *ParticipantImpl) Close(sendLeave bool, reason types.ParticipantCloseRea
 	// ensure this is synchronized
 	p.CloseSignalConnection(types.SignallingCloseReasonParticipantClose)
 	p.lock.RLock()
-	onClose := p.onClose
+	onClose := maps.Values(p.onClose)
 	p.lock.RUnlock()
-	if onClose != nil {
-		onClose(p)
+	for _, cb := range onClose {
+		cb(p)
 	}
 
 	// Close peer connections without blocking participant Close. If peer connections are gathering candidates
@@ -1911,6 +1918,10 @@ func (h AnyTransportHandler) OnICECandidate(c *webrtc.ICECandidate, target livek
 
 type PublisherTransportHandler struct {
 	AnyTransportHandler
+}
+
+func (h PublisherTransportHandler) OnSetRemoteDescriptionOffer() {
+	h.p.onPublisherSetRemoteDescription()
 }
 
 func (h PublisherTransportHandler) OnAnswer(sd webrtc.SessionDescription, answerId uint32) error {
@@ -2851,9 +2862,14 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 
 	if len(req.SimulcastCodecs) == 0 {
 		// clients not supporting simulcast codecs, synthesise a codec
+		videoLayerMode := livekit.VideoLayer_MODE_UNUSED
+		if p.params.ClientInfo.isOBS() {
+			videoLayerMode = livekit.VideoLayer_ONE_SPATIAL_LAYER_PER_STREAM_INCOMPLETE_RTCP_SR
+		}
 		ti.Codecs = append(ti.Codecs, &livekit.SimulcastCodecInfo{
-			Cid:    req.Cid,
-			Layers: cloneLayers(req.Layers),
+			Cid:            req.Cid,
+			Layers:         cloneLayers(req.Layers),
+			VideoLayerMode: videoLayerMode,
 		})
 	} else {
 		seenCodecs := make(map[string]struct{})
@@ -2888,7 +2904,11 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 					if mime.IsMimeTypeStringSVC(mimeType) {
 						videoLayerMode = livekit.VideoLayer_MULTIPLE_SPATIAL_LAYERS_PER_STREAM
 					} else {
-						videoLayerMode = livekit.VideoLayer_ONE_SPATIAL_LAYER_PER_STREAM
+						if p.params.ClientInfo.isOBS() {
+							videoLayerMode = livekit.VideoLayer_ONE_SPATIAL_LAYER_PER_STREAM_INCOMPLETE_RTCP_SR
+						} else {
+							videoLayerMode = livekit.VideoLayer_ONE_SPATIAL_LAYER_PER_STREAM
+						}
 					}
 				}
 			} else if req.Type == livekit.TrackType_AUDIO {
@@ -3966,8 +3986,8 @@ func (p *ParticipantImpl) SupportsMoving() error {
 		return ErrMoveOldClientVersion
 	}
 
-	if kind := p.Kind(); kind == livekit.ParticipantInfo_EGRESS || kind == livekit.ParticipantInfo_AGENT {
-		return fmt.Errorf("%s participants cannot be moved", kind.String())
+	if kind := p.Kind(); kind == livekit.ParticipantInfo_EGRESS || kind == livekit.ParticipantInfo_AGENT || p.params.UseOneShotSignallingMode {
+		return fmt.Errorf("%s participants cannot be moved, one-shot signaling mode: %t", kind.String(), p.params.UseOneShotSignallingMode)
 	}
 
 	return nil
@@ -3977,10 +3997,10 @@ func (p *ParticipantImpl) MoveToRoom(params types.MoveToRoomParams) {
 	// fire onClose callback for original room
 	p.lock.Lock()
 	onClose := p.onClose
-	p.onClose = nil
+	p.onClose = make(map[string]func(types.LocalParticipant))
 	p.lock.Unlock()
-	if onClose != nil {
-		onClose(p)
+	for _, cb := range onClose {
+		cb(p)
 	}
 
 	for _, track := range p.GetPublishedTracks() {

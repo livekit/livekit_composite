@@ -41,6 +41,7 @@ import io.livekit.android.test.events.EventCollector
 import io.livekit.android.test.mock.MockAudioProcessingController
 import io.livekit.android.test.mock.MockDataChannel
 import io.livekit.android.test.mock.MockEglBase
+import io.livekit.android.test.mock.MockRTCThreadToken
 import io.livekit.android.test.mock.MockVideoCapturer
 import io.livekit.android.test.mock.MockVideoStreamTrack
 import io.livekit.android.test.mock.TestData
@@ -306,6 +307,7 @@ class LocalParticipantMockE2ETest : MockE2ETest() {
         eglBase = MockEglBase(),
         defaultsManager = DefaultsManager(),
         trackFactory = mock(LocalVideoTrack.Factory::class.java),
+        rtcThreadToken = MockRTCThreadToken(),
     )
 
     @Test
@@ -787,7 +789,7 @@ class LocalParticipantMockE2ETest : MockE2ETest() {
     }
 
     @Test
-    fun lackOfPublishPermissionCausesException() = runTest {
+    fun lackOfPublishPermissionReturnsFalse() = runTest {
         val noCanPublishJoin = with(TestData.JOIN.toBuilder()) {
             join = with(join.toBuilder()) {
                 participant = with(participant.toBuilder()) {
@@ -803,14 +805,7 @@ class LocalParticipantMockE2ETest : MockE2ETest() {
         }
         connect(noCanPublishJoin)
 
-        var didThrow = false
-        try {
-            room.localParticipant.publishVideoTrack(createLocalTrack())
-        } catch (e: TrackException.PublishException) {
-            didThrow = true
-        }
-
-        assertTrue(didThrow)
+        assertFalse(room.localParticipant.publishVideoTrack(createLocalTrack()))
     }
 
     @Test

@@ -59,6 +59,25 @@ For the Coval sections of the workshop, you need to run your agent in `dev` mode
     uv run agent.py dev
     ```
 
+To setup the Coval connection, follow these steps:
+
+1. Create a [Sandbox token server](https://cloud.livekit.io/projects/p_/sandbox/templates/token-server) in LiveKit Cloud.
+2. Enter a name for your token server (can be anything).
+3. Create the server, dismiss the dialog, and click the "launch" button.
+4. Copy the Sandbox ID from this screen.
+1. Sign in to your [Coval](https://www.coval.dev/) account (you should have an email invite already)
+2. Click the "Agents" menu item in the top left
+3. Click the "Connect Agent" button in the top right
+4. Enter a name for your agent
+5. Select "LiveKit" as the simulator type
+6. For token endpoint, use `
+https://cloud-api.livekit.io/api/sandbox/connection-details`
+7. For Sandbox ID, use the name/ID from your token server
+8. Add your LiveKit server URL (it's in your `.env.local` file)
+9. Set content type to `application/json`
+
+You should now be ready to test your agent in Coval.
+
 ## Post-workshop
 
 You are welcome to continue working on your agent after the workshop, or start a new one.  Here are some useful documentation links for content not covered in the workshop:

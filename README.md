@@ -39,7 +39,7 @@ This project contains a comprehensive knowledge base about LiveKit, a real-time 
 - **Format**: Plain text format optimized for language models
 - **Update script**: `python sync_livekit_repos.py` (included in repo sync)
 
-### 5. **CRITICAL: LLM Guidance** (`knowledge_guidence.md`)
+### 5. **CRITICAL: LLM Guidance** (`knowledge_guidance.md`)
 - **Source**: Curated clarifications and corrections for common misunderstandings
 - **Purpose**: Prevents misleading or incorrect responses about LiveKit
 - **Content**: Specific guidance on issues that have caused confusion in the past
@@ -50,7 +50,7 @@ This project contains a comprehensive knowledge base about LiveKit, a real-time 
 
 ### When Answering LiveKit Questions
 
-1. **🚨 FIRST: Check the guidance file** (`knowledge_guidence.md`)
+1. **🚨 FIRST: Check the guidance file** (`knowledge_guidance.md`)
    - Contains critical clarifications for common misunderstandings
    - Prevents giving misleading or incorrect information
    - Includes specific guidance on warnings, errors, and misconceptions
@@ -95,7 +95,7 @@ This project contains a comprehensive knowledge base about LiveKit, a real-time 
 ## Response Guidelines
 
 ### Do:
-- 🚨 **ALWAYS check `knowledge_guidence.md` first** for known clarifications and corrections
+- 🚨 **ALWAYS check `knowledge_guidance.md` first** for known clarifications and corrections
 - ✅ Quote directly from knowledge base articles when available
 - ✅ Provide specific file references for code examples
 - ✅ Reference working examples from `livekit-examples/` when showing implementation

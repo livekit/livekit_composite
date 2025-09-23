@@ -1,3 +1,22 @@
+"""
+---
+title: Drive-Thru Order Placement Tools
+category: drive-thru
+tags: [dynamic_tool_generation, combo_meals, enum_validation, size_handling]
+difficulty: advanced
+description: Dynamic tool builders for different order types in drive-thru system
+demonstrates:
+  - Dynamic function tool generation
+  - Enum validation from menu items
+  - Complex parameter schemas with Pydantic
+  - Size validation and error handling
+  - Combo meal configuration
+  - Happy meal ordering
+  - Regular item ordering
+  - Price and details tracking
+---
+"""
+
 """Order placement tools for drive-thru agent."""
 
 from typing import Annotated, Literal

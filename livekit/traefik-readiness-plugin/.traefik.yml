@@ -1,7 +1,0 @@
-displayName: Readiness Endpoint
-summary: Serves a readiness endpoint, useful when running Traefik in a Kubernetes environment
-type: middleware
-import: github.com/livekit/traefik-readiness-plugin
-testData:
-  ReadyPath: /ping/ready
-  ReadyCPULimit: 0.8

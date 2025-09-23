@@ -53,6 +53,11 @@ func main() {
 	}
 	log.Infow("Running in", "path", workingDir)
 
+	agentIds := strings.Split(os.Getenv("INPUT_AGENT_IDS"), ",")
+	if len(agentIds) > 0 {
+		log.Infow("Using agent IDs from INPUT_AGENT_IDS", "agentIds", agentIds)
+	}
+
 	timeout := os.Getenv("INPUT_TIMEOUT")
 	if timeout == "" {
 		timeout = "5m"
@@ -158,6 +163,10 @@ func main() {
 			os.Exit(1)
 		}
 		log.Infow("Agent status check completed", "status", "running")
+	case "delete":
+		deleteAgent(client, workingDir)
+	case "delete-multi":
+		deleteAgentMulti(client, agentIds)
 	default:
 		log.Errorw("Invalid operation", nil, "operation", operation)
 		os.Exit(1)
@@ -322,4 +331,45 @@ func createAgent(client *lksdk.AgentClient, subdomain string, secrets []*livekit
 	}
 
 	log.Infow("Agent created", "agent", resp.AgentId)
+}
+
+func deleteAgent(client *lksdk.AgentClient, workingDir string) {
+	lkConfig, exists, err := LoadTOMLFile(workingDir, LiveKitTOMLFile)
+	if err != nil {
+		log.Errorw("Failed to load livekit.toml", err)
+		os.Exit(1)
+	}
+
+	if !exists {
+		log.Errorw("livekit.toml not found", nil)
+		os.Exit(1)
+	}
+
+	req := &livekit.DeleteAgentRequest{
+		AgentId: lkConfig.Agent.ID,
+	}
+
+	_, err = client.DeleteAgent(context.Background(), req)
+	if err != nil {
+		log.Errorw("Failed to delete agent", err)
+		os.Exit(1)
+	}
+
+	log.Infow("Agent deleted", "agent", lkConfig.Agent.ID)
+}
+
+func deleteAgentMulti(client *lksdk.AgentClient, agentIds []string) {
+	for _, agentId := range agentIds {
+		req := &livekit.DeleteAgentRequest{
+			AgentId: agentId,
+		}
+
+		_, err := client.DeleteAgent(context.Background(), req)
+		if err != nil {
+			log.Errorw("Failed to delete agent", err)
+			os.Exit(1)
+		}
+
+		log.Infow("Agent deleted", "agent", agentId)
+	}
 }

@@ -306,7 +306,8 @@ done:
 				timeout.Reset(1 * time.Second)
 			}
 			if local, ok := natMapping[mapping.externalIP]; ok {
-				logger.Infow("external ip already solved, ignore duplicate",
+				logger.Infow(
+					"external ip already resolved, ignore duplicate",
 					"external", mapping.externalIP,
 					"local", local,
 					"ignore", mapping.localIP)

@@ -11,6 +11,8 @@
     "format": "prettier --write \"**/*.ts\""
   },
   "dependencies": {
+    "@livekit/protocol": "^1.41.0",
+    "body-parser": "^2.2.0",
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "livekit-server-sdk": "^2.8.1"
@@ -19,6 +21,7 @@
     "@eslint/eslintrc": "^3.1.0",
     "@eslint/js": "^9.13.0",
     "@trivago/prettier-plugin-sort-imports": "^4.3.0",
+    "@types/body-parser": "^1.19.6",
     "@types/express": "^5.0.0",
     "@types/node": "^22.8.6",
     "@typescript-eslint/eslint-plugin": "^8.12.2",

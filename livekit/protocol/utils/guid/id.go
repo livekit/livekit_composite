@@ -21,6 +21,7 @@ import (
 	"fmt"
 	mrand "math/rand/v2"
 	"os"
+	"regexp"
 	"sync"
 	"unsafe"
 
@@ -60,6 +61,8 @@ const (
 	CloudAgentSecretPrefix  = "CAS_"
 	CloudAgentWorkerPrefix  = "CAW_"
 	AgentGatewayPrefix      = "GW_"
+	CarrierPrefix           = "CR_"
+	PhoneNumberPrefix       = "PN_"
 )
 
 var guidGeneratorPool = sync.Pool{
@@ -196,4 +199,10 @@ func Unmarshal[T livekit.Guid](b livekit.GuidBlock) T {
 		idb[k+3] = b57Chars[b[j+2]&63]
 	}
 	return T(unsafe.String(unsafe.SliceData(id), len(id)))
+}
+
+var validIDPattern = regexp.MustCompile(`^([a-zA-Z0-9]{1,16}_){1,2}[a-zA-Z0-9]{0,12}$`)
+
+func IsValidID[T ~string](id T) bool {
+	return validIDPattern.MatchString(string(id))
 }

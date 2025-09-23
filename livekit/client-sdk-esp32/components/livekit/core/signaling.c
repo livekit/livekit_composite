@@ -86,7 +86,7 @@ static signal_err_t send_request(signal_t *sg, livekit_pb_signal_request_t *requ
         }
         if (esp_websocket_client_send_bin(sg->ws,
                 (const char *)enc_buf,
-                encoded_size,
+                (int)encoded_size,
                 portMAX_DELAY) < 0) {
             //ESP_LOGE(TAG, "Failed to send request");
             ret = SIGNAL_ERR_MESSAGE;
@@ -195,7 +195,7 @@ static void on_ws_event(void *ctx, esp_event_base_t base, int32_t event_id, void
             }
             if (data->data_len < 1) break;
             livekit_pb_signal_response_t res = {};
-            if (!protocol_signal_response_decode((const uint8_t *)data->data_ptr, data->data_len, &res)) {
+            if (!protocol_signal_response_decode((const uint8_t *)data->data_ptr, (size_t)data->data_len, &res)) {
                 break;
             }
             if (res.which_message == 0) {
@@ -307,14 +307,32 @@ signal_err_t signal_connect(signal_handle_t handle, const char* server_url, cons
 
     char* url = NULL;
     url_build_options options = {
-        .server_url = server_url,
-        .token = token
+        .server_url = server_url
     };
     if (!url_build(&options, &url)) {
         return SIGNAL_ERR_INVALID_URL;
     }
+    ESP_LOGI(TAG, "Connecting to server: %s", url);
     esp_websocket_client_set_uri(sg->ws, url);
     free(url);
+
+    if (!sg->is_terminal_state) {
+        // Initial connection (transport not created yet)
+        char* auth_value = NULL;
+        if (asprintf(&auth_value, "Bearer %s", token) < 0) {
+            return SIGNAL_ERR_NO_MEM;
+        }
+        esp_websocket_client_append_header(sg->ws, "Authorization", auth_value);
+        free(auth_value);
+    } else {
+        // Subsequent connection (transport already created)
+        char* header_string = NULL;
+        if (asprintf(&header_string, "Authorization: Bearer %s\r\n", token) < 0) {
+            return SIGNAL_ERR_NO_MEM;
+        }
+        esp_websocket_client_set_headers(sg->ws, header_string);
+        free(header_string);
+    }
 
     if (esp_websocket_client_start(sg->ws) != ESP_OK) {
         ESP_LOGE(TAG, "Failed to start WebSocket");

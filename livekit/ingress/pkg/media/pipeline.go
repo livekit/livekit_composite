@@ -185,7 +185,9 @@ func (p *Pipeline) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = p.input.Start(ctx)
+	err = p.input.Start(ctx, func(ctx context.Context) {
+		p.SendEOS(ctx)
+	})
 	if err != nil {
 		span.RecordError(err)
 		logger.Infow("failed to start input", err)
@@ -203,7 +205,9 @@ func (p *Pipeline) Run(ctx context.Context) error {
 	// Return the error from the most upstream part of the pipeline
 	err = p.input.Close()
 	sinkErr := p.sink.Close()
-	if err == nil {
+
+	if err == nil || (err == context.Canceled && sinkErr != nil) {
+		// prefer sink error if exists (causal and more specific) over the generic context.Canceled error
 		err = sinkErr
 	}
 
@@ -241,7 +245,22 @@ func (p *Pipeline) messageWatch(msg *gst.Message) bool {
 	case gst.MessageStreamCollection:
 		p.handleStreamCollectionMessage(msg)
 
-	case gst.MessageTag, gst.MessageStateChanged, gst.MessageLatency, gst.MessageAsyncDone, gst.MessageStreamStatus, gst.MessageElement:
+	case gst.MessageStateChanged:
+		p.logPipelineStateChange(msg)
+
+	case gst.MessageAsyncStart:
+		src := msg.Source()
+		if src == p.pipeline.GetName() {
+			logger.Infow("GST ASYNC_START (pipeline)")
+		}
+
+	case gst.MessageAsyncDone:
+		src := msg.Source()
+		if src == p.pipeline.GetName() {
+			logger.Debugw("GST ASYNC_DONE (pipeline)")
+		}
+
+	case gst.MessageTag, gst.MessageLatency, gst.MessageStreamStatus, gst.MessageElement:
 		// ignore
 
 	default:
@@ -276,6 +295,17 @@ func (p *Pipeline) handleStreamCollectionMessage(msg *gst.Message) {
 			videoState := getVideoState(gstStruct)
 			p.SetInputVideoState(context.Background(), videoState, true)
 		}
+	}
+}
+
+func (p *Pipeline) logPipelineStateChange(msg *gst.Message) {
+	old, new := msg.ParseStateChanged()
+	src := msg.Source()
+	isPipeline := (src == p.pipeline.GetName())
+
+	if isPipeline && new != old {
+		logger.Infow("GST pipeline state changed",
+			"old", old, "new", new)
 	}
 }
 

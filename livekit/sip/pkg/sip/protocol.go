@@ -136,17 +136,39 @@ func transportFromURI(u *sip.Uri) Transport {
 	return ""
 }
 
-func transportFromReq(req *sip.Request) Transport {
+// callTransportFromReq returns the SIP transport used between LK SIP and the provider.
+// For the actual transport used between SIP server and the edge, see legTransportFromReq.
+func callTransportFromReq(req *sip.Request) Transport {
 	if to := req.To(); to != nil {
-		if tr, _ := to.Params.Get("transport"); tr != "" {
-			return Transport(strings.ToLower(tr))
+		if tr := transportFromURI(&to.Address); tr != "" {
+			return tr
 		}
-		if tr, _ := to.Address.UriParams.Get("transport"); tr != "" {
+		if tr, _ := to.Params.Get("transport"); tr != "" {
 			return Transport(strings.ToLower(tr))
 		}
 	}
 	if via := req.Via(); via != nil {
 		return Transport(strings.ToLower(via.Transport))
+	}
+	return ""
+}
+
+// legTransportFromReq returns the SIP transport used between SIP server and LK SIP edge.
+// For the transport used between LK SIP and the provider, see callTransportFromReq.
+func legTransportFromReq(req *sip.Request) Transport {
+	if via := req.Via(); via != nil {
+		return Transport(strings.ToLower(via.Transport))
+	}
+	if tr := transportFromURI(&req.Recipient); tr != "" {
+		return tr
+	}
+	if to := req.To(); to != nil {
+		if tr := transportFromURI(&to.Address); tr != "" {
+			return tr
+		}
+		if tr, _ := to.Params.Get("transport"); tr != "" {
+			return Transport(strings.ToLower(tr))
+		}
 	}
 	return ""
 }
@@ -280,32 +302,38 @@ func sendRefer(ctx context.Context, c Signaling, req *sip.Request, stop <-chan s
 	}
 }
 
-func parseNotifyBody(body string) (int, error) {
-	v := strings.Split(body, " ")
+func parseNotifyBody(body string) (int, string, error) {
+	v := strings.SplitN(body, " ", 3)
 
 	if len(v) < 2 {
-		return 0, psrpc.NewErrorf(psrpc.InvalidArgument, "invalid notify body: not enough tokens")
+		return 0, "", psrpc.NewErrorf(psrpc.InvalidArgument, "invalid notify body: not enough tokens")
 	}
 
 	if strings.ToUpper(v[0]) != "SIP/2.0" {
-		return 0, psrpc.NewErrorf(psrpc.InvalidArgument, "invalid notify body: wrong prefix or SIP version")
+		return 0, "", psrpc.NewErrorf(psrpc.InvalidArgument, "invalid notify body: wrong prefix or SIP version")
 	}
 
 	c, err := strconv.Atoi(v[1])
 	if err != nil {
-		return 0, psrpc.NewError(psrpc.InvalidArgument, err)
+		return 0, "", psrpc.NewError(psrpc.InvalidArgument, err)
 	}
-
-	return c, nil
+	if len(v) < 3 {
+		return c, "", nil
+	}
+	reason := v[2]
+	if i := strings.Index(reason, "\n"); i != -1 {
+		reason = strings.TrimSuffix(reason[:i], "\r")
+	}
+	return c, reason, nil
 }
 
-func handleNotify(req *sip.Request) (method sip.RequestMethod, cseq uint32, status int, err error) {
+func handleNotify(req *sip.Request) (method sip.RequestMethod, cseq uint32, status int, reason string, err error) {
 	event := req.GetHeader("Event")
 	if event == nil {
 		event = req.GetHeader("o")
 	}
 	if event == nil {
-		return "", 0, 0, psrpc.NewErrorf(psrpc.MalformedRequest, "no event in NOTIFY request")
+		return "", 0, 0, "", psrpc.NewErrorf(psrpc.MalformedRequest, "no event in NOTIFY request")
 	}
 
 	var cseq64 uint64
@@ -318,14 +346,41 @@ func handleNotify(req *sip.Request) (method sip.RequestMethod, cseq uint32, stat
 			cseq64, _ = strconv.ParseUint(m[2], 10, 32)
 		}
 
-		status, err = parseNotifyBody(string(req.Body()))
+		status, reason, err = parseNotifyBody(string(req.Body()))
 		if err != nil {
-			return "", 0, 0, err
+			return "", 0, 0, "", err
 		}
 
-		return method, uint32(cseq64), status, nil
+		return method, uint32(cseq64), status, reason, nil
 	}
-	return "", 0, 0, psrpc.NewErrorf(psrpc.Unimplemented, "unknown event")
+	return "", 0, 0, reason, psrpc.NewErrorf(psrpc.Unimplemented, "unknown event")
+}
+
+func handleReferNotify(cseq uint32, status int, reason string, referCseq uint32, referDone chan<- error) {
+	if cseq != 0 && cseq != referCseq {
+		// NOTIFY for a different REFER, skip
+		return
+	}
+	var result error
+	switch {
+	case status >= 100 && status < 200:
+		// still trying
+		return
+	case status == 200:
+		// Success
+		result = nil
+	default:
+		// Failure
+		st := &livekit.SIPStatus{
+			Code:   livekit.SIPStatusCode(status),
+			Status: reason,
+		}
+		result = psrpc.NewErrorf(psrpc.Canceled, "call transfer failed: %w", st)
+	}
+	select {
+	case referDone <- result:
+	case <-time.After(notifyAckTimeout):
+	}
 }
 
 func sipStatusForErrorCode(code psrpc.ErrorCode) sip.StatusCode {

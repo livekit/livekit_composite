@@ -2798,6 +2798,35 @@ func (p *ParticipantImpl) onSubscribedMaxQualityChange(
 	return p.sendSubscribedQualityUpdate(subscribedQualityUpdate)
 }
 
+func (p *ParticipantImpl) onSubscribedAudioCodecChange(
+	trackID livekit.TrackID,
+	codecs []*livekit.SubscribedAudioCodec,
+) error {
+	if p.params.DisableDynacast {
+		return nil
+	}
+
+	if len(codecs) == 0 {
+		return nil
+	}
+
+	// normalize the codec name
+	for _, codec := range codecs {
+		codec.Codec = strings.ToLower(strings.TrimPrefix(codec.Codec, mime.MimeTypePrefixAudio))
+	}
+
+	subscribedAudioCodecUpdate := &livekit.SubscribedAudioCodecUpdate{
+		TrackSid:              string(trackID),
+		SubscribedAudioCodecs: codecs,
+	}
+	p.pubLogger.Debugw(
+		"sending subscribed audio codec update",
+		"trackID", trackID,
+		"update", logger.Proto(subscribedAudioCodecUpdate),
+	)
+	return p.sendSubscribedAudioCodecUpdate(subscribedAudioCodecUpdate)
+}
+
 func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *livekit.TrackInfo {
 	if req.Sid != "" {
 		track := p.GetPublishedTrack(livekit.TrackID(req.Sid))
@@ -2901,7 +2930,7 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 					mimeType = altCodec
 				}
 				if videoLayerMode == livekit.VideoLayer_MODE_UNUSED {
-					if mime.IsMimeTypeStringSVC(mimeType) {
+					if mime.IsMimeTypeStringSVCCapable(mimeType) {
 						videoLayerMode = livekit.VideoLayer_MULTIPLE_SPATIAL_LAYERS_PER_STREAM
 					} else {
 						if p.params.ClientInfo.isOBS() {
@@ -3317,6 +3346,7 @@ func (p *ParticipantImpl) addMediaTrack(signalCid string, ti *livekit.TrackInfo)
 	}, ti)
 
 	mt.OnSubscribedMaxQualityChange(p.onSubscribedMaxQualityChange)
+	mt.OnSubscribedAudioCodecChange(p.onSubscribedAudioCodecChange)
 
 	// add to published and clean up pending
 	if p.supervisor != nil {
@@ -3726,6 +3756,17 @@ func (p *ParticipantImpl) UpdateSubscribedQuality(nodeID livekit.NodeID, trackID
 	return nil
 }
 
+func (p *ParticipantImpl) UpdateSubscribedAudioCodecs(nodeID livekit.NodeID, trackID livekit.TrackID, codecs []*livekit.SubscribedAudioCodec) error {
+	track := p.GetPublishedTrack(trackID)
+	if track == nil {
+		p.pubLogger.Debugw("could not find track", "trackID", trackID)
+		return errors.New("could not find published track")
+	}
+
+	track.(types.LocalMediaTrack).NotifySubscriptionNode(nodeID, codecs)
+	return nil
+}
+
 func (p *ParticipantImpl) UpdateMediaLoss(nodeID livekit.NodeID, trackID livekit.TrackID, fractionalLoss uint32) error {
 	track := p.GetPublishedTrack(trackID)
 	if track == nil {
@@ -4006,10 +4047,12 @@ func (p *ParticipantImpl) MoveToRoom(params types.MoveToRoomParams) {
 	for _, track := range p.GetPublishedTracks() {
 		for _, sub := range track.GetAllSubscribers() {
 			track.RemoveSubscriber(sub, false)
-			// clear the subscriber node max quality as the remote quality notify
-			// from source room would not reach the moving out participant.
-			track.(types.LocalMediaTrack).ClearSubscriberNodesMaxQuality()
 		}
+
+		// clear the subscriber node max quality/audio codecs as the remote quality notify
+		// from source room would not reach the moving out participant.
+		track.(types.LocalMediaTrack).ClearSubscriberNodes()
+
 		trackInfo := track.ToProto()
 		p.params.Telemetry.TrackUnpublished(
 			context.Background(),

@@ -1,3 +1,19 @@
+"""
+---
+title: Drive-Thru Session Setup
+category: drive-thru
+tags: [session_management, userdata_initialization, background_audio_setup]
+difficulty: intermediate
+description: Session setup utilities for drive-thru ordering system
+demonstrates:
+  - Userdata initialization with menu items
+  - Session configuration with agent configs
+  - Background audio player setup
+  - Database integration for menu loading
+  - Max tool steps configuration
+---
+"""
+
 """Session setup for drive-thru agent."""
 
 import os

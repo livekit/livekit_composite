@@ -16,6 +16,8 @@ import MediaStreamTrack, { type MediaTrackSettings } from './MediaStreamTrack';
 import MediaStreamTrackEvent from './MediaStreamTrackEvent';
 import permissions from './Permissions';
 import RTCAudioSession from './RTCAudioSession';
+import RTCDataPacketCryptor, { RTCEncryptedPacket } from './RTCDataPacketCryptor';
+import RTCDataPacketCryptorFactory from './RTCDataPacketCryptorFactory';
 import RTCErrorEvent from './RTCErrorEvent';
 import RTCFrameCryptor, { RTCFrameCryptorState } from './RTCFrameCryptor';
 import RTCFrameCryptorFactory, { RTCFrameCryptorAlgorithm, RTCKeyProviderOptions } from './RTCFrameCryptorFactory';
@@ -47,6 +49,9 @@ export {
     RTCRtpSender,
     RTCErrorEvent,
     RTCAudioSession,
+    RTCDataPacketCryptor,
+    RTCDataPacketCryptorFactory,
+    RTCEncryptedPacket,
     RTCFrameCryptor,
     RTCFrameCryptorAlgorithm,
     RTCFrameCryptorState,

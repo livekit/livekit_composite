@@ -1,3 +1,20 @@
+"""
+---
+title: Drive-Thru Order Agent
+category: complex-agents
+tags: [ordering_system, modular_tools, rpc_handlers, background_audio, state_management]
+difficulty: advanced
+description: Restaurant drive-thru ordering system with modular tools and order management
+demonstrates:
+  - Modular tool organization for menu items
+  - Dynamic tool generation based on menu data
+  - Order state management with add/remove/list operations
+  - Background audio playback during session
+  - RPC handler registration for external control
+  - Structured userdata for session state
+---
+"""
+
 """Main drive-thru agent implementation."""
 
 import os

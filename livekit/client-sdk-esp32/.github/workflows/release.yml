@@ -1,0 +1,16 @@
+name: Release
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+jobs:
+  registry-upload:
+    name: Registry Upload
+    uses: ./.github/workflows/esp_registry.yml
+    with: { dry_run: false }
+    secrets:
+      ESP_REGISTRY_TOKEN: ${{ secrets.ESP_REGISTRY_TOKEN }}
+  deploy-docs:
+    name: Deploy Documentation
+    uses: ./.github/workflows/docs.yml
+    with: { deploy: true }

@@ -192,6 +192,12 @@ func findExternalIP(ctx context.Context, stunServer string, localAddr net.Addr) 
 	}
 
 	closeConns()
+	logger.Infow(
+		"found external IP via STUN",
+		"localAddr", localAddr,
+		"stunServer", stunServer,
+		"externalIP", ipAddr,
+	)
 	return ipAddr, validateExternalIP(ctx, ipAddr, localAddr)
 }
 
@@ -269,7 +275,7 @@ func validateExternalIP(ctx context.Context, nodeIP string, addr net.Addr) error
 	case <-validCh:
 		return nil
 	case <-ctx1.Done():
-		logger.Warnw("could not validate external IP", ctx1.Err(), "ip", nodeIP)
+		logger.Warnw("could not validate external IP", ctx1.Err(), "ip", nodeIP, "from", addr)
 		return ctx1.Err()
 	}
 }

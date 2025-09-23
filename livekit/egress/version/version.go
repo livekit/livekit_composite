@@ -14,4 +14,7 @@
 
 package version
 
-const Version = "1.10.0"
+const (
+	Version         = "1.10.0"
+	TemplateVersion = "sha-f616008"
+)

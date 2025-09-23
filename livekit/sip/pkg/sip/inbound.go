@@ -59,6 +59,8 @@ const (
 	inviteOkAckTimeout = 5 * time.Second
 )
 
+var errNoACK = errors.New("no ACK received for 200 OK")
+
 // hashPassword creates a SHA256 hash of the password for logging purposes
 func hashPassword(password string) string {
 	if password == "" {
@@ -228,16 +230,17 @@ func (s *Server) processInvite(req *sip.Request, tx sip.ServerTransaction) (retE
 		return psrpc.NewError(psrpc.MalformedRequest, errors.Wrap(err, "cannot parse source IP"))
 	}
 	callID := lksip.NewCallID()
+	tr := callTransportFromReq(req)
+	legTr := legTransportFromReq(req)
 	log := s.log.WithValues(
 		"callID", callID,
 		"fromIP", src.Addr(),
 		"toIP", req.Destination(),
+		"transport", tr,
 	)
 
 	var call *inboundCall
-
-	tr := transportFromReq(req)
-	cc := s.newInbound(LocalTag(callID), s.ContactURI(tr), req, tx, func(headers map[string]string) map[string]string {
+	cc := s.newInbound(log, LocalTag(callID), s.ContactURI(legTr), req, tx, func(headers map[string]string) map[string]string {
 		c := call
 		if c == nil || len(c.attrsToHdr) == 0 {
 			return headers
@@ -250,6 +253,7 @@ func (s *Server) processInvite(req *sip.Request, tx sip.ServerTransaction) (retE
 	})
 	log = LoggerWithParams(log, cc)
 	log = LoggerWithHeaders(log, cc)
+	cc.log = log
 	log.Infow("processing invite")
 
 	if err := cc.ValidateInvite(); err != nil {
@@ -613,8 +617,19 @@ func (c *inboundCall) handleInvite(ctx context.Context, req *sip.Request, trunkI
 			headers = AttrsToHeaders(r.LocalParticipant.Attributes(), c.attrsToHdr, headers)
 		}
 		c.log.Infow("Accepting the call", "headers", headers)
-		if err := c.cc.Accept(ctx, answerData, headers); err != nil {
+		err := c.cc.Accept(ctx, answerData, headers)
+		if errors.Is(err, errNoACK) {
+			if !c.s.conf.Experimental.IgnoreMissingACK {
+				c.log.Errorw("Call accepted, but no ACK received", err)
+				c.close(true, callNoACK, "no-ack")
+				return false, err
+			}
+			c.log.Warnw("Call accepted, but no ACK received", err)
+			err = nil // ignore
+		}
+		if err != nil {
 			c.log.Errorw("Cannot accept the call", err)
+			c.close(true, callAcceptFailed, "accept-failed")
 			return false, err
 		}
 		c.media.EnableTimeout(true)
@@ -1140,8 +1155,9 @@ func (c *inboundCall) transferCall(ctx context.Context, transferTo string, heade
 
 }
 
-func (s *Server) newInbound(id LocalTag, contact URI, invite *sip.Request, inviteTx sip.ServerTransaction, getHeaders setHeadersFunc) *sipInbound {
+func (s *Server) newInbound(log logger.Logger, id LocalTag, contact URI, invite *sip.Request, inviteTx sip.ServerTransaction, getHeaders setHeadersFunc) *sipInbound {
 	c := &sipInbound{
+		log:      log,
 		s:        s,
 		id:       id,
 		invite:   invite,
@@ -1168,6 +1184,7 @@ func (s *Server) newInbound(id LocalTag, contact URI, invite *sip.Request, invit
 }
 
 type sipInbound struct {
+	log       logger.Logger
 	s         *Server
 	id        LocalTag
 	tag       RemoteTag
@@ -1380,7 +1397,10 @@ func (c *sipInbound) Accept(ctx context.Context, sdpData []byte, headers map[str
 	defer ackCancel()
 	select {
 	case <-ackCtx.Done():
-		return errors.New("no ACK received for 200 OK")
+		// Other side may think it's accepted, so update our state accordingly.
+		c.inviteOk = r
+		c.inviteTx = nil
+		return errNoACK
 	case <-c.inviteTx.Acks():
 	case <-c.acked.Watch():
 	}
@@ -1560,10 +1580,11 @@ func (c *sipInbound) TransferCall(ctx context.Context, transferTo string, header
 }
 
 func (c *sipInbound) handleNotify(req *sip.Request, tx sip.ServerTransaction) error {
-	method, cseq, status, err := handleNotify(req)
+	method, cseq, status, reason, err := handleNotify(req)
 	if err != nil {
 		return err
 	}
+	c.log.Infow("handling NOTIFY", "method", method, "status", status, "reason", reason, "cseq", cseq)
 
 	switch method {
 	default:
@@ -1571,29 +1592,7 @@ func (c *sipInbound) handleNotify(req *sip.Request, tx sip.ServerTransaction) er
 	case sip.REFER:
 		c.mu.RLock()
 		defer c.mu.RUnlock()
-
-		if cseq != 0 && cseq != uint32(c.referCseq) {
-			// NOTIFY for a different REFER, skip
-			return nil
-		}
-
-		var result error
-		switch {
-		case status >= 100 && status < 200:
-			// still trying
-			return nil
-		case status == 200:
-			// Success
-			result = nil
-		default:
-			// Failure
-			// TODO be more specific in the reported error
-			result = psrpc.NewErrorf(psrpc.Canceled, "call transfer failed")
-		}
-		select {
-		case c.referDone <- result:
-		case <-time.After(notifyAckTimeout):
-		}
+		handleReferNotify(cseq, status, reason, c.referCseq, c.referDone)
 		return nil
 	}
 }
@@ -1608,6 +1607,7 @@ func (c *sipInbound) CloseWithStatus(code sip.StatusCode, status string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.inviteOk != nil {
+		// TODO: add cause for a failure, if any
 		c.sendBye()
 	} else if c.inviteTx != nil {
 		c.sendStatus(code, status)

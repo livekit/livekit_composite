@@ -31,6 +31,6 @@ android {
 
 dependencies {
     implementation "com.facebook.react:react-android:+"
-    api 'io.github.webrtc-sdk:android:137.7151.01'
+    api 'io.github.webrtc-sdk:android:137.7151.04'
     implementation "androidx.core:core:1.7.0"
 }

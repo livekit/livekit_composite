@@ -232,6 +232,8 @@ impl LocalParticipant {
         track: LocalTrack,
         options: TrackPublishOptions,
     ) -> RoomResult<LocalTrackPublication> {
+        let disable_red = self.local.encryption_type != EncryptionType::None || !options.red;
+
         let mut req = proto::AddTrackRequest {
             cid: track.rtc_track().id(),
             name: track.name(),
@@ -239,7 +241,7 @@ impl LocalParticipant {
             muted: track.is_muted(),
             source: proto::TrackSource::from(options.source) as i32,
             disable_dtx: !options.dtx,
-            disable_red: !options.red,
+            disable_red,
             encryption: proto::encryption::Type::from(self.local.encryption_type) as i32,
             stream: options.stream.clone(),
             ..Default::default()
@@ -947,6 +949,23 @@ impl LocalParticipant {
         options: StreamByteOptions,
     ) -> StreamResult<ByteStreamInfo> {
         self.session().unwrap().outgoing_stream_manager.send_file(path, options).await
+    }
+
+    /// Send an in-memory blob of bytes to participants in the room.
+    ///
+    /// This method sends a provided byte slice as a byte stream.
+    ///
+    /// # Arguments
+    ///
+    /// * `data` - The bytes to send.
+    /// * `options` - Configuration options for the byte stream, including topic and
+    ///   destination participants.
+    pub async fn send_bytes(
+        &self,
+        data: impl AsRef<[u8]>,
+        options: StreamByteOptions,
+    ) -> StreamResult<ByteStreamInfo> {
+        self.session().unwrap().outgoing_stream_manager.send_bytes(data, options).await
     }
 
     /// Stream text incrementally to participants in the room.

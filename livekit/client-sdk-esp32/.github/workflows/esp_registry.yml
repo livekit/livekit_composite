@@ -1,0 +1,46 @@
+name: ESP Registry
+on:
+  workflow_call:
+    inputs:
+      dry_run:
+        type: boolean
+        description: Do not actually upload the components
+        default: true
+    secrets:
+      ESP_REGISTRY_TOKEN:
+        required: true
+jobs:
+  esp_registry:
+    name: Upload Components
+    runs-on: ubuntu-latest
+    env:
+      COMPONENTS: |
+        livekit:./components/livekit
+        sandbox_token:./components/sandbox_token
+        example_utils:./components/example_utils
+        nanopb:./components/third_party/nanopb
+        khash:./components/third_party/khash
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - name: Upload Components (Dry Run)
+        uses: espressif/upload-components-ci-action@v2
+        if: ${{ inputs.dry_run }}
+        with:
+          components: ${{ env.COMPONENTS }}
+          namespace: livekit
+          dry_run: true
+      - name: Upload Components
+        uses: espressif/upload-components-ci-action@v2
+        if: ${{ !inputs.dry_run }}
+        with:
+          components: ${{ env.COMPONENTS }}
+          namespace: livekit
+          api_token: ${{ secrets.ESP_REGISTRY_TOKEN }}
+      - name: Save Archives
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: archives
+          path: components/**/*.tgz
+          if-no-files-found: error

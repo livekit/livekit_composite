@@ -1,3 +1,21 @@
+"""
+---
+title: Drive-Thru Agent Test Suite
+category: drive-thru
+tags: [pytest, agent_testing, run_result, judge_llm, mock_tools]
+difficulty: advanced
+description: Comprehensive test suite for drive-thru ordering agent
+demonstrates:
+  - Agent testing with pytest
+  - RunResult expectations and assertions
+  - LLM judge for intent verification
+  - Tool mocking for error simulation
+  - Order flow testing scenarios
+  - Conversation context testing
+  - ChatContext manipulation
+---
+"""
+
 from __future__ import annotations
 
 import pytest

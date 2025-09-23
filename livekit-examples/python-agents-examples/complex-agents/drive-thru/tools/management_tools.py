@@ -1,3 +1,20 @@
+"""
+---
+title: Drive-Thru Order Management Tools
+category: drive-thru
+tags: [order_tools, rpc_integration, checkout_flow]
+difficulty: intermediate
+description: Order management tools for drive-thru system
+demonstrates:
+  - Order removal with validation
+  - Order listing and formatting
+  - Checkout completion flow
+  - RPC integration for UI updates
+  - Error handling with ToolError
+  - Order total calculation
+---
+"""
+
 """Order management tools for drive-thru agent."""
 
 import json

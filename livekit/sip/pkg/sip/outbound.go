@@ -62,6 +62,7 @@ type sipOutboundConfig struct {
 	maxCallDuration time.Duration
 	enabledFeatures []livekit.SIPFeature
 	mediaEncryption sdp.Encryption
+	displayName     *string
 }
 
 type outboundCall struct {
@@ -113,7 +114,7 @@ func (c *Client) newCall(ctx context.Context, conf *config.Config, log logger.Lo
 		Host:      sipConf.host,
 		Addr:      contact.Addr,
 		Transport: tr,
-	}, contact, func(headers map[string]string) map[string]string {
+	}, contact, sipConf.displayName, func(headers map[string]string) map[string]string {
 		c := call
 		if len(c.sipConf.attrsToHeaders) == 0 {
 			return headers
@@ -648,10 +649,14 @@ func (c *outboundCall) transferCall(ctx context.Context, transferTo string, head
 	return nil
 }
 
-func (c *Client) newOutbound(log logger.Logger, id LocalTag, from, contact URI, getHeaders setHeadersFunc) *sipOutbound {
+func (c *Client) newOutbound(log logger.Logger, id LocalTag, from, contact URI, displayName *string, getHeaders setHeadersFunc) *sipOutbound {
 	from = from.Normalize()
+	if displayName == nil { // Nothing specified, preserve legacy behavior
+		displayName = &from.User
+	}
+
 	fromHeader := &sip.FromHeader{
-		DisplayName: from.User,
+		DisplayName: *displayName,
 		Address:     *from.GetURI(),
 		Params:      sip.NewParams(),
 	}
@@ -1008,44 +1013,24 @@ func (c *sipOutbound) transferCall(ctx context.Context, transferTo string, heade
 }
 
 func (c *sipOutbound) handleNotify(req *sip.Request, tx sip.ServerTransaction) error {
-	method, cseq, status, err := handleNotify(req)
+	method, cseq, status, reason, err := handleNotify(req)
 	if err != nil {
 		c.log.Infow("error parsing NOTIFY request", "error", err)
 
 		return err
 	}
 
-	c.log.Infow("handling NOTIFY", "method", method, "status", status, "cseq", cseq)
+	c.log.Infow("handling NOTIFY", "method", method, "status", status, "reason", reason, "cseq", cseq)
 
 	switch method {
+	default:
+		return nil
 	case sip.REFER:
 		c.mu.RLock()
 		defer c.mu.RUnlock()
-
-		if cseq != 0 && cseq != c.referCseq {
-			// NOTIFY for a different REFER, skip
-			return nil
-		}
-
-		switch {
-		case status >= 100 && status < 200:
-			// still trying
-		case status == 200:
-			// Success
-			select {
-			case c.referDone <- nil:
-			case <-time.After(notifyAckTimeout):
-			}
-		default:
-			// Failure
-			select {
-			// TODO be more specific in the reported error
-			case c.referDone <- psrpc.NewErrorf(psrpc.Canceled, "call transfer failed"):
-			case <-time.After(notifyAckTimeout):
-			}
-		}
+		handleReferNotify(cseq, status, reason, c.referCseq, c.referDone)
+		return nil
 	}
-	return nil
 }
 
 func (c *sipOutbound) Close() {

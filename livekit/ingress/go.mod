@@ -16,15 +16,15 @@ require (
 	github.com/livekit/go-rtmp v0.0.0-20230829211117-1c4f5a5c81ed
 	github.com/livekit/mageutil v0.0.0-20250511045019-0f1ff63f7731
 	github.com/livekit/mediatransportutil v0.0.0-20241220010243-a2bdee945564
-	github.com/livekit/protocol v1.41.1-0.20250909050443-48ed04737846
-	github.com/livekit/psrpc v0.6.1-0.20250828235857-3fafdbbcbe55
+	github.com/livekit/protocol v1.41.1-0.20250923010807-539194425c60
+	github.com/livekit/psrpc v0.7.0
 	github.com/livekit/server-sdk-go/v2 v2.4.2
-	github.com/pion/dtls/v3 v3.0.6
+	github.com/pion/dtls/v3 v3.0.7
 	github.com/pion/interceptor v0.1.40
 	github.com/pion/rtcp v1.2.15
-	github.com/pion/rtp v1.8.20
-	github.com/pion/sdp/v3 v3.0.14
-	github.com/pion/webrtc/v4 v4.1.2
+	github.com/pion/rtp v1.8.21
+	github.com/pion/sdp/v3 v3.0.15
+	github.com/pion/webrtc/v4 v4.1.4
 	github.com/prometheus/client_golang v1.22.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.10.0
@@ -84,10 +84,10 @@ require (
 	github.com/pion/mdns/v2 v2.0.7 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
 	github.com/pion/sctp v1.8.39 // indirect
-	github.com/pion/srtp/v3 v3.0.6 // indirect
+	github.com/pion/srtp/v3 v3.0.7 // indirect
 	github.com/pion/stun/v3 v3.0.0 // indirect
 	github.com/pion/transport/v3 v3.0.7 // indirect
-	github.com/pion/turn/v4 v4.0.2 // indirect
+	github.com/pion/turn/v4 v4.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect

@@ -5479,6 +5479,10 @@ To set room metadata, use the [CreateRoom](https://docs.livekit.io/home/server/m
 
 To subscribe to updates, you must [handle](https://docs.livekit.io/home/client/events.md#events) the `RoomMetadataChanged` event.
 
+### Size limits
+
+Room metadata is limited to 64 KiB.
+
 ---
 
 ---
@@ -11400,15 +11404,15 @@ Extra webhooks can be configured for a specific Egress request. These webhooks a
 
 ## Examples
 
-## Recording Room Composite as HLS
+## Recording room composite as HLS
 
-This example records a room composite layout as HLS segments to a S3 bucket.
+This example records a [room composite](https://docs.livekit.io/home/egress/composite-recording.md#roomcomposite-egress) layout as HLS segments to an S3-compatible bucket.
 
 **LiveKit CLI**:
 
 > ℹ️ **Note**
 > 
-> When `live_playlist_name` is provided, we'll generate a playlist containing only the last few segments. This can be useful to live-stream the recording via HLS.
+> When `live_playlist_name` is provided, a playlist is generated containing only the last few segments. This can be useful to livestream the recording via HLS.
 
 ```json
 {
@@ -11630,14 +11634,14 @@ public class Main {
 
 ```
 
-## Recording Web In Portrait
+## Recording web in portrait
 
-This example records a web page in portrait mode to Google Cloud Storage and streaming to RTMP.
+This example records a [web page](https://docs.livekit.io/home/egress/composite-recording.md#web-egress) in portrait mode to Google Cloud Storage, streaming to RTMP.
 
-Portrait orientation can be specified by either setting a preset or advanced options. Egress will resize the Chrome compositor to your specified resolution. However, keep in mind:
+Portrait orientation can be specified by either using a `preset` option or setting `advanced` options. Egress automatically resizes the Chrome compositor to your specified resolution. However, keep in mind the following requirements:
 
-- Chrome has a minimum browser width limit of 500px.
-- Your application should maintain a portrait layout, even when the browser reports a width larger than typical mobile phones. (e.g., 720px width or higher).
+- Chrome has a minimum browser width of 500px.
+- Your application must maintain a portrait layout, even when the browser reports a width larger than typical mobile phones. (for example, 720px width or larger).
 
 **LiveKit CLI**:
 
@@ -11853,9 +11857,9 @@ public void startEgress() throws IOException {
 
 ```
 
-## SRT Streaming With Thumbnails
+## SRT streaming with thumbnails
 
-This examples shows streaming a Participant Egress to a SRT server, and generating thumbnails every 5 seconds. Thumbnails are stored in Azure.
+This example streams an [individual participant](https://docs.livekit.io/home/egress/participant.md) to an SRT server, generating thumbnails every 5 seconds. Thumbnails are stored in Azure Blob Storage.
 
 **LiveKit CLI**:
 
@@ -12132,9 +12136,9 @@ public void startEgress() throws IOException {
 
 ```
 
-## Adding RTMP To Track Composite Egress
+## Adding RTMP to track composite egress
 
-This example demonstrates a TrackComposite Egress that starts by saving to HLS, with RTMP output added later.
+Create a TrackComposite Egress recorded as HLS segments, with RTMP output added later.
 
 **LiveKit CLI**:
 
@@ -12409,9 +12413,13 @@ public void startEgress() throws IOException {
 
 ```
 
-## Exporting Individual Tracks Without Transcode
+## Exporting individual tracks without transcoding
 
-This example exports video tracks to Azure Blob Storage without transcoding. Note: video and audio tracks must be exported separately using Track Egress.
+Export video tracks to Azure Blob Storage without transcoding.
+
+> ℹ️ **Separate video and audio tracks**
+> 
+> Video and audio tracks must be exported separately using Track Egress.
 
 **LiveKit CLI**:
 
@@ -12545,6 +12553,10 @@ public void startEgress() throws IOException {
 }
 
 ```
+
+## Stop an active egress
+
+To stop an active egress, see the API reference for [StopEgress](https://docs.livekit.io/home/egress/api.md#stopegress) for examples.
 
 ---
 
@@ -13195,7 +13207,7 @@ There are three noise cancellation models available:
 # Standard enhanced noise cancellation
 noise_cancellation.NC()
 
-# Background voice cancellation (NC + removes non-primary voices 
+# Background voice cancellation (NC + removes non-primary voices
 # that would confuse transcription or turn detection)
 noise_cancellation.BVC()
 
@@ -13245,8 +13257,8 @@ Apply the filter to any individual inbound AudioStream:
 import { BackgroundVoiceCancellation } from '@livekit/noise-cancellation-node';
 
 // Create AudioStream with noise cancellation
-const stream = new AudioStream(track, { 
-  noiseCancellation: BackgroundVoiceCancellation() 
+const stream = new AudioStream(track, {
+  noiseCancellation: BackgroundVoiceCancellation()
 });
 
 ```
@@ -13260,7 +13272,7 @@ import {
   // Standard enhanced noise cancellation
   NoiseCancellation,
 
-  // Background voice cancellation (NC + removes non-primary voices 
+  // Background voice cancellation (NC + removes non-primary voices
   // that would confuse transcription or turn detection)
   BackgroundVoiceCancellation,
 
@@ -13474,19 +13486,18 @@ import LiveKit
 import SwiftUI
 import LiveKitKrispNoiseFilter
 
+// Keep this as a global variable or somewhere that won't be deallocated
+let krispProcessor = LiveKitKrispNoiseFilter()
+
 struct ContentView: View {
     @StateObject private var room = Room()
 
-    private let krispProcessor = LiveKitKrispNoiseFilter()
-    
-    init() {
-        AudioManager.shared.capturePostProcessingDelegate = krispProcessor
-    }
-    
     var body: some View {
         MyOtherView()
         .environmentObject(room)
         .onAppear {
+            // Attach the processor
+            AudioManager.shared.capturePostProcessingDelegate = krispProcessor
             // This must be done before calling `room.connect()`
             room.add(delegate: krispProcessor)
 
@@ -15480,7 +15491,7 @@ async def entrypoint(ctx: agents.JobContext):
     )
 
     await session.generate_reply(
-        instructions="Greet the user and offer your assistance."
+        instructions="Greet the user and offer your assistance. You should start by speaking in English."
     )
 
 
@@ -15535,7 +15546,7 @@ export default defineAgent({
     await ctx.connect();
 
     const handle = session.generateReply({
-      instructions: 'Greet the user and offer your assistance.',
+      instructions: 'Greet the user and offer your assistance. You should start by speaking in English.',
     });
     await handle.waitForPlayout();
   },
@@ -16557,715 +16568,6 @@ Follow these links to get started with the playground.
 
 ---
 
-#### Migrating from v0.x
-
----
-
-## Python
-
-## Unified agent interface
-
-Agents 1.0 introduces `AgentSession`, a single, unified [agent orchestrator](https://docs.livekit.io/agents/build.md#agent-sessions) that serves as the foundation for all types of agents built using the framework.  With this change, the `VoicePipelineAgent` and `MultimodalAgent` classes have been deprecated and 0.x agents will need to be updated to use `AgentSession` in order to be compatible with 1.0 and later.
-
-`AgentSession` contains a superset of the functionality of `VoicePipelineAgent` and `MultimodalAgent`, allowing you to switch between pipelined and speech-to-speech models without changing your core application logic.
-
-> ℹ️ **Note**
-> 
-> The following code highlights the differences between Agents v0.x and Agents 1.0. For a full working example, see the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
-
-**Version 0.x**:
-
-```python
-from livekit.agents import JobContext, llm
-from livekit.agents.pipeline import VoicePipelineAgent
-from livekit.plugins import (
-    cartesia,
-    deepgram,
-    google,
-    silero,
-)
-
-async def entrypoint(ctx: JobContext):
-    initial_ctx = llm.ChatContext().append(
-        role="system",
-        text="You are a helpful voice AI assistant.",
-    )
-
-    agent = VoicePipelineAgent(
-        vad=silero.VAD.load(),
-        stt=deepgram.STT(),
-        llm=google.LLM(),
-        tts=cartesia.TTS(),
-    )
-
-    await agent.start(room, participant)
-
-    await agent.say("Hey, how can I help you today?", allow_interruptions=True)
-
-
-```
-
----
-
-**Version 1.0**:
-
-```python
-from livekit.agents import (
-    AgentSession,
-    Agent,
-    llm,
-    RoomInputOptions
-)
-from livekit.plugins import (
-    elevenlabs,
-    deepgram,
-    google,
-    openai,
-    silero,
-    noise_cancellation,
-)
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
-
-class Assistant(Agent):
-    def __init__(self) -> None:
-        super().__init__(instructions="You are a helpful voice AI assistant.")
-
-
-async def entrypoint(ctx: agents.JobContext):
-    session = AgentSession(
-        stt=deepgram.STT(),
-        llm=google.LLM(),
-        tts=elevenlabs.TTS(),
-        vad=silero.VAD.load(),
-        turn_detection=MultilingualModel(),
-    )
-    # if using realtime api, use the following
-    #session = AgentSession(
-    #    llm=openai.realtime.RealtimeModel(voice="echo"),
-    #)
-
-    await session.start(
-        room=ctx.room,
-        agent=Assistant(),
-        room_input_options=RoomInputOptions(
-            noise_cancellation=noise_cancellation.BVC(),
-        ),
-    )
-
-    # Instruct the agent to speak first
-    await session.generate_reply(instructions="say hello to the user")
-
-```
-
-## Customizing pipeline behavior
-
-We’ve introduced more flexibility for developers to customize the behavior of agents built on 1.0 through the new concept of [pipeline nodes](https://docs.livekit.io/agents/build/nodes.md), which enable custom processing within the pipeline steps while also delegating to the default implementation of each node as needed.
-
-Pipeline nodes replaces the `before_llm_cb` and `before_tts_cb` callbacks.
-
-### before_llm_cb -> llm_node
-
-`before_llm_cb` has been replaced by `llm_node`. This node can be used to modify the chat context before sending it to LLM, or integrate with custom LLM providers without having to create a plugin. As long as it returns AsyncIterable[llm.ChatChunk], the LLM node will forward the chunks to the next node in the pipeline.
-
-**Version 0.x**:
-
-```python
-async def add_rag_context(assistant: VoicePipelineAgent, chat_ctx: llm.ChatContext):
-    rag_context: str = retrieve(chat_ctx)
-    chat_ctx.append(text=rag_context, role="system")
-
-agent = VoicePipelineAgent(
-    ...
-    before_llm_cb=add_rag_context,
-)
-
-```
-
----
-
-**Version 1.0**:
-
-```python
-class MyAgent(Agent):
-    # override method from superclass to customize behavior
-    async def llm_node(
-        self,
-        chat_ctx: llm.ChatContext,
-        tools: list[llm.FunctionTool],
-        model_settings: ModelSettings,
-    ) -> AsyncIterable[llm.ChatChunk]::
-        rag_context: str = retrieve(chat_ctx)
-        chat_ctx.add_message(content=rag_context, role="system")
-
-        # update the context for persistence
-        # await self.update_chat_ctx(chat_ctx)
-
-        return Agent.default.llm_node(self, chat_ctx, tools, model_settings)
-
-```
-
-### before_tts_cb -> tts_node
-
-`before_tts_cb` has been replaced by `tts_node`. This node gives greater flexibility in customizing the TTS pipeline. It's possible to modify the text before synthesis, as well as the audio buffers after synthesis.
-
-**Version 0.x**:
-
-```python
-def _before_tts_cb(agent: VoicePipelineAgent, text: str | AsyncIterable[str]):
-    # The TTS is incorrectly pronouncing "LiveKit", so we'll replace it with MFA-style IPA
-    # spelling for Cartesia
-    return tokenize.utils.replace_words(
-        text=text, replacements={"livekit": r"<<l|aj|v|cʰ|ɪ|t|>>"}
-    )
-
-agent = VoicePipelineAgent(
-    ...
-    before_tts_cb=_before_tts_cb,
-)
-
-
-```
-
----
-
-**Version 1.0**:
-
-```python
-class MyAgent(Agent):
-    async def tts_node(self, text: AsyncIterable[str], model_settings: ModelSettings):
-        # use default implementation, but pre-process the text
-        return Agent.default.tts_node(self, tokenize.utils.replace_words(text), model_settings)
-
-```
-
-## Tool definition and use
-
-Agents 1.0 streamlines the way in which [tools](https://docs.livekit.io/agents/build/tools.md) are defined for use within your agents, making it easier to add and maintain agent tools.  When migrating from 0.x to 1.0, developers will need to make the following changes to existing use of functional calling within their agents in order to be compatible with versions 1.0 and later.
-
-- The `@llm.ai_callable` decorator for function definition has been replaced with the new `@function_tool` decorator.
-- If you define your functions within an `Agent` and use the `@function_tool` decorator, these tools are automatically accessible to the LLM. In this scenario, you no longer required to define your functions in a `llm.FunctionContext` class and pass them into the agent constructor.
-- Argument types are now inferred from the function signature and docstring. Annotated types are no longer supported.
-- Functions take in a `RunContext` object, which provides access to the current agent state.
-
-**Version 0.x**:
-
-```python
-from livekit.agents import llm
-from livekit.agents.pipeline import VoicePipelineAgent
-from livekit.agents.multimodal import MultimodalAgent
-
-class AssistantFnc(llm.FunctionContext):
-    @llm.ai_callable()
-    async def get_weather(
-        self,
-        ...
-    )
-    ...
-
-fnc_ctx = AssistantFnc()
-
-pipeline_agent = VoicePipelineAgent(
-    ...
-    fnc_ctx=fnc_ctx,
-)
-
-multimodal_agent = MultimodalAgent(
-    ...
-    fnc_ctx=fnc_ctx,
-)
-
-```
-
----
-
-**Version 1.0**:
-
-```python
-from livekit.agents.llm import function_tool
-from livekit.agents.voice import Agent
-from livekit.agents.events import RunContext
-
-class MyAgent(Agent):
-    @function_tool()
-    async def get_weather(
-        self,
-        context: RunContext,
-        location: str,
-    ) -> dict[str, Any]:
-        """Look up weather information for a given location.
-        
-        Args:
-            location: The location to look up weather information for.
-        """
-
-        return {"weather": "sunny", "temperature_f": 70}
-
-```
-
-## Chat context
-
-ChatContext has been overhauled in 1.0 to provide a more powerful and flexible API for managing chat history. It now accounts for differences between LLM providers—such as stateless and stateful APIs—while exposing a unified interface.
-
-Chat history can now include three types of items:
-
-- `ChatMessage`: a message associated with a role (e.g., user, assistant). Each message includes a list of `content` items, which can contain text, images, or audio.
-- `FunctionCall`: a function call initiated by the LLM.
-- `FunctionCallOutput`: the result returned from a function call.
-
-### Updating chat context
-
-In 0.x, updating the chat context required modifying chat_ctx.messages directly. This approach was error-prone and difficult to time correctly, especially with realtime APIs.
-
-In v1.x, there are two supported ways to update the chat context:
-
-- **Agent handoff** – [transferring control](https://docs.livekit.io/agents/build/workflows.md#tool-handoff) to a new agent, which will have its own chat context.
-- **Explicit update** - calling `agent.update_chat_ctx()` to modify the context directly.
-
-## Transcriptions
-
-Agents 1.0 brings some new changes to how [transcriptions](https://docs.livekit.io/agents/build/text.md#transcriptions) are handled:
-
-- Transcriptions now use [text streams](https://docs.livekit.io/home/client/data/text-streams.md) with topic `lk.transcription`.
-- The [old transcription protocol](https://docs.livekit.io/agents/v0/voice-agent/transcriptions.md) is deprecated and will be removed in v1.1.
-- for now both protocols are used for backwards compatibility.
-- Upcoming versions SDKs/components standardize on text streams for transcriptions.
-
-## Accepting text input
-
-Agents 1.0 introduces [improved support for text input](https://docs.livekit.io/agents/build/text.md#text-input). Previously, text had to be manually intercepted and injected into the agent via `ChatManager`.
-
-In this version, agents automatically receive text input from a text stream on the `lk.chat` topic.
-
-The `ChatManager` has been removed in Python SDK v1.0.
-
-## State change events
-
-### User state
-
-`user_started_speaking` and `user_stopped_speaking` events are no longer emitted. They've been combined into a single `user_state_changed` event.
-
-**Version 0.x**:
-
-```python
-@agent.on("user_started_speaking")
-def on_user_started_speaking():
-    print("User started speaking")
-
-```
-
----
-
-**Version 1.0**:
-
-```python
-@session.on("user_state_changed")
-def on_user_state_changed(ev: UserStateChangedEvent):
-    # userState could be "speaking", "listening", or "away"
-    print(f"state change from {ev.old_state} to {ev.new_state}")
-
-```
-
-### Agent state
-
-**Version 0.x**:
-
-```python
-@agent.on("agent_started_speaking")
-def on_agent_started_speaking():
-    # Log transcribed message from user
-    print("Agent started speaking")
-
-```
-
----
-
-**Version 1.0**:
-
-```python
-@session.on("agent_state_changed")
-def on_agent_state_changed(ev: AgentStateChangedEvent):
-    # AgentState could be "initializing", "idle", "listening", "thinking", "speaking"
-    # new_state is set as a participant attribute `lk.agent.state` to notify frontends
-    print(f"state change from {ev.old_state} to {ev.new_state}")
-
-```
-
-## Other events
-
-Agent events were overhauled in version 1.0. For details, see the [events](https://docs.livekit.io/agents/build/events.md) page.
-
-## Removed features
-
-- OpenAI Assistants API support has been removed in 1.0.
-
-The beta integration with the Assistants API in the OpenAI LLM plugin has been deprecated. Its stateful model made it difficult to manage state consistently between the API and agent.
-
----
-
----
-
-## Node.js
-
-## Unified agent interface
-
-Agents 1.0 introduces `AgentSession`, a single, unified [agent orchestrator](https://docs.livekit.io/agents/build.md#agent-sessions) that serves as the foundation for all types of agents built using the framework.  With this change, the `VoicePipelineAgent` and `MultimodalAgent` classes have been deprecated and 0.x agents will need to be updated to use `AgentSession` in order to be compatible with 1.0 and later.
-
-`AgentSession` contains a superset of the functionality of `VoicePipelineAgent` and `MultimodalAgent`, allowing you to switch between pipelined and speech-to-speech models without changing your core application logic.
-
-**Version 0.x**:
-
-```typescript
-import {
-  type JobContext,
-  WorkerOptions,
-  defineAgent,
-  llm,
-  pipeline,
-} from '@livekit/agents';
-import * as deepgram from '@livekit/agents-plugin-deepgram';
-import * as livekit from '@livekit/agents-plugin-livekit';
-import * as openai from '@livekit/agents-plugin-openai';
-import * as silero from '@livekit/agents-plugin-silero';
-
-export default defineAgent({
-  entry: async (ctx: JobContext) => {
-    const vad = await silero.VAD.load() as silero.VAD;
-    const initialContext = new llm.ChatContext().append({
-      role: llm.ChatRole.SYSTEM,
-      text: 'You are a helpful voice AI assistant.',
-    });
-
-    const agent = new pipeline.VoicePipelineAgent(
-      vad,
-      new deepgram.STT(),
-      new openai.LLM(),
-      new openai.TTS(),
-      { chatCtx: initialContext, fncCtx, turnDetector: new livekit.turnDetector.EOUModel() },
-    );
-    
-    await agent.start(ctx.room, participant);
-
-    await agent.say('Hey, how can I help you today?', true);
-  },
-});
-
-```
-
----
-
-**Version 1.0**:
-
-```typescript
-import {
-  type JobContext,
-  defineAgent,
-  voice,
-} from '@livekit/agents';
-import * as deepgram from '@livekit/agents-plugin-deepgram';
-import * as elevenlabs from '@livekit/agents-plugin-elevenlabs';
-import * as livekit from '@livekit/agents-plugin-livekit';
-import * as openai from '@livekit/agents-plugin-openai';
-import * as silero from '@livekit/agents-plugin-silero';
-import { BackgroundVoiceCancellation } from '@livekit/noise-cancellation-node';
-
-export default defineAgent({
-  entry: async (ctx: JobContext) => {
-    const agent = new voice.Agent({
-      instructions:
-        "You are a helpful voice AI assistant.",
-    });
-
-    const vad = await silero.VAD.load() as silero.VAD;
-
-    const session = new voice.AgentSession({
-      vad,
-      stt: new deepgram.STT(),
-      tts: new elevenlabs.TTS(),
-      llm: new openai.LLM(),
-      turnDetection: new livekit.turnDetector.MultilingualModel(),
-    });
-    
-    // if using realtime api, use the following
-    // session = AgentSession({
-    //   llm: new openai.realtime.RealtimeModel({ voice: "echo" })
-    // })
-
-    await session.start({
-      room: ctx.room,
-      agent,
-      inputOptions: {
-        noiseCancellation: BackgroundVoiceCancellation(),
-      },
-    });
-
-    await ctx.connect();
-
-    // Instruct the agent to speak first
-    const handle = session.generateReply('say hello to the user');
-    await handle.waitForPlayout();
-  },
-});
-
-```
-
-## Customizing pipeline behavior
-
-Agents 1.0 introduces more flexibility for developers to customize the behavior of agents through the use of [pipeline nodes](https://docs.livekit.io/agents/build/nodes.md). Nodes enable custom processing within the pipeline steps, while also delegating to the default implementation of each node as needed.
-
-Pipeline nodes replaces the `BeforeLLMCallback` and `BeforeTTSCallback` callbacks.
-
-### BeforeLLMCallback -> llmNode
-
-`BeforeLLMCallback` is replaced by `llmNode`. This [node](https://docs.livekit.io/agents/build/nodes.md#llm_node) can be used to modify the chat context before sending it to LLM, or integrate with custom LLM providers without having to create a plugin. As long as it returns `ReadableStream[llm.ChatChunk]`, the LLM node forwards the chunks to the next node in the pipeline.
-
-**Version 0.x**:
-
-```tsx
-const addRagContext: BeforeLLMCallback = (agent, chatCtx) => {
-  const ragContext: string = retrieve(chatCtx);
-  chatCtx.append({ text: ragContext, role: llm.ChatRole.SYSTEM });
-};
-
-const agent = new VoicePipelineAgent(
-  ...
-  { 
-    ...
-    beforeLLMCallback: addRagContext 
-  }
-);
-
-```
-
----
-
-**Version 1.0**:
-
-```tsx
-class MyAgent extends voice.Agent {
-  // override method from superclass to customize behavior
-  async llmNode(
-    chatCtx: llm.ChatContext,
-    toolCtx: llm.ToolContext,
-    modelSettings: voice.ModelSettings,
-  ): Promise<ReadableStream<llm.ChatChunk | string> | null> {
-    const ragContext: string = retrieve(chatCtx);
-    chatCtx.addMessage({ content: ragContext, role: 'system' });
-
-    return voice.Agent.default.llmNode(this, chatCtx, toolCtx, modelSettings);
-  }
-}
-
-```
-
-### BeforeTTSCallback -> ttsNode
-
-`BeforeTTSCallback` is replaced by `ttsNode`. This [node](https://docs.livekit.io/agents/build/nodes.md#tts_node) gives greater flexibility in customizing the TTS pipeline. It's possible to modify the text before synthesis, as well as the audio buffers after synthesis.
-
-**Version 0.x**:
-
-```tsx
-const beforeTtsCb: BeforeTTSCallback = (agent, source) => {
-  // The TTS is incorrectly pronouncing "LiveKit", so we'll replace it
-  if (typeof source === 'string') {
-    return source.replace(/\bLiveKit\b/gi, 'Live Kit');
-  }
-  
-  return (async function* () {
-    for await (const chunk of source) {
-      yield chunk.replace(/\bLiveKit\b/gi, 'Live Kit');
-    }
-  })();
-};
-
-const agent = new VoicePipelineAgent(
-  ...
-  { 
-    ...
-    beforeTTSCallback: beforeTtsCb 
-  }
-);
-
-```
-
----
-
-**Version 1.0**:
-
-```tsx
-class MyAgent extends voice.Agent {
-  async ttsNode(
-    text: ReadableStream<string>,
-    modelSettings: voice.ModelSettings,
-  ): Promise<ReadableStream<AudioFrame> | null> {
-    const replaceWords = (text: ReadableStream<string>): ReadableStream<string> => {
-      // ...
-    };
-
-    // use default implementation, but pre-process the text
-    return voice.Agent.default.ttsNode(this, replaceWords(text), modelSettings);
-  }
-}
-
-```
-
-## Tool definition and use
-
-Agents 1.0 streamlines the way in which [tools](https://docs.livekit.io/agents/build/tools.md) are defined for use within your agents, making it easier to add and maintain agent tools. When migrating from 0.x to 1.0, developers need to make the following changes to existing use of functional calling within their agents in order to be compatible with versions 1.0 and later.
-
-- Instead of defining tools in a separate `FunctionContext` object that gets passed to the agent constructor, tools are now defined directly in the agent configuration using `llm.tool()`.
-- The `execute` function now receives a second argument `{ ctx }` that provides access to the current agent state.
-- Tools are automatically accessible to the LLM without needing to be explicitly passed in through the constructor.
-
-**Version 0.x**:
-
-```tsx
-import { llm, pipeline } from '@livekit/agents';
-import { z } from 'zod';
-
-const fncCtx: llm.FunctionContext = {
-  getWeather: {
-    description: 'Get weather information for a location',
-    parameters: z.object({
-      location: z.string(),
-    }),
-    execute: async ({ location }) => {
-      ...
-      return `The weather in ${location} right now is Sunny.`;
-    },
-  },
-};
-
-const agent = new pipeline.VoicePipelineAgent(
-  ...
-  { 
-    ...
-    fncCtx,
-  }
-);
-
-```
-
----
-
-**Version 1.0**:
-
-```tsx
-import { llm, voice } from '@livekit/agents';
-import { z } from 'zod';
-
-const agent = new voice.Agent({
-  instructions: "You are a helpful assistant.",
-  tools: {
-    getWeather: llm.tool({
-      description: 'Look up weather information for a given location.',
-      parameters: z.object({
-        location: z.string().describe('The location to look up weather information for.'),
-      }),
-      execute: async ({ location }, { ctx }) => {
-        return { weather: "sunny", temperatureF: 70 };
-      },
-    }),
-  },
-});
-
-```
-
-## Chat context
-
-ChatContext has been overhauled in 1.0 to provide a more powerful and flexible API for managing chat history. It now accounts for differences between LLM providers—such as stateless and stateful APIs—while exposing a unified interface.
-
-Chat history can now include three types of items:
-
-- `ChatMessage`: a message associated with a role (e.g., user, assistant). Each message includes a list of `content` items, which can contain text, images, or audio.
-- `FunctionCall`: a function call initiated by the LLM.
-- `FunctionCallOutput`: the result returned from a function call.
-
-### Updating chat context
-
-In 0.x, updating the chat context required modifying chat_ctx.messages directly. This approach was error-prone and difficult to time correctly, especially with realtime APIs.
-
-In v1.x, there are two supported ways to update the chat context:
-
-- **Agent handoff** – [transferring control](https://docs.livekit.io/agents/build/workflows.md#tool-handoff) to a new agent, which has its own chat context.
-- **Explicit update** - calling `agent.updateChatCtx()` to modify the context directly.
-
-## Transcriptions
-
-Agents 1.0 brings some new changes to how [transcriptions](https://docs.livekit.io/agents/build/text.md#transcriptions) are handled:
-
-- Transcriptions now use [text streams](https://docs.livekit.io/home/client/data/text-streams.md) with topic `lk.transcription`.
-- The [old transcription protocol](https://docs.livekit.io/agents/v0/voice-agent/transcriptions.md) is deprecated and will be removed in v1.1.
-- For backwards compatibility, both protocols are currently available.
-- Future SDK and components versions standardize on text streams for transcriptions.
-
-## Accepting text input
-
-Agents 1.0 introduces [improved support for text input](https://docs.livekit.io/agents/build/text.md#text-input). Previously, text had to be manually intercepted and injected into the agent's chat context.
-
-In this version, agents automatically receive text input from a text stream on the `lk.chat` topic.
-
-## State change events
-
-### User state
-
-`user_started_speaking` and `user_stopped_speaking` events are no longer emitted. They've been combined into a single `user_state_changed` event.
-
-**Version 0.x**:
-
-```tsx
-import { pipeline } from '@livekit/agents';
-
-agent.on(pipeline.VPAEvent.USER_STARTED_SPEAKING, () => {
-  console.log("User started speaking");
-});
-
-```
-
----
-
-**Version 1.0**:
-
-```tsx
-session.on(voice.AgentSessionEventTypes.UserStateChanged, (ev) => {
-  // userState could be "speaking", "listening", or "away"
-  console.log(`state change from ${ev.oldState} to ${ev.newState}`);
-});
-
-```
-
-### Agent state
-
-**Version 0.x**:
-
-```tsx
-import { pipeline } from '@livekit/agents';
-
-agent.on(pipeline.VPAEvent.AGENT_STARTED_SPEAKING, () => {
-  // Log transcribed message from user
-  console.log("Agent started speaking");
-});
-
-```
-
----
-
-**Version 1.0**:
-
-```tsx
-session.on(voice.AgentSessionEventTypes.AgentStateChanged, (ev) => {
-  // AgentState could be "initializing", "idle", "listening", "thinking", "speaking"
-  // newState is set as a participant attribute `lk.agent.state` to notify frontends
-  console.log(`state change from ${ev.oldState} to ${ev.newState}`);
-});
-
-```
-
-## Other events
-
-Agent events were overhauled in version 1.0. For details, see the [events](https://docs.livekit.io/agents/build/events.md) page.
-
----
-
 ---
 
 ## Deeplearning.ai course
@@ -17545,12 +16847,12 @@ class CustomerServiceAgent(Agent):
     @function_tool()
     async def transfer_to_billing(self, context: RunContext):
         """Transfer the customer to a billing specialist for account and payment questions."""
-        return "Transferring to billing", BillingAgent(chat_ctx=self.chat_ctx)
+        return BillingAgent(chat_ctx=self.chat_ctx), "Transferring to billing"
 
     @function_tool()
     async def transfer_to_technical_support(self, context: RunContext):
         """Transfer the customer to technical support for product issues and troubleshooting."""
-        return "Transferring to technical support", TechnicalSupportAgent(chat_ctx=self.chat_ctx)
+        return TechnicalSupportAgent(chat_ctx=self.chat_ctx), "Transferring to technical support"
 
 class BillingAgent(Agent):
     def __init__(self):
@@ -17712,7 +17014,7 @@ Userdata is available as `session.userdata`, and is also available within functi
 class IntakeAgent(Agent):
     def __init__(self):
         super().__init__(
-            instructions="""Your are an intake agent. Learn the user's name and age."""
+            instructions="""You are an intake agent. Learn the user's name and age."""
         )
         
     @function_tool()
@@ -17837,13 +17139,22 @@ Extend the `AgentTask` class and specify a result type using [generics](https://
 from livekit.agents import AgentTask, function_tool
 
 class CollectConsent(AgentTask[bool]):
-    def __init__(self):
+    def __init__(self, chat_ctx=None):
         super().__init__(
-            instructions="Ask for recording consent and get a clear yes or no answer."
+            instructions="""
+            Ask for recording consent and get a clear yes or no answer.
+            Be polite and professional.
+            """,
+            chat_ctx=chat_ctx,
         )
 
     async def on_enter(self) -> None:
-        await self.session.generate_reply(instructions="Ask for permission to record the call for quality assurance purposes.")
+        await self.session.generate_reply(
+            instructions="""
+            Briefly introduce yourself, then ask for permission to record the call for quality assurance and training purposes.
+            Make it clear that they can decline.
+            """
+        )
 
     @function_tool
     async def consent_given(self) -> None:
@@ -20970,9 +20281,37 @@ async def transcription_node(
 
 ## Text input
 
-Your agent also monitors the `lk.chat` text stream topic for incoming text messages from its linked participant. The agent interrupts its current speech, if any, to process the message and generate a new response.
+Your agent monitors the `lk.chat` text stream topic for incoming text messages from its linked participant. The agent interrupts its current speech, if any, to process the message and generate a new response.
 
 To disable text input, set `text_enabled=False` in `RoomInputOptions`.
+
+### Sending from frontend
+
+Use the `sendText` method to send text messages:
+
+**JavaScript**:
+
+```typescript
+const text = 'Hello how are you today?';
+const info = await room.localParticipant.sendText(text, {
+  topic: 'lk.chat',
+});
+
+```
+
+---
+
+**Swift**:
+
+```swift
+let text = "Hello how are you today?"
+let info = try await room.localParticipant.sendText(text, for: "lk.chat")
+
+```
+
+### Manual input
+
+To insert text input and generate a response, use the `generate_reply` method of AgentSession: `session.generate_reply(user_input="...")`.
 
 ## Text-only sessions
 
@@ -21108,11 +20447,9 @@ async function doJob() {
 
 ```
 
-## Frontend integration
+## Frontend rendering
 
 LiveKit client SDKs have native support for text streams. For more information, see the [text streams](https://docs.livekit.io/home/client/data/text-streams.md) documentation.
-
-### Receiving text streams
 
 Use the `registerTextStreamHandler` method to receive incoming transcriptions or text:
 
@@ -21143,94 +20480,6 @@ try await room.registerTextStreamHandler(for: "lk.transcription") { reader, part
         print("New message from \(participantIdentity): \(message)")
     }
 }
-
-```
-
-### Sending text input
-
-Use the `sendText` method to send text messages:
-
-**JavaScript**:
-
-```typescript
-const text = 'Hello how are you today?';
-const info = await room.localParticipant.sendText(text, {
-  topic: 'lk.chat',
-});
-
-```
-
----
-
-**Swift**:
-
-```swift
-let text = "Hello how are you today?"
-let info = try await room.localParticipant.sendText(text, for: "lk.chat")
-
-```
-
-## Manual text input
-
-To insert text input and generate a response, use the `generate_reply` method of AgentSession: `session.generate_reply(user_input="...")`.
-
-## Transcription events
-
-Frontend SDKs can also receive transcription events via `RoomEvent.TranscriptionReceived`.
-
-> 🔥 **Deprecated feature**
-> 
-> Transcription events will be removed in a future version. Use [text streams](https://docs.livekit.io/home/client/data/text-streams.md) on the `lk.chat` topic instead.
-
-**JavaScript**:
-
-```typescript
-room.on(RoomEvent.TranscriptionReceived, (segments) => {
-  for (const segment of segments) {
-    console.log(`New transcription from ${segment.senderIdentity}: ${segment.text}`);
-  }
-});
-
-```
-
----
-
-**Swift**:
-
-```swift
-func room(_ room: Room, didReceiveTranscriptionSegments segments: [TranscriptionSegment]) {
-  for segment in segments {
-    print("New transcription from \(segment.senderIdentity): \(segment.text)")
-  }
-}
-
-```
-
----
-
-**Android**:
-
-```kotlin
-room.events.collect { event ->
-  if (event is RoomEvent.TranscriptionReceived) {
-    event.transcriptionSegments.forEach { segment ->
-      println("New transcription from ${segment.senderIdentity}: ${segment.text}")
-    }
-  }
-}
-
-```
-
----
-
-**Flutter**:
-
-```dart
-room.createListener().on<TranscriptionEvent>((event) {
-  for (final segment in event.segments) {
-    print("New transcription from ${segment.senderIdentity}: ${segment.text}");
-  }
-});
 
 ```
 
@@ -23561,7 +22810,7 @@ The room, `my-room`, is automatically created during dispatch if it doesn't alre
 
 #### Job metadata
 
-Explicit dispatch allows you to pass metadata to the agent, available in the `JobContext`. This is useful for including details the like the user's ID, name, or phone number.
+Explicit dispatch allows you to pass metadata to the agent, available in the `JobContext`. This is useful for including details such as the user's ID, name, or phone number.
 
 The metadata field is a string. LiveKit recommends using JSON to pass structured data.
 
@@ -26160,7 +25409,7 @@ Use the OpenAI Realtime API within an `AgentSession`. For example, you can use i
 from livekit.plugins import openai
 
 session = AgentSession(
-    llm=openai.realtime.RealtimeModel(),
+    llm=openai.realtime.RealtimeModel(voice="marin"),
 )
 
 ```
@@ -26173,7 +25422,7 @@ session = AgentSession(
 import * as openai from '@livekit/agents-plugin-openai';
 
 const session = new voice.AgentSession({
-   llm: new openai.realtime.RealtimeModel(),
+   llm: new openai.realtime.RealtimeModel({ voice: "marin" }),
 });
 
 ```
@@ -26182,7 +25431,7 @@ const session = new voice.AgentSession({
 
 This section describes some of the available parameters. For a complete reference of all available parameters, see the plugin reference links in the [Additional resources](#additional-resources) section.
 
-- **`model`** _(str)_ (optional) - Default: `'gpt-4o-realtime-preview'`: ID of the Realtime model to use. For a list of available models, see the [Models](https://platform.openai.com/docs/models#gpt-4o-realtime).
+- **`model`** _(str)_ (optional) - Default: `'gpt-realtime'`: ID of the Realtime model to use. For a list of available models, see the [Models](https://platform.openai.com/docs/models).
 
 - **`voice`** _(str)_ (optional) - Default: `'alloy'`: Voice to use for speech generation. For a list of available voices, see [Voice options](https://platform.openai.com/docs/guides/realtime-conversations#voice-options).
 
@@ -29644,7 +28893,7 @@ Use the OpenAI Realtime API within an `AgentSession`. For example, you can use i
 from livekit.plugins import openai
 
 session = AgentSession(
-    llm=openai.realtime.RealtimeModel(),
+    llm=openai.realtime.RealtimeModel(voice="marin"),
 )
 
 ```
@@ -29657,7 +28906,7 @@ session = AgentSession(
 import * as openai from '@livekit/agents-plugin-openai';
 
 const session = new voice.AgentSession({
-   llm: new openai.realtime.RealtimeModel(),
+   llm: new openai.realtime.RealtimeModel({ voice: "marin" }),
 });
 
 ```
@@ -29666,7 +28915,7 @@ const session = new voice.AgentSession({
 
 This section describes some of the available parameters. For a complete reference of all available parameters, see the plugin reference links in the [Additional resources](#additional-resources) section.
 
-- **`model`** _(str)_ (optional) - Default: `'gpt-4o-realtime-preview'`: ID of the Realtime model to use. For a list of available models, see the [Models](https://platform.openai.com/docs/models#gpt-4o-realtime).
+- **`model`** _(str)_ (optional) - Default: `'gpt-realtime'`: ID of the Realtime model to use. For a list of available models, see the [Models](https://platform.openai.com/docs/models).
 
 - **`voice`** _(str)_ (optional) - Default: `'alloy'`: Voice to use for speech generation. For a list of available voices, see [Voice options](https://platform.openai.com/docs/guides/realtime-conversations#voice-options).
 
@@ -36289,6 +35538,719 @@ The following resources provide more information about using Tavus with LiveKit 
 
 ---
 
+### v0.x migration guides
+
+---
+
+## Python
+
+## Overview
+
+This guide provides an overview of the changes between Agents v0.x and Agents 1.0 for Python, released in April 2025. Agents running on v0.x continue to work in LiveKit Cloud, but this version of the framework is no longer receiving updates or support. Migrate your agents to 1.x to continue receiving the latest features and bug fixes.
+
+## Unified agent interface
+
+Agents 1.0 introduces `AgentSession`, a single, unified [agent orchestrator](https://docs.livekit.io/agents/build.md#agent-sessions) that serves as the foundation for all types of agents built using the framework.  With this change, the `VoicePipelineAgent` and `MultimodalAgent` classes have been deprecated and 0.x agents will need to be updated to use `AgentSession` in order to be compatible with 1.0 and later.
+
+`AgentSession` contains a superset of the functionality of `VoicePipelineAgent` and `MultimodalAgent`, allowing you to switch between pipelined and speech-to-speech models without changing your core application logic.
+
+> ℹ️ **Note**
+> 
+> The following code highlights the differences between Agents v0.x and Agents 1.0. For a full working example, see the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+**Version 0.x**:
+
+```python
+from livekit.agents import JobContext, llm
+from livekit.agents.pipeline import VoicePipelineAgent
+from livekit.plugins import (
+    cartesia,
+    deepgram,
+    google,
+    silero,
+)
+
+async def entrypoint(ctx: JobContext):
+    initial_ctx = llm.ChatContext().append(
+        role="system",
+        text="You are a helpful voice AI assistant.",
+    )
+
+    agent = VoicePipelineAgent(
+        vad=silero.VAD.load(),
+        stt=deepgram.STT(),
+        llm=google.LLM(),
+        tts=cartesia.TTS(),
+    )
+
+    await agent.start(room, participant)
+
+    await agent.say("Hey, how can I help you today?", allow_interruptions=True)
+
+
+```
+
+---
+
+**Version 1.0**:
+
+```python
+from livekit.agents import (
+    AgentSession,
+    Agent,
+    llm,
+    RoomInputOptions
+)
+from livekit.plugins import (
+    elevenlabs,
+    deepgram,
+    google,
+    openai,
+    silero,
+    noise_cancellation,
+)
+from livekit.plugins.turn_detector.multilingual import MultilingualModel
+
+class Assistant(Agent):
+    def __init__(self) -> None:
+        super().__init__(instructions="You are a helpful voice AI assistant.")
+
+
+async def entrypoint(ctx: agents.JobContext):
+    session = AgentSession(
+        stt=deepgram.STT(),
+        llm=google.LLM(),
+        tts=elevenlabs.TTS(),
+        vad=silero.VAD.load(),
+        turn_detection=MultilingualModel(),
+    )
+    # if using realtime api, use the following
+    #session = AgentSession(
+    #    llm=openai.realtime.RealtimeModel(voice="echo"),
+    #)
+
+    await session.start(
+        room=ctx.room,
+        agent=Assistant(),
+        room_input_options=RoomInputOptions(
+            noise_cancellation=noise_cancellation.BVC(),
+        ),
+    )
+
+    # Instruct the agent to speak first
+    await session.generate_reply(instructions="say hello to the user")
+
+```
+
+## Customizing pipeline behavior
+
+We’ve introduced more flexibility for developers to customize the behavior of agents built on 1.0 through the new concept of [pipeline nodes](https://docs.livekit.io/agents/build/nodes.md), which enable custom processing within the pipeline steps while also delegating to the default implementation of each node as needed.
+
+Pipeline nodes replaces the `before_llm_cb` and `before_tts_cb` callbacks.
+
+### before_llm_cb -> llm_node
+
+`before_llm_cb` has been replaced by `llm_node`. This node can be used to modify the chat context before sending it to LLM, or integrate with custom LLM providers without having to create a plugin. As long as it returns AsyncIterable[llm.ChatChunk], the LLM node will forward the chunks to the next node in the pipeline.
+
+**Version 0.x**:
+
+```python
+async def add_rag_context(assistant: VoicePipelineAgent, chat_ctx: llm.ChatContext):
+    rag_context: str = retrieve(chat_ctx)
+    chat_ctx.append(text=rag_context, role="system")
+
+agent = VoicePipelineAgent(
+    ...
+    before_llm_cb=add_rag_context,
+)
+
+```
+
+---
+
+**Version 1.0**:
+
+```python
+class MyAgent(Agent):
+    # override method from superclass to customize behavior
+    async def llm_node(
+        self,
+        chat_ctx: llm.ChatContext,
+        tools: list[llm.FunctionTool],
+        model_settings: ModelSettings,
+    ) -> AsyncIterable[llm.ChatChunk]::
+        rag_context: str = retrieve(chat_ctx)
+        chat_ctx.add_message(content=rag_context, role="system")
+
+        # update the context for persistence
+        # await self.update_chat_ctx(chat_ctx)
+
+        return Agent.default.llm_node(self, chat_ctx, tools, model_settings)
+
+```
+
+### before_tts_cb -> tts_node
+
+`before_tts_cb` has been replaced by `tts_node`. This node gives greater flexibility in customizing the TTS pipeline. It's possible to modify the text before synthesis, as well as the audio buffers after synthesis.
+
+**Version 0.x**:
+
+```python
+def _before_tts_cb(agent: VoicePipelineAgent, text: str | AsyncIterable[str]):
+    # The TTS is incorrectly pronouncing "LiveKit", so we'll replace it with MFA-style IPA
+    # spelling for Cartesia
+    return tokenize.utils.replace_words(
+        text=text, replacements={"livekit": r"<<l|aj|v|cʰ|ɪ|t|>>"}
+    )
+
+agent = VoicePipelineAgent(
+    ...
+    before_tts_cb=_before_tts_cb,
+)
+
+
+```
+
+---
+
+**Version 1.0**:
+
+```python
+class MyAgent(Agent):
+    async def tts_node(self, text: AsyncIterable[str], model_settings: ModelSettings):
+        # use default implementation, but pre-process the text
+        return Agent.default.tts_node(self, tokenize.utils.replace_words(text), model_settings)
+
+```
+
+## Tool definition and use
+
+Agents 1.0 streamlines the way in which [tools](https://docs.livekit.io/agents/build/tools.md) are defined for use within your agents, making it easier to add and maintain agent tools.  When migrating from 0.x to 1.0, developers will need to make the following changes to existing use of functional calling within their agents in order to be compatible with versions 1.0 and later.
+
+- The `@llm.ai_callable` decorator for function definition has been replaced with the new `@function_tool` decorator.
+- If you define your functions within an `Agent` and use the `@function_tool` decorator, these tools are automatically accessible to the LLM. In this scenario, you no longer required to define your functions in a `llm.FunctionContext` class and pass them into the agent constructor.
+- Argument types are now inferred from the function signature and docstring. Annotated types are no longer supported.
+- Functions take in a `RunContext` object, which provides access to the current agent state.
+
+**Version 0.x**:
+
+```python
+from livekit.agents import llm
+from livekit.agents.pipeline import VoicePipelineAgent
+from livekit.agents.multimodal import MultimodalAgent
+
+class AssistantFnc(llm.FunctionContext):
+    @llm.ai_callable()
+    async def get_weather(
+        self,
+        ...
+    )
+    ...
+
+fnc_ctx = AssistantFnc()
+
+pipeline_agent = VoicePipelineAgent(
+    ...
+    fnc_ctx=fnc_ctx,
+)
+
+multimodal_agent = MultimodalAgent(
+    ...
+    fnc_ctx=fnc_ctx,
+)
+
+```
+
+---
+
+**Version 1.0**:
+
+```python
+from livekit.agents.llm import function_tool
+from livekit.agents.voice import Agent
+from livekit.agents.events import RunContext
+
+class MyAgent(Agent):
+    @function_tool()
+    async def get_weather(
+        self,
+        context: RunContext,
+        location: str,
+    ) -> dict[str, Any]:
+        """Look up weather information for a given location.
+        
+        Args:
+            location: The location to look up weather information for.
+        """
+
+        return {"weather": "sunny", "temperature_f": 70}
+
+```
+
+## Chat context
+
+ChatContext has been overhauled in 1.0 to provide a more powerful and flexible API for managing chat history. It now accounts for differences between LLM providers—such as stateless and stateful APIs—while exposing a unified interface.
+
+Chat history can now include three types of items:
+
+- `ChatMessage`: a message associated with a role (e.g., user, assistant). Each message includes a list of `content` items, which can contain text, images, or audio.
+- `FunctionCall`: a function call initiated by the LLM.
+- `FunctionCallOutput`: the result returned from a function call.
+
+### Updating chat context
+
+In 0.x, updating the chat context required modifying chat_ctx.messages directly. This approach was error-prone and difficult to time correctly, especially with realtime APIs.
+
+In v1.x, there are two supported ways to update the chat context:
+
+- **Agent handoff** – [transferring control](https://docs.livekit.io/agents/build/workflows.md#tool-handoff) to a new agent, which will have its own chat context.
+- **Explicit update** - calling `agent.update_chat_ctx()` to modify the context directly.
+
+## Transcriptions
+
+Agents 1.0 brings some new changes to how [transcriptions](https://docs.livekit.io/agents/build/text.md#transcriptions) are handled:
+
+- Transcriptions now use [text streams](https://docs.livekit.io/home/client/data/text-streams.md) with topic `lk.transcription`.
+- The old `TranscriptionEvent` protocol is deprecated and will be removed in a future version.
+
+## Accepting text input
+
+Agents 1.0 introduces [improved support for text input](https://docs.livekit.io/agents/build/text.md#text-input). Previously, text had to be manually intercepted and injected into the agent via `ChatManager`.
+
+In this version, agents automatically receive text input from a text stream on the `lk.chat` topic.
+
+The `ChatManager` has been removed in Python SDK v1.0.
+
+## State change events
+
+### User state
+
+`user_started_speaking` and `user_stopped_speaking` events are no longer emitted. They've been combined into a single `user_state_changed` event.
+
+**Version 0.x**:
+
+```python
+@agent.on("user_started_speaking")
+def on_user_started_speaking():
+    print("User started speaking")
+
+```
+
+---
+
+**Version 1.0**:
+
+```python
+@session.on("user_state_changed")
+def on_user_state_changed(ev: UserStateChangedEvent):
+    # userState could be "speaking", "listening", or "away"
+    print(f"state change from {ev.old_state} to {ev.new_state}")
+
+```
+
+### Agent state
+
+**Version 0.x**:
+
+```python
+@agent.on("agent_started_speaking")
+def on_agent_started_speaking():
+    # Log transcribed message from user
+    print("Agent started speaking")
+
+```
+
+---
+
+**Version 1.0**:
+
+```python
+@session.on("agent_state_changed")
+def on_agent_state_changed(ev: AgentStateChangedEvent):
+    # AgentState could be "initializing", "idle", "listening", "thinking", "speaking"
+    # new_state is set as a participant attribute `lk.agent.state` to notify frontends
+    print(f"state change from {ev.old_state} to {ev.new_state}")
+
+```
+
+## Other events
+
+Agent events were overhauled in version 1.0. For details, see the [events](https://docs.livekit.io/agents/build/events.md) page.
+
+## Removed features
+
+- OpenAI Assistants API support has been removed in 1.0.
+
+The beta integration with the Assistants API in the OpenAI LLM plugin has been deprecated. Its stateful model made it difficult to manage state consistently between the API and agent.
+
+---
+
+---
+
+## Node.js
+
+## Overview
+
+This guide provides an overview of the changes between Agents v0.x and Agents 1.0 for Node.js, released in August 2025. Agents running on v0.x continue to work in LiveKit Cloud, but this version of the framework is no longer receiving updates or support. Migrate your agents to 1.x to continue receiving the latest features and bug fixes.
+
+## Unified agent interface
+
+Agents 1.0 introduces `AgentSession`, a single, unified [agent orchestrator](https://docs.livekit.io/agents/build.md#agent-sessions) that serves as the foundation for all types of agents built using the framework.  With this change, the `VoicePipelineAgent` and `MultimodalAgent` classes have been deprecated and 0.x agents will need to be updated to use `AgentSession` in order to be compatible with 1.0 and later.
+
+`AgentSession` contains a superset of the functionality of `VoicePipelineAgent` and `MultimodalAgent`, allowing you to switch between pipelined and speech-to-speech models without changing your core application logic.
+
+**Version 0.x**:
+
+```typescript
+import {
+  type JobContext,
+  WorkerOptions,
+  defineAgent,
+  llm,
+  pipeline,
+} from '@livekit/agents';
+import * as deepgram from '@livekit/agents-plugin-deepgram';
+import * as livekit from '@livekit/agents-plugin-livekit';
+import * as openai from '@livekit/agents-plugin-openai';
+import * as silero from '@livekit/agents-plugin-silero';
+
+export default defineAgent({
+  entry: async (ctx: JobContext) => {
+    const vad = await silero.VAD.load() as silero.VAD;
+    const initialContext = new llm.ChatContext().append({
+      role: llm.ChatRole.SYSTEM,
+      text: 'You are a helpful voice AI assistant.',
+    });
+
+    const agent = new pipeline.VoicePipelineAgent(
+      vad,
+      new deepgram.STT(),
+      new openai.LLM(),
+      new openai.TTS(),
+      { chatCtx: initialContext, fncCtx, turnDetector: new livekit.turnDetector.EOUModel() },
+    );
+    
+    await agent.start(ctx.room, participant);
+
+    await agent.say('Hey, how can I help you today?', true);
+  },
+});
+
+```
+
+---
+
+**Version 1.0**:
+
+```typescript
+import {
+  type JobContext,
+  defineAgent,
+  voice,
+} from '@livekit/agents';
+import * as deepgram from '@livekit/agents-plugin-deepgram';
+import * as elevenlabs from '@livekit/agents-plugin-elevenlabs';
+import * as livekit from '@livekit/agents-plugin-livekit';
+import * as openai from '@livekit/agents-plugin-openai';
+import * as silero from '@livekit/agents-plugin-silero';
+import { BackgroundVoiceCancellation } from '@livekit/noise-cancellation-node';
+
+export default defineAgent({
+  entry: async (ctx: JobContext) => {
+    const agent = new voice.Agent({
+      instructions:
+        "You are a helpful voice AI assistant.",
+    });
+
+    const vad = await silero.VAD.load() as silero.VAD;
+
+    const session = new voice.AgentSession({
+      vad,
+      stt: new deepgram.STT(),
+      tts: new elevenlabs.TTS(),
+      llm: new openai.LLM(),
+      turnDetection: new livekit.turnDetector.MultilingualModel(),
+    });
+    
+    // if using realtime api, use the following
+    // session = AgentSession({
+    //   llm: new openai.realtime.RealtimeModel({ voice: "echo" })
+    // })
+
+    await session.start({
+      room: ctx.room,
+      agent,
+      inputOptions: {
+        noiseCancellation: BackgroundVoiceCancellation(),
+      },
+    });
+
+    await ctx.connect();
+
+    // Instruct the agent to speak first
+    const handle = session.generateReply('say hello to the user');
+    await handle.waitForPlayout();
+  },
+});
+
+```
+
+## Customizing pipeline behavior
+
+Agents 1.0 introduces more flexibility for developers to customize the behavior of agents through the use of [pipeline nodes](https://docs.livekit.io/agents/build/nodes.md). Nodes enable custom processing within the pipeline steps, while also delegating to the default implementation of each node as needed.
+
+Pipeline nodes replaces the `BeforeLLMCallback` and `BeforeTTSCallback` callbacks.
+
+### BeforeLLMCallback -> llmNode
+
+`BeforeLLMCallback` is replaced by `llmNode`. This [node](https://docs.livekit.io/agents/build/nodes.md#llm_node) can be used to modify the chat context before sending it to LLM, or integrate with custom LLM providers without having to create a plugin. As long as it returns `ReadableStream[llm.ChatChunk]`, the LLM node forwards the chunks to the next node in the pipeline.
+
+**Version 0.x**:
+
+```tsx
+const addRagContext: BeforeLLMCallback = (agent, chatCtx) => {
+  const ragContext: string = retrieve(chatCtx);
+  chatCtx.append({ text: ragContext, role: llm.ChatRole.SYSTEM });
+};
+
+const agent = new VoicePipelineAgent(
+  ...
+  { 
+    ...
+    beforeLLMCallback: addRagContext 
+  }
+);
+
+```
+
+---
+
+**Version 1.0**:
+
+```tsx
+class MyAgent extends voice.Agent {
+  // override method from superclass to customize behavior
+  async llmNode(
+    chatCtx: llm.ChatContext,
+    toolCtx: llm.ToolContext,
+    modelSettings: voice.ModelSettings,
+  ): Promise<ReadableStream<llm.ChatChunk | string> | null> {
+    const ragContext: string = retrieve(chatCtx);
+    chatCtx.addMessage({ content: ragContext, role: 'system' });
+
+    return voice.Agent.default.llmNode(this, chatCtx, toolCtx, modelSettings);
+  }
+}
+
+```
+
+### BeforeTTSCallback -> ttsNode
+
+`BeforeTTSCallback` is replaced by `ttsNode`. This [node](https://docs.livekit.io/agents/build/nodes.md#tts_node) gives greater flexibility in customizing the TTS pipeline. It's possible to modify the text before synthesis, as well as the audio buffers after synthesis.
+
+**Version 0.x**:
+
+```tsx
+const beforeTtsCb: BeforeTTSCallback = (agent, source) => {
+  // The TTS is incorrectly pronouncing "LiveKit", so we'll replace it
+  if (typeof source === 'string') {
+    return source.replace(/\bLiveKit\b/gi, 'Live Kit');
+  }
+  
+  return (async function* () {
+    for await (const chunk of source) {
+      yield chunk.replace(/\bLiveKit\b/gi, 'Live Kit');
+    }
+  })();
+};
+
+const agent = new VoicePipelineAgent(
+  ...
+  { 
+    ...
+    beforeTTSCallback: beforeTtsCb 
+  }
+);
+
+```
+
+---
+
+**Version 1.0**:
+
+```tsx
+class MyAgent extends voice.Agent {
+  async ttsNode(
+    text: ReadableStream<string>,
+    modelSettings: voice.ModelSettings,
+  ): Promise<ReadableStream<AudioFrame> | null> {
+    const replaceWords = (text: ReadableStream<string>): ReadableStream<string> => {
+      // ...
+    };
+
+    // use default implementation, but pre-process the text
+    return voice.Agent.default.ttsNode(this, replaceWords(text), modelSettings);
+  }
+}
+
+```
+
+## Tool definition and use
+
+Agents 1.0 streamlines the way in which [tools](https://docs.livekit.io/agents/build/tools.md) are defined for use within your agents, making it easier to add and maintain agent tools. When migrating from 0.x to 1.0, developers need to make the following changes to existing use of functional calling within their agents in order to be compatible with versions 1.0 and later.
+
+- Instead of defining tools in a separate `FunctionContext` object that gets passed to the agent constructor, tools are now defined directly in the agent configuration using `llm.tool()`.
+- The `execute` function now receives a second argument `{ ctx }` that provides access to the current agent state.
+- Tools are automatically accessible to the LLM without needing to be explicitly passed in through the constructor.
+
+**Version 0.x**:
+
+```tsx
+import { llm, pipeline } from '@livekit/agents';
+import { z } from 'zod';
+
+const fncCtx: llm.FunctionContext = {
+  getWeather: {
+    description: 'Get weather information for a location',
+    parameters: z.object({
+      location: z.string(),
+    }),
+    execute: async ({ location }) => {
+      ...
+      return `The weather in ${location} right now is Sunny.`;
+    },
+  },
+};
+
+const agent = new pipeline.VoicePipelineAgent(
+  ...
+  { 
+    ...
+    fncCtx,
+  }
+);
+
+```
+
+---
+
+**Version 1.0**:
+
+```tsx
+import { llm, voice } from '@livekit/agents';
+import { z } from 'zod';
+
+const agent = new voice.Agent({
+  instructions: "You are a helpful assistant.",
+  tools: {
+    getWeather: llm.tool({
+      description: 'Look up weather information for a given location.',
+      parameters: z.object({
+        location: z.string().describe('The location to look up weather information for.'),
+      }),
+      execute: async ({ location }, { ctx }) => {
+        return { weather: "sunny", temperatureF: 70 };
+      },
+    }),
+  },
+});
+
+```
+
+## Chat context
+
+ChatContext has been overhauled in 1.0 to provide a more powerful and flexible API for managing chat history. It now accounts for differences between LLM providers—such as stateless and stateful APIs—while exposing a unified interface.
+
+Chat history can now include three types of items:
+
+- `ChatMessage`: a message associated with a role (e.g., user, assistant). Each message includes a list of `content` items, which can contain text, images, or audio.
+- `FunctionCall`: a function call initiated by the LLM.
+- `FunctionCallOutput`: the result returned from a function call.
+
+### Updating chat context
+
+In 0.x, updating the chat context required modifying chat_ctx.messages directly. This approach was error-prone and difficult to time correctly, especially with realtime APIs.
+
+In v1.x, there are two supported ways to update the chat context:
+
+- **Agent handoff** – [transferring control](https://docs.livekit.io/agents/build/workflows.md#tool-handoff) to a new agent, which has its own chat context.
+- **Explicit update** - calling `agent.updateChatCtx()` to modify the context directly.
+
+## Transcriptions
+
+Agents 1.0 brings some new changes to how [transcriptions](https://docs.livekit.io/agents/build/text.md#transcriptions) are handled:
+
+- Transcriptions now use [text streams](https://docs.livekit.io/home/client/data/text-streams.md) with topic `lk.transcription`.
+- The old `TranscriptionEvent` protocol is deprecated and will be removed in a future version.
+
+## Accepting text input
+
+Agents 1.0 introduces [improved support for text input](https://docs.livekit.io/agents/build/text.md#text-input). Previously, text had to be manually intercepted and injected into the agent's chat context.
+
+In this version, agents automatically receive text input from a text stream on the `lk.chat` topic.
+
+## State change events
+
+### User state
+
+`user_started_speaking` and `user_stopped_speaking` events are no longer emitted. They've been combined into a single `user_state_changed` event.
+
+**Version 0.x**:
+
+```tsx
+import { pipeline } from '@livekit/agents';
+
+agent.on(pipeline.VPAEvent.USER_STARTED_SPEAKING, () => {
+  console.log("User started speaking");
+});
+
+```
+
+---
+
+**Version 1.0**:
+
+```tsx
+session.on(voice.AgentSessionEventTypes.UserStateChanged, (ev) => {
+  // userState could be "speaking", "listening", or "away"
+  console.log(`state change from ${ev.oldState} to ${ev.newState}`);
+});
+
+```
+
+### Agent state
+
+**Version 0.x**:
+
+```tsx
+import { pipeline } from '@livekit/agents';
+
+agent.on(pipeline.VPAEvent.AGENT_STARTED_SPEAKING, () => {
+  // Log transcribed message from user
+  console.log("Agent started speaking");
+});
+
+```
+
+---
+
+**Version 1.0**:
+
+```tsx
+session.on(voice.AgentSessionEventTypes.AgentStateChanged, (ev) => {
+  // AgentState could be "initializing", "idle", "listening", "thinking", "speaking"
+  // newState is set as a participant attribute `lk.agent.state` to notify frontends
+  console.log(`state change from ${ev.oldState} to ${ev.newState}`);
+});
+
+```
+
+## Other events
+
+Agent events were overhauled in version 1.0. For details, see the [events](https://docs.livekit.io/agents/build/events.md) page.
+
+---
+
 ## Telephony
 
 ### Getting started
@@ -36352,7 +36314,7 @@ LiveKit SIP has been tested with the following SIP providers:
 > 
 > LiveKit SIP is designed to work with all SIP providers. However, compatibility testing is limited to the providers below.
 
-| [Twilio](https://www.twilio.com/) | [Telnyx](https://telnyx.com/) | [Exotel](https://exotel.com) | [Plivo](https://www.plivo.com) |
+| [Twilio](https://www.twilio.com/) | [Telnyx](https://telnyx.com/) | [Exotel](https://exotel.com) | [Plivo](https://www.plivo.com) | [Wavix](https://wavix.com/resources/guides/livekit) |
 
 ## SIP features
 
@@ -36490,10 +36452,11 @@ The following regions are available for region pinning for SIP:
 | `india` | India |
 | `sa` | Saudi Arabia |
 | `us` | US Central, US East B, US West B |
+| `australia` | Australia |
 
 > ℹ️ **Note**
 > 
-> This list of regions is subject to change. Last updated 2025-07-23.
+> This list of regions is subject to change. Last updated 2025-09-22.
 
 ---
 
@@ -36526,13 +36489,15 @@ For example, if your SIP URI is `sip:vjnxecm0tjk.sip.livekit.cloud`, your SIP en
 
 ## Provider-specific instructions
 
-For step-by-step instructions for Telnyx, Twilio, or Plivo, see the following quickstarts:
+For step-by-step instructions for Telnyx, Twilio, or Plivo, Wavix, see the following quickstarts:
 
 - **[Twilio Setup](https://docs.livekit.io/sip/quickstarts/configuring-twilio-trunk.md)**: Step-by-step instructions for setting up a SIP trunk with Twilio.
 
 - **[Telnyx Setup](https://docs.livekit.io/sip/quickstarts/configuring-telnyx-trunk.md)**: Step-by-step instructions for setting up a SIP trunk with Telnyx.
 
 - **[Plivo Setup](https://docs.livekit.io/sip/quickstarts/configuring-plivo-trunk.md)**: Step-by-step instructions for setting up a SIP trunk with Plivo.
+
+- **[Wavix Setup](https://docs.livekit.io/sip/quickstarts/configuring-wavix-trunk.md)**: Step-by-step instructions for setting up a SIP trunk with Wavix.
 
 ## LiveKit setup
 
@@ -37069,6 +37034,171 @@ Create a Plivo SIP trunk for incoming or outgoing calls, or both, using the foll
 Head back to the main setup documentation to finish connecting your SIP trunk to LiveKit.
 
 - **[SIP trunk setup](https://docs.livekit.io/sip/quickstarts/configuring-sip-trunk.md#livekit-setup)**: Configure your Plivo trunk in LiveKit.
+
+---
+
+---
+
+## Wavix
+
+## Prerequisites
+
+The following are required to complete the steps in this guide:
+
+- A [Wavix account](https://app.wavix.com) account.
+- A [purchased phone number](https://wavix.com) from Wavix.
+- A project on [LiveKit Cloud](https://cloud.livekit.io/).
+
+## Accepting inbound calls
+
+Complete the following steps to accept inbound calls with Wavix and LiveKit.
+
+### Step 1: Configure inbound call routing in Wavix
+
+To receive calls with Wavix and LiveKit, you need to set up inbound call routing.
+
+For this step, you need your LiveKit [SIP endpoint](https://docs.livekit.io/sip/quickstarts/configuring-sip-trunk.md#sip-endpoint). This is your LiveKit SIP URI without the `sip:` prefix. You can find your SIP URI on your [Project settings](https://cloud.livekit.io/projects/p_/settings/project) page.
+
+1. Sign in to your [Wavix account](https://app.wavix.com).
+2. Select **Numbers & trunks** → **My numbers**.
+3. Select the more (**⋮**) menu and choose **Edit number**.
+4. For **Destination** → **Configure inbound call routing**, select **SIP URI**.
+
+Enter the destination in the format: `[did]@[LiveKit SIP endpoint]`, for example: `[did]@vjnxecm0tjk.sip.livekit.cloud`.
+
+> ℹ️ **Note**
+> 
+> The `[did]` placeholder in the destination string is automatically replaced with your Wavix phone number.
+5. Select **Save**.
+
+### Step 2: Create an inbound trunk in LiveKit
+
+An [inbound trunk](https://docs.livekit.io/sip/trunk-inbound.md) allows you to accept incoming phone calls to your Wavix phone number. To create an inbound trunk in LiveKit, use the following steps:
+
+1. Sign in to [LiveKit Cloud](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select the **+Create new** button → **Trunk**.
+4. For **Trunk direction**, select **Inbound**.
+5. Enter a comma-separated list of Wavix numbers to associate with the trunk.
+6. Select **Create**.
+
+### Step 3: Create a dispatch rule in LiveKit
+
+In addition to an inbound trunk, you need a [dispatch rule](https://docs.livekit.io/sip/dispatch-rule.md) to determine how callers are dispatched to LiveKit rooms.
+
+Create a dispatch rule using the following steps:
+
+1. Navigate to the **Telephony** → **Configuration** page.
+2. Select the **+Create new** button → **Dispatch rule**.
+3. Complete the **Rule name** and **Room name** fields.
+4. Select **Match trunks** and select the inbound trunk you created in the previous step.
+
+> ℹ️ **Additional options**
+> 
+> - Selecting trunks to match a dispatch rule is optional. By default, a dispatch rule applies to all inbound calls for your LiveKit project.
+> - The default **Rule type** is **Direct**. This means all callers are placed in the same room. For alternative rule types, see [SIP dispatch rule](https://docs.livekit.io/sip/dispatch-rule.md).
+
+### Test inbound calls
+
+After you complete the setup steps, start a voice AI agent and call your Wavix phone number. Your agent should answer the call. If you don't have an agent, see the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md) to create one.
+
+## Making outbound calls
+
+Complete the following steps to make outbound calls using LiveKit and Wavix.
+
+### Step 1: Create a SIP trunk in Wavix
+
+Create a Wavix SIP trunk for outgoing calls, using the following steps.
+
+1. Sign in to your [Wavix account](https://app.wavix.com).
+2. Navigate to **Numbers & Trunks** → **Trunks**.
+3. Select the **Create new** button.
+4. Enter a **SIP trunk name**.
+5. In the **Caller ID** section, select one of the phone numbers you purchased.
+6. Under **Authentication Method**, select **Digest** and complete the **Password** fields.
+7. Select **Next**.
+8. Optionally, configure additional limits:- **Max outbound call duration**
+- **Max number of simultaneous calls via the SIP trunk**
+- **Max call cost**
+9. Select **Save**.
+
+After the SIP trunk is successfully created, it appears in your account's SIP trunks list. Note the 5-digit SIP trunk ID that is generated automatically. Your SIP trunk ID is needed for the next step when you create an outbound trunk in LiveKit.
+
+### Step 2: Configure outbound calls
+
+For outbound calls, you need to create an outbound trunk in LiveKit using the Wavix SIP trunk credentials:
+
+1. Sign in to [LiveKit Cloud](https://cloud.livekit.io/).
+2. Select **Telephony** → [**Configuration**](https://cloud.livekit.io/projects/p_/telephony/config).
+3. Select the **+ Create new** button → **Trunk**.
+4. For **Trunk direction**, select **Outbound**.
+5. Configure the outbound trunk with the following settings:- **Address**: Use the Wavix SIP gateway (e.g., `<country-code>.wavix.net`)
+- **Numbers**: Enter your Wavix phone number.
+- Select **Optional settings** and complete the following fields:- **Username**: Your 5-digit SIP trunk ID from Wavix.
+- **Password**: The SIP trunk password you set in Wavix.
+- Select **Create**.
+
+> 💡 **Tip**
+> 
+> Choose the primary gateway closest to your location. A full list of Wavix regional gateways is available at the bottom of your [Wavix trunks page](https://app.wavix.com/trunks).
+
+## Transfer calls
+
+Wavix supports cold call transfers using the SIP REFER command. To transfer a call, you need two Wavix numbers—one for the incoming call and one to transfer calls to.
+
+To transfer an active LiveKit call, use the `TransferSIPParticipant` server API. The following is a Node.js example. To learn more and for additional examples, see [Call forwarding](https://docs.livekit.io/sip/transfer-cold.md).
+
+```typescript
+import { SipClient } from 'livekit-server-sdk';
+
+async function transferParticipant(participant) {
+  console.log("transfer participant initiated");
+
+  const sipTransferOptions = {
+    playDialtone: false
+  };
+
+  const sipClient = new SipClient(process.env.LIVEKIT_URL,
+    process.env.LIVEKIT_API_KEY,
+    process.env.LIVEKIT_API_SECRET);
+
+  const transferTo = "sip:+19495550100@us.wavix.net";
+
+  await sipClient.transferSipParticipant('open-room', participant.identity,
+    transferTo, sipTransferOptions);
+  console.log('transfer participant');
+}
+
+```
+
+Replace the `transferTo` value with your Wavix number using the format: `sip:+[YOUR_WAVIX_NUMBER]@[WAVIX_SIP_GATEWAY]`.
+
+## Enable call encryption
+
+You can choose to encrypt call media for enhanced security. Contact Wavix support to enable encryption for your Wavix numbers or trunks. After enabling encryption, see [Secure trunking](https://docs.livekit.io/sip/secure-trunking.md) to configure encryption for LiveKit trunks.
+
+## Troubleshooting outbound calls
+
+The following tables lists common issues with outbound calls.
+
+| Issue | Cause |
+| 603 Declined response | This might occur when calling a destination with a per-minute rate higher than the Max call rate set for your account. Contact Wavix support to request a change to your max call rate. |
+| Registration issues | Check the registration status of your SIP trunk. |
+| Wrong number format | Make sure you dial the full international number ([E.164](https://www.itu.int/rec/t-rec-e.164) format): For example, `+19085550100` (US), `+44946001218` (UK). Strip prefixes like `0`, `00`, or `011` before the dialed number. |
+
+For additional troubleshooting help, see the [SIP troubleshooting guide](https://docs.livekit.io/sip/troubleshooting.md).
+
+## Next steps
+
+The following guides provide next steps for building your telephony app.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: A quickstart guide to build a voice AI agent to answer incoming calls.
+
+- **[Agents telephony integration](https://docs.livekit.io/agents/start/telephony.md)**: Learn how to receive and make calls with a voice AI agent.
+
+- **[Call forwarding using SIP REFER](https://docs.livekit.io/sip/transfer-cold.md)**: Forward calls to another number or SIP endpoint with SIP REFER.
+
+- **[Agent-assisted warm transfer](https://docs.livekit.io/sip/transfer-warm.md)**: A guide for transferring calls using a voice AI agent to provide context.
 
 ---
 
@@ -42335,5 +42465,5 @@ Check with your SIP trunking provider and verify you're using the correct SIP en
 
 ---
 
-This document was rendered at 2025-09-10T23:26:23.128Z.
+This document was rendered at 2025-09-23T16:20:15.409Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

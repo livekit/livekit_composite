@@ -1,3 +1,8 @@
+# TODO: support template aliases in the registry
+
+## PYTHON AGENTS
+
+# NOTE: keep url in sync with legacy templates `voice-ipeline-agent-python`, `multimodal-agent`, and `multimodal-agent-python`
 - name: "agent-starter-python"
   display_name: "Python Voice Agent"
   desc: "A starter project for Python, featuring a simple voice agent implementation"
@@ -18,6 +23,81 @@
     Tools: "Python >=3.9"
     License: "Apache-2.0"
 
+# XXX: deprecated in favor of `agent-starter-python`
+- name: "voice-pipeline-agent-python"
+  display_name: "Python Voice Agent"
+  desc: "A starter project for Python, featuring a simple voice agent implementation"
+  url: "https://github.com/livekit-examples/agent-starter-python"
+  created_at: "2025-07-18T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  is_enabled: true
+  is_hidden: true
+  is_sandbox: false
+
+# XXX: deprecated in favor of `agent-starter-python`
+- name: "multimodal-agent-python"
+  display_name: "Python multimodal agent"
+  desc: "A voice assistant using S2S and multimodal capabilities"
+  url: "https://github.com/livekit-examples/agent-starter-python"
+  created_at: "2024-09-30T00:00:00Z"
+  is_enabled: true
+  is_hidden: true
+  is_sandbox: false
+
+# XXX: deprecated in favor of `agent-starter-python`
+- name: "multimodal-agent"
+  display_name: "Python multimodal agent"
+  desc: "A voice assistant using S2S and multimodal capabilities"
+  url: "https://github.com/livekit-examples/agent-starter-python"
+  created_at: "2024-09-30T00:00:00Z"
+  is_enabled: true
+  is_hidden: true
+  is_sandbox: false
+
+- name: "multi-agent-python"
+  display_name: "Python multi-agent workflow"
+  desc: "A team of writing coach agents demonstrating multi-agent workflows"
+  url: "https://github.com/livekit-examples/multi-agent-python"
+  created_at: "2025-04-10T00:00:00Z"
+  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
+  is_enabled: true
+  is_sandbox: false
+  category: "voice-assistant"
+  tags:
+    - "python"
+    - "agents"
+    - "multi-agent"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Python >=3.9"
+    License: "Apache-2.0"
+
+- name: "outbound-caller-python"
+  display_name: "Python outbound caller agent"
+  desc: "An agent that makes outbound calls using LiveKit SIP"
+  url: "https://github.com/livekit-examples/outbound-caller-python"
+  created_at: "2024-12-08T00:00:00Z"
+  requires: []
+  is_enabled: true
+  is_sandbox: false
+  category: "voice-assistant"
+  tags:
+    - "python"
+    - "agents"
+    - "voice"
+    - telephony
+    - sip
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Agent"
+    Tools: "Python >=3.9"
+    License: "Apache-2.0"
+
+## NODE AGENTS
+
+# NOTE: keep url in sync with legacy template `voice-pipeline-agent-node`
 - name: "agent-starter-node"
   display_name: "Node.js Voice Agent"
   desc: "A starter project for Node.js, featuring a simple voice agent implementation"
@@ -38,6 +118,30 @@
     Tools: "Python >=3.9"
     License: "Apache-2.0"
 
+# XXX: deprecated in favor of `agent-starter-node`
+- name: "voice-pipeline-agent-node"
+  display_name: "Node.js Voice Agent"
+  desc: "A starter project for Node.js, featuring a simple voice agent implementation"
+  url: "https://github.com/livekit-examples/agent-starter-node"
+  created_at: "2025-07-18T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  is_enabled: true
+  is_hidden: true
+  is_sandbox: false
+
+# XXX: deprecated in favor of `agent-starter-node`
+- name: "multimodal-agent-node"
+  display_name: "Node multimodal agent"
+  desc: "A voice assistant using S2S and multimodal capabilities"
+  url: "https://github.com/livekit-examples/agent-starter-node"
+  created_at: "2024-09-30T00:00:00Z"
+  is_enabled: true
+  is_sandbox: false
+  is_hidden: true
+
+## FRONTENDS
+
+# NOTE: keep url in sync with legacy template `voice-assistant-frontend`
 - name: "agent-starter-react"
   display_name: "Web Voice Agent"
   desc: "A starter app for Next.js, featuring a flexible voice AI frontend"
@@ -115,83 +219,16 @@
       type: string
       description: "Set agent name to enable explicit dispatch"
 
-- name: "agent-starter-android"
-  display_name: "Android Voice Agent"
-  desc: "A starter project for Android, featuring a flexible voice AI frontend"
-  url: "https://github.com/livekit-examples/agent-starter-android"
-  created_at: "2024-09-12T00:00:00Z"
+# XXX: deprecated in favor of `agent-starter-react`
+- name: "voice-assistant-frontend"
+  display_name: "Web Voice Agent"
+  desc: "A starter app for Next.js, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-react"
+  created_at: "2024-09-11T00:00:00Z"
   updated_at: "2025-07-18T00:00:00Z"
-  requires: ["agent-starter-python", "token-server"]
   is_enabled: true
   is_sandbox: false
-  category: "agent-starter-frontend"
-  tags:
-    - "android"
-    - "kotlin"
-    - "voice"
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Mobile app"
-    Tools: "Android, Kotlin, Jetpack Compose"
-    License: "Apache-2.0"
-
-- name: "agent-starter-swift"
-  display_name: "Swift Voice Agent"
-  desc: "A starter project for Swift, featuring a flexible voice AI frontend"
-  url: "https://github.com/livekit-examples/agent-starter-swift"
-  created_at: "2024-12-20T00:00:00Z"
-  updated_at: "2025-07-18T00:00:00Z"
-  requires: ["agent-starter-python", "token-server"]
-  is_enabled: true
-  is_sandbox: false
-  category: "agent-starter-frontend"
-  tags:
-    - "swift"
-    - "voice"
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Mobile app"
-    Tools: "Xcode, Swift, SwiftUI"
-    License: "Apache-2.0"
-
-- name: "agent-starter-flutter"
-  display_name: "Flutter Voice Agent"
-  desc: "A starter project for Flutter, featuring a flexible voice AI frontend"
-  url: "https://github.com/livekit-examples/agent-starter-flutter"
-  created_at: "2025-02-08T00:00:00Z"
-  updated_at: "2025-07-18T00:00:00Z"
-  requires: ["agent-starter-python", "token-server"]
-  is_enabled: true
-  is_sandbox: false
-  category: "agent-starter-frontend"
-  tags:
-    - "flutter"
-    - "voice"
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Mobile app"
-    Tools: "Flutter"
-    License: "Apache-2.0"
-
-- name: "agent-starter-react-native"
-  display_name: "Expo Voice Agent"
-  desc: "A starter project for Expo, featuring a flexible voice AI frontend"
-  url: "https://github.com/livekit-examples/agent-starter-react-native"
-  created_at: "2025-07-18T00:00:00Z"
-  updated_at: "2025-07-18T00:00:00Z"
-  requires: ["agent-starter-python", "token-server"]
-  is_enabled: true
-  is_sandbox: false
-  category: "agent-starter-frontend"
-  tags:
-    - "expo"
-    - "react-native"
-    - "voice"
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Mobile app"
-    Tools: "Expo, React Native"
-    License: "Apache-2.0"
+  is_hidden: true
 
 - name: "agent-starter-embed"
   display_name: "Web Embed Voice Agent"
@@ -217,27 +254,131 @@
       type: string
       description: "Optional - dispatch only agents with this name"
 
-- name: "token-server"
-  display_name: "Token server"
-  desc: "A hosted token server to help you prototype your mobile applications faster"
-  url: "https://github.com/livekit-examples/token-server-node"
-  image: "https://raw.githubusercontent.com/livekit-examples/token-server-node/main/.github/assets/template-graphic.svg"
-  media:
-    thumbnail:
-      light: "https://raw.githubusercontent.com/livekit-examples/token-server-node/refs/heads/main/.github/assets/template-light.webp"
-      dark: "https://raw.githubusercontent.com/livekit-examples/token-server-node/refs/heads/main/.github/assets/template-dark.webp"
-  created_at: "2024-09-18T00:00:00Z"
+# NOTE: keep url in sync with legacy template `agent-starter-android`
+- name: "agent-starter-android"
+  display_name: "Android Voice Agent"
+  desc: "A starter project for Android, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-android"
+  created_at: "2024-09-12T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  requires: ["agent-starter-python", "token-server"]
   is_enabled: true
-  is_sandbox: true
-  category: "server"
+  is_sandbox: false
+  category: "agent-starter-frontend"
   tags:
-    - "mobile"
-    - "token-server"
+    - "android"
+    - "kotlin"
+    - "voice"
   attrs:
-    Application: "Mobile apps, General purpose"
-    Type: "Backend"
-    Tools: "Go"
+    Application: "VoiceAI, Agents"
+    Type: "Mobile app"
+    Tools: "Android, Kotlin, Jetpack Compose"
     License: "Apache-2.0"
+
+# XXX: deprecated in favor of `agent-starter-android`
+- name: "android-voice-assistant"
+  display_name: "Android Voice Agent"
+  desc: "A starter project for Android, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-android"
+  created_at: "2024-09-12T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  is_enabled: true
+  is_hidden: true
+  is_sandbox: false
+
+# NOTE: keep url in sync with legacy template `swift-voice-assistant`
+- name: "agent-starter-swift"
+  display_name: "Swift Voice Agent"
+  desc: "A starter project for Swift, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-swift"
+  created_at: "2024-12-20T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  requires: ["agent-starter-python", "token-server"]
+  is_enabled: true
+  is_sandbox: false
+  category: "agent-starter-frontend"
+  tags:
+    - "swift"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Mobile app"
+    Tools: "Xcode, Swift, SwiftUI"
+    License: "Apache-2.0"
+
+# XXX: deprecated in favor of `agent-starter-swift`
+- name: "swift-voice-assistant"
+  display_name: "Swift Voice Agent"
+  desc: "A starter project for Swift, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-swift"
+  created_at: "2024-12-20T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  is_enabled: true
+  is_hidden: true
+  is_sandbox: false
+
+# NOTE: keep url in sync with legacy template `voice-assistant-flutter`
+- name: "agent-starter-flutter"
+  display_name: "Flutter Voice Agent"
+  desc: "A starter project for Flutter, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-flutter"
+  created_at: "2025-02-08T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  requires: ["agent-starter-python", "token-server"]
+  is_enabled: true
+  is_sandbox: false
+  category: "agent-starter-frontend"
+  tags:
+    - "flutter"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Mobile app"
+    Tools: "Flutter"
+    License: "Apache-2.0"
+
+# XXX: deprecated in favor of `agent-starter-flutter`
+- name: "voice-assistant-flutter"
+  display_name: "Flutter Voice Agent"
+  desc: "A starter project for Flutter, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-flutter"
+  created_at: "2025-02-08T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  is_enabled: true
+  is_hidden: true
+  is_sandbox: false
+
+# NOTE: keep url in sync with legacy template `voice-assistant-react-native`
+- name: "agent-starter-react-native"
+  display_name: "Expo Voice Agent"
+  desc: "A starter project for Expo, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-react-native"
+  created_at: "2025-07-18T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  requires: ["agent-starter-python", "token-server"]
+  is_enabled: true
+  is_sandbox: false
+  category: "agent-starter-frontend"
+  tags:
+    - "expo"
+    - "react-native"
+    - "voice"
+  attrs:
+    Application: "VoiceAI, Agents"
+    Type: "Mobile app"
+    Tools: "Expo, React Native"
+    License: "Apache-2.0"
+
+# XXX: deprecated in favor of `agent-starter-react-native`
+- name: "voice-assistant-react-native"
+  display_name: "Expo Voice Agent"
+  desc: "A starter project for Expo, featuring a flexible voice AI frontend"
+  url: "https://github.com/livekit-examples/agent-starter-react-native"
+  created_at: "2025-07-18T00:00:00Z"
+  updated_at: "2025-07-18T00:00:00Z"
+  is_enabled: true
+  is_hidden: true
+  is_sandbox: false
 
 - name: "transcription-frontend"
   display_name: "Voice transcription"
@@ -280,126 +421,27 @@
     Tools: "Next.js, TypeScript"
     License: "Apache-2.0"
 
-- name: "multi-agent-python"
-  display_name: "Python multi-agent workflow"
-  desc: "A team of writing coach agents demonstrating multi-agent workflows"
-  url: "https://github.com/livekit-examples/multi-agent-python"
-  created_at: "2025-04-10T00:00:00Z"
-  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
-  is_enabled: true
-  is_sandbox: false
-  category: "voice-assistant"
-  tags:
-    - "python"
-    - "agents"
-    - "multi-agent"
-    - "voice"
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Agent"
-    Tools: "Python >=3.9"
-    License: "Apache-2.0"
+## BACKENDS
 
-- name: "multimodal-agent-node"
-  display_name: "Node multimodal agent"
-  desc: "A voice assistant using S2S and multimodal capabilities"
-  url: "https://github.com/livekit-examples/multimodal-agent-node"
-  created_at: "2024-09-30T00:00:00Z"
-  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
-  is_enabled: true
-  is_sandbox: false
-  is_hidden: true
-  category: "voice-assistant"
-  tags:
-    - "node.js"
-    - "agents"
-    - "voice"
-    - "s2s"
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Agent"
-    Tools: "Node.js"
-    License: "Apache-2.0"
-
-- name: "voice-pipeline-agent-node"
-  display_name: "Node voice pipeline agent"
-  desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
-  url: "https://github.com/livekit-examples/voice-pipeline-agent-node"
-  created_at: "2024-11-11T00:00:00Z"
-  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
-  is_enabled: true
-  is_sandbox: false
-  is_hidden: true
-  category: "voice-assistant"
-  tags:
-    - "node.js"
-    - "agents"
-    - "voice"
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Agent"
-    Tools: "Node.js"
-    License: "Apache-2.0"
-
-- name: "outbound-caller-python"
-  display_name: "Python outbound caller agent"
-  desc: "An agent that makes outbound calls using LiveKit SIP"
-  url: "https://github.com/livekit-examples/outbound-caller-python"
-  created_at: "2024-12-08T00:00:00Z"
-  requires: []
-  is_enabled: true
-  is_sandbox: false
-  category: "voice-assistant"
-  tags:
-    - "python"
-    - "agents"
-    - "voice"
-    - telephony
-    - sip
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Agent"
-    Tools: "Python >=3.9"
-    License: "Apache-2.0"
-
-- name: "multimodal-agent-python"
-  display_name: "Python multimodal agent"
-  desc: "A voice assistant using S2S and multimodal capabilities"
-  url: "https://github.com/livekit-examples/multimodal-agent-python"
-  created_at: "2024-09-30T00:00:00Z"
-  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
-  is_enabled: true
-  is_sandbox: false
-  is_hidden: true
-  category: "voice-assistant"
-  tags:
-    - "python"
-    - "agents"
-    - "voice"
-    - "s2s"
-  attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Agent"
-    Tools: "Python >=3.9"
-    License: "Apache-2.0"
-
-- name: "voice-pipeline-agent-python"
-  display_name: "Python voice pipeline agent"
-  desc: "A voice assistant showcasing realtime TTS, LLM, and STT"
-  url: "https://github.com/livekit-examples/voice-pipeline-agent-python"
+- name: "token-server"
+  display_name: "Token server"
+  desc: "A hosted token server to help you prototype your mobile applications faster"
+  url: "https://github.com/livekit-examples/token-server-node"
+  image: "https://raw.githubusercontent.com/livekit-examples/token-server-node/main/.github/assets/template-graphic.svg"
+  media:
+    thumbnail:
+      light: "https://raw.githubusercontent.com/livekit-examples/token-server-node/refs/heads/main/.github/assets/template-light.webp"
+      dark: "https://raw.githubusercontent.com/livekit-examples/token-server-node/refs/heads/main/.github/assets/template-dark.webp"
   created_at: "2024-09-18T00:00:00Z"
-  requires: ["agent-starter-react", "agent-starter-swift", "agent-starter-android", "agent-starter-flutter", "agent-starter-react-native", "agent-starter-embed"]
   is_enabled: true
-  is_sandbox: false
-  is_hidden: true
-  category: "voice-assistant"
+  is_sandbox: true
+  category: "server"
   tags:
-    - "python"
-    - "agents"
-    - "voice"
+    - "mobile"
+    - "token-server"
   attrs:
-    Application: "VoiceAI, Agents"
-    Type: "Agent"
-    Tools: "Python >=3.9"
+    Application: "Mobile apps, General purpose"
+    Type: "Backend"
+    Tools: "Go"
     License: "Apache-2.0"
-    
+

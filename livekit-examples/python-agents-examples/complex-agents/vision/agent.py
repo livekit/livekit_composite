@@ -1,3 +1,20 @@
+"""
+---
+title: Vision-Enabled Agent
+category: complex-agents
+tags: [video_stream, grok_vision, x_ai, frame_capture, image_content]
+difficulty: intermediate
+description: Agent with camera vision capabilities using Grok-2 Vision model
+demonstrates:
+  - Video stream processing from remote participants
+  - Frame buffering from video tracks
+  - X.AI Grok-2 Vision model integration
+  - Dynamic video track subscription
+  - Image content injection into chat context
+  - Track publication event handling
+---
+"""
+
 ## This is a basic example of how to use function calling.
 ## To test the function, you can ask the agent to print to the console!
 

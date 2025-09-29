@@ -86,6 +86,28 @@ func (u *localUploader) UploadData(data []byte, storagePath, _ string) (string, 
 	return storagePath, int64(size), nil
 }
 
+func (u *localUploader) ListObjects(prefix string) ([]string, error) {
+	absPrefix, err := filepath.Abs(prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	var files []string
+	err = filepath.Walk(absPrefix, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			files = append(files, path)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return files, nil
+}
+
 func (u *localUploader) DownloadData(storagePath string) ([]byte, error) {
 	return os.ReadFile(storagePath)
 }

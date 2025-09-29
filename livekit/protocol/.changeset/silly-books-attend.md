@@ -2,4 +2,4 @@
 "@livekit/protocol": patch
 ---
 
-add observability grant setter
+handle session timer skips >1 min

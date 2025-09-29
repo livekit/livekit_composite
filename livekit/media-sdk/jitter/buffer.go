@@ -25,6 +25,11 @@ import (
 	"github.com/livekit/protocol/logger"
 )
 
+type ExtPacket struct {
+	ReceivedAt time.Time
+	*rtp.Packet
+}
+
 type Buffer struct {
 	depacketizer rtp.Depacketizer
 	latency      time.Duration
@@ -58,7 +63,7 @@ type BufferStats struct {
 	SamplesPopped  uint64 // samples sent to handler
 }
 
-type PacketFunc func(packets []*rtp.Packet)
+type PacketFunc func(packets []ExtPacket)
 
 func NewBuffer(
 	depacketizer rtp.Depacketizer,
@@ -117,7 +122,7 @@ func (b *Buffer) UpdateLatency(latency time.Duration) {
 
 	b.latency = latency
 	if b.head != nil {
-		b.timer.Reset(time.Until(b.head.received.Add(latency)))
+		b.timer.Reset(time.Until(b.head.extPacket.ReceivedAt.Add(latency)))
 	}
 }
 
@@ -199,10 +204,10 @@ func (b *Buffer) push(pkt *rtp.Packet) {
 		return
 	}
 
-	beforeHead := before(pkt.SequenceNumber, b.head.packet.SequenceNumber)
-	afterTail := !before(pkt.SequenceNumber, b.tail.packet.SequenceNumber)
-	withinHeadRange := withinRange(pkt.SequenceNumber, b.head.packet.SequenceNumber)
-	withinTailRange := withinRange(pkt.SequenceNumber, b.tail.packet.SequenceNumber)
+	beforeHead := before(pkt.SequenceNumber, b.head.extPacket.SequenceNumber)
+	afterTail := !before(pkt.SequenceNumber, b.tail.extPacket.SequenceNumber)
+	withinHeadRange := withinRange(pkt.SequenceNumber, b.head.extPacket.SequenceNumber)
+	withinTailRange := withinRange(pkt.SequenceNumber, b.tail.extPacket.SequenceNumber)
 
 	switch {
 	case beforeHead && withinHeadRange:
@@ -221,8 +226,8 @@ func (b *Buffer) push(pkt *rtp.Packet) {
 	case withinTailRange:
 		// insert, search from tail
 		for c := b.tail.prev; c != nil; c = c.prev {
-			discont = !withinRange(pkt.SequenceNumber, c.packet.SequenceNumber)
-			if !before(pkt.SequenceNumber, c.packet.SequenceNumber) || discont {
+			discont = !withinRange(pkt.SequenceNumber, c.extPacket.SequenceNumber)
+			if !before(pkt.SequenceNumber, c.extPacket.SequenceNumber) || discont {
 				// insert after c
 				p.discont = discont && p.start
 				p.prev = c
@@ -236,8 +241,8 @@ func (b *Buffer) push(pkt *rtp.Packet) {
 	case withinHeadRange:
 		// insert, search from head
 		for c := b.head.next; c != nil; c = c.next {
-			discont = !withinRange(pkt.SequenceNumber, c.packet.SequenceNumber)
-			if before(pkt.SequenceNumber, c.packet.SequenceNumber) || discont {
+			discont = !withinRange(pkt.SequenceNumber, c.extPacket.SequenceNumber)
+			if before(pkt.SequenceNumber, c.extPacket.SequenceNumber) || discont {
 				// insert before c
 				p.prev = c.prev
 				p.next = c
@@ -266,12 +271,12 @@ func (b *Buffer) popReady() {
 	for b.head != nil &&
 		b.head.isComplete() {
 
-		if b.head.packet.SequenceNumber == b.prevSN+1 || b.head.discont || !b.initialized {
+		if b.head.extPacket.SequenceNumber == b.prevSN+1 || b.head.discont || !b.initialized {
 			// normal
-		} else if b.head.received.Before(expiry) {
+		} else if b.head.extPacket.ReceivedAt.Before(expiry) {
 			// max latency reached
 			loss = true
-			b.stats.PacketsLost += uint64(b.head.packet.SequenceNumber - b.prevSN - 1)
+			b.stats.PacketsLost += uint64(b.head.extPacket.SequenceNumber - b.prevSN - 1)
 		} else {
 			break
 		}
@@ -286,7 +291,7 @@ func (b *Buffer) popReady() {
 	}
 
 	if b.head != nil {
-		b.timer.Reset(time.Until(b.head.received.Add(b.latency)))
+		b.timer.Reset(time.Until(b.head.extPacket.ReceivedAt.Add(b.latency)))
 	}
 }
 
@@ -294,9 +299,9 @@ func (b *Buffer) popReady() {
 func (b *Buffer) dropIncompleteExpired(expiry time.Time) {
 	dropped := false
 
-	for b.head != nil && !b.head.isComplete() && b.head.received.Before(expiry) {
+	for b.head != nil && !b.head.isComplete() && b.head.extPacket.ReceivedAt.Before(expiry) {
 		if b.initialized && !b.head.discont {
-			b.stats.PacketsLost += uint64(b.head.packet.SequenceNumber - b.prevSN - 1)
+			b.stats.PacketsLost += uint64(b.head.extPacket.SequenceNumber - b.prevSN - 1)
 		}
 
 		b.free(b.popHead())
@@ -310,15 +315,15 @@ func (b *Buffer) dropIncompleteExpired(expiry time.Time) {
 	}
 }
 
-func (b *Buffer) popSample() []*rtp.Packet {
-	sample := make([]*rtp.Packet, 0, b.size)
+func (b *Buffer) popSample() []ExtPacket {
+	sample := make([]ExtPacket, 0, b.size)
 	end := false
 	for !end {
 		c := b.popHead()
 		end = c.end
 
-		if !c.packet.Padding {
-			sample = append(sample, c.packet)
+		if !c.extPacket.Padding {
+			sample = append(sample, c.extPacket)
 		}
 
 		b.stats.PacketsPopped++
@@ -333,7 +338,7 @@ func (b *Buffer) popSample() []*rtp.Packet {
 
 func (b *Buffer) popHead() *packet {
 	c := b.head
-	b.prevSN = c.packet.SequenceNumber
+	b.prevSN = c.extPacket.SequenceNumber
 	b.head = c.next
 	if b.head == nil {
 		b.tail = nil

@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/googleapis/gax-go/v2"
 	"golang.org/x/oauth2/google"
+	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
 
@@ -116,6 +118,24 @@ func (s *gcpStorage) upload(reader io.Reader, storagePath, _ string) (string, in
 	}
 
 	return fmt.Sprintf("https://%s.storage.googleapis.com/%s", s.conf.Bucket, storagePath), n, nil
+}
+
+func (s *gcpStorage) ListObjects(prefix string) ([]string, error) {
+	it := s.client.Bucket(s.conf.Bucket).Objects(context.Background(), &storage.Query{
+		Prefix: prefix,
+	})
+
+	var objects []string
+	for {
+		attr, err := it.Next()
+		if err != nil {
+			if errors.Is(err, iterator.Done) {
+				return objects, nil
+			}
+			return nil, err
+		}
+		objects = append(objects, attr.Name)
+	}
 }
 
 func (s *gcpStorage) DownloadData(storagePath string) ([]byte, error) {

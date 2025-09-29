@@ -7,7 +7,7 @@ This documents outlines common misconceptions or addresses issues where an LLM m
 ## Agents (Python)
 
 
-### Log message warning ``None of PyTorch...`
+### Log message warning `None of PyTorch...`
 
 tldr; you can safely ignore this warning.
 
@@ -42,6 +42,38 @@ pip install --upgrade certifi
 
 and check with:`python -c "import certifi; print(certifi.where())"`
 
+## Keep Agent In Room on Browser Refresh
+
+To keep a user's session alive temporarily when using `AgentSession` in Python, you can utilize the `RoomInputOptions` to prevent the session from closing immediately upon disconnection. Specifically, you can set the following options:
+
+- `RoomInputOptions.close_on_disconnect=False`: This prevents the session from closing when the user disconnects.
+- `RoomInputOptions.delete_room_on_close=False`: This keeps the room alive even if the user leaves.
+
+By default, the session will remain active for about 20 seconds after the user disconnects, allowing for a temporary persistence of messages exchanged with the agent.
+
+Here’s a simple example of how to implement this:
+
+```python
+from livekit.agents import AgentSession, RoomInputOptions
+
+async def entrypoint(ctx: JobContext):
+    options = RoomInputOptions(
+        close_on_disconnect=False,
+        delete_room_on_close=False
+    )
+    
+    session = AgentSession(options=options)
+    # Your session handling logic here
+```
+
+### Documentation Links
+- **[Room Input Options](https://github.com/livekit/agents/blob/main/livekit-agents/livekit/agents/voice/room_io/room_io.py)**: Learn more about configuring room input options.
+- **[AgentSession](https://docs.livekit.io/agents/build/#agent-sessions)**: Detailed information on how to use `AgentSession`.
+
+### Notes
+- This approach allows the session to remain active for a short period, which can be useful if a user accidentally closes their browser or tab.
+- Currently, there is no option to adjust the timeout duration beyond the default 20 seconds.
+
 ## BVC and Agents
 
 Note on BVC and Echo Cancellation for Real-Time Models:
@@ -68,14 +100,14 @@ This limitation makes it difficult or impossible to safely scale down agent cont
 
 ### Recommendation:
 
-Use ECS with EC2 or other infrastructure where container lifecycle and shutdown behavior can be fully controlled like EKS. If you must use ECS, consider standalone tasks rather than long-running services, but be aware this still may not be ideal for production-grade reliability.
+Use ECS with EC2 or other infrastructure where container lifecycle and shutdown behavior can be fully controlled. If you must use ECS, consider standalone tasks rather than long-running services, but be aware this still may not be ideal for production-grade reliability.
 
 
 ## Hosting LiveKit Agents on Render.com (free) and Other Low Resource Providers:
 
 LiveKit agents that use features like BVC or multilingual turn detection require more memory than Render.com’s free plan provides. These features are resource-intensive and will fail to run on low-memory instances.
 
-Also note, LiveKit offers a fully hosted agent cloud. We encouraging the use of LiveKit’s [Cloud Agents](https://docs.livekit.io/agents/ops/deployment/) for a smoother, one-click deployment experience.
+Also note, LiveKit will soon offer a fully hosted agent cloud. We encouraging the use of LiveKit’s hosted agent cloud for a smoother, one-click deployment experience.
 
 
 ## Self Hosting LiveKit Server

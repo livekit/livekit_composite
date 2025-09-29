@@ -17688,33 +17688,7 @@ async def end_call(self, ctx: RunContext):
 
 ### Interruptions
 
-By default, the agent stops speaking when it detects that the user has started speaking. This behavior can be disabled by setting  `allow_interruptions=False` when scheduling speech.
-
-To explicitly interrupt the agent, call the `interrupt()` method on the handle or session at any time. This can be performed even when `allow_interruptions` is set to `False`.
-
-**Python**:
-
-```python
-handle = session.say("Hello world")
-handle.interrupt()
-
-# or from the session
-session.interrupt()
-
-```
-
----
-
-**Node.js**:
-
-```typescript
-const handle = session.say('Hello world');
-handle.interrupt();
-
-// or from the session
-session.interrupt();
-
-```
+By default, the agent stops speaking when it detects that the user has started speaking. You can customize this behavior. To learn more, see [Interruptions](https://docs.livekit.io/agents/build/turns.md#interruptions) in the Turn detection topic.
 
 ## Customizing pronunciation
 
@@ -20451,7 +20425,75 @@ async function doJob() {
 
 LiveKit client SDKs have native support for text streams. For more information, see the [text streams](https://docs.livekit.io/home/client/data/text-streams.md) documentation.
 
-Use the `registerTextStreamHandler` method to receive incoming transcriptions or text:
+### Receiving text streams
+
+Use the `registerTextStreamHandler` method to receive incoming transcriptions or text.
+
+When an audio track is transcribed, the speech is split into segments. For each segment, two streams are produced:
+
+- `interim_stream`: while the segment is being processed
+- `final_stream`: when the segment is complete
+
+> 💡 **Tip**
+> 
+> Use the `lk.transcription_final` value to determine if the stream is interim (`false`) or final (`true`).
+
+These streams share the same `segment_id` and `transcribed_track_id`, so logging every message can produce duplicates. Tracking `interim_stream` is only recommended for use cases that require live typing updates. Replace interim messages with the final message when `lk.transcription_final` is `true`.
+
+For React development, use the [`useTranscriptions`](https://docs.livekit.io/reference/components/react/hook/usetranscriptions.md) hook.
+
+**Android**:
+
+```kotlin
+// Register a text stream handler for transcription
+room.registerTextStreamHandler("lk.transcription") { reader, participantIdentity ->
+    // Launch a coroutine to handle the async reading
+    scope.launch {
+        try {
+            // Read all the text data from the stream
+            val messages = reader.readAll()
+            val fullMessage = messages.joinToString("")
+
+            val isFinal = reader.info.attributes["lk.transcription_final"] == "true"            
+            // Check if this is a transcription by looking at the stream attributes
+            val isTranscription = reader.info.attributes["lk.transcribed_track_id"] != null
+            val segmentId = reader.info.attributes["lk.segment_id"]
+            
+            if (isTranscription) {
+                Log.d("TextStream", "New transcription from $participantIdentity [final=$isFinal, segment=$segmentId]: $fullMessage")
+            } else {
+                Log.d("TextStream", "New message from $participantIdentity: $fullMessage")
+            }
+        } catch (e: Exception) {
+            Log.e("TextStream", "Error reading text stream", e)
+        }
+    }
+}
+
+```
+
+---
+
+**Flutter**:
+
+```dart
+room.registerTextStreamHandler('lk.transcription', (TextStreamReader reader, String participantIdentity) async {
+  final message = await reader.readAll();
+
+  final isTranscription = reader.info?.attributes['lk.transcribed_track_id'] != null;
+  final isFinal = reader.info?.attributes['lk.transcription_final'] == 'true';
+  final segmentId = reader.info?.attributes['lk.segment_id']
+  
+  if (isTranscription) {
+    print('New transcription from $participantIdentity [final=$isFinal, segment=$segmentId]: $message');
+  } else {
+    print('New message from $participantIdentity: $message');
+  }
+});
+
+```
+
+---
 
 **JavaScript**:
 
@@ -20726,7 +20768,41 @@ A more complete example is available here:
 
 ## Interruptions
 
-The user can interrupt the agent at any time, either by speaking with automatic turn detection or via the `session.interrupt()` method. When an interruption occurs, the agent stops speaking and automatically truncates its conversation history to reflect only the speech that the user actually heard before interruption.
+The framework pauses the agent's speech whenever it detects user speech in the input audio, ensuring the agent feels responsive. The user can interrupt the agent at any time, either by speaking (with automatic turn detection) or via the `session.interrupt()` method. When interrupted, the agent stops speaking and automatically truncates its conversation history to include only the portion of the speech that the user heard before interruption.
+
+> ℹ️ **Disabling interruptions**
+> 
+> You can disable user interruptions when [scheduling speech](https://docs.livekit.io/agents/build/audio.md#initiating-speech) using the `say()` or `generate_reply()` methods by setting `allow_interruptions=False`.
+
+To explicitly interrupt the agent, call the `interrupt()` method on the handle or session at any time. This can be performed even when `allow_interruptions` is set to `False`.
+
+**Python**:
+
+```python
+handle = session.say("Hello world")
+handle.interrupt()
+
+# or from the session
+session.interrupt()
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+const handle = session.say('Hello world');
+handle.interrupt();
+
+// or from the session
+session.interrupt();
+
+```
+
+### False interruptions
+
+In some cases, an interruption is a false positive where no actual user speech occurs. The framework identifies this by detecting the absence of recognized words. By default, the agent resumes speaking from where it left off after a false interruption. You can configure this behavior using the `resume_false_interruption` and `false_interruption_timeout` parameters on the agent session.
 
 ## Session configuration
 
@@ -20741,6 +20817,12 @@ The following parameters related to turn detection and interruptions are availab
 - **`min_endpointing_delay`** _(float)_ (optional) - Default: `0.5`: The number of seconds to wait before considering the turn complete. The session uses this delay when no turn detector model is present, or when the model indicates a likely turn boundary.
 
 - **`max_endpointing_delay`** _(float)_ (optional) - Default: `6.0`: The maximum time to wait for the user to speak after the turn detector model indicates the user is likely to continue speaking. This parameter has no effect without the turn detector model.
+
+- **`false_interruption_timeout`** _(float)_ (optional) - Default: `2.0`: The time (in seconds) to wait before signaling a false interruption. If no transcribed speech is generated during this period, an `agent_false_interruption` event is emitted and the agent resumes speaking from where it left off if `resume_false_interruption` is `True`.
+
+Set to `None` to turn off false interruption handling. When disabled, false interruptions are treated as intentional: the agent's speech is not resumed and no `agent_false_interruption` event is emitted.
+
+- **`resume_false_interruption`** _(bool)_ (optional) - Default: `True`: Determines whether the agent resumes speech output after a false interruption. When set to `True`, the agent continues speaking from where it left off after the time specified by the `false_interruption_timeout` parameter has passed if no user transcription is generated.
 
 ## Turn-taking events
 
@@ -23699,7 +23781,7 @@ Follow these steps to deploy your first agent to LiveKit Cloud.
 
 This guide assumes that you already have:
 
-- [LiveKit CLI](https://docs.livekit.io/home/cli.md) version 2.5 or later
+- [LiveKit CLI](https://docs.livekit.io/home/cli.md) version 2.6 or later
 - A [LiveKit Cloud](https://cloud.livekit.io) project
 - A working agent. Create one using the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md) or one of the following starter templates:
 
@@ -30342,7 +30424,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the LiveKit Mistral AI plugin from PyPI:
 
 ```bash
-pip install livekit-plugins-mistralai
+pip install "livekit-agents[mistralai]~=1.2"
 
 ```
 
@@ -31091,6 +31173,7 @@ All STT providers support low-latency multilingual transcription. Support for ot
 | [Mistral AI](https://docs.livekit.io/agents/integrations/stt/mistralai.md) | `mistralai` |  | Python |
 | [OpenAI](https://docs.livekit.io/agents/integrations/stt/openai.md) | `openai` |  | Python, Nodejs |
 | [Sarvam](https://docs.livekit.io/agents/integrations/stt/sarvam.md) | `sarvam` |  | Python |
+| [Soniox](https://docs.livekit.io/agents/integrations/stt/soniox.md) | `soniox` |  | Python |
 | [Speechmatics](https://docs.livekit.io/agents/integrations/stt/speechmatics.md) | `speechmatics` |  | Python |
 | [Spitch](https://docs.livekit.io/agents/integrations/stt/spitch.md) | `spitch` |  | Python |
 
@@ -31308,7 +31391,7 @@ The following resources provide more information about using AssemblyAI with Liv
 
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and AssemblyAI.
 
-- **[AssemblyAI LiveKit guide](https://www.assemblyai.com/docs/speech-to-text/universal-streaming/livekit)**: Guide to using AssemblyAI Universal Streaming STT with LiveKit.
+- **[AssemblyAI LiveKit guide](https://www.assemblyai.com/docs/integrations/livekit)**: Guide to using AssemblyAI Universal Streaming STT with LiveKit.
 
 ---
 
@@ -32312,7 +32395,7 @@ This section includes a basic usage example and some reference material. For lin
 Install the LiveKit Mistral AI plugin from PyPI:
 
 ```bash
-pip install livekit-plugins-mistralai
+pip install "livekit-agents[mistralai]~=1.2"
 
 ```
 
@@ -32529,6 +32612,77 @@ The following resources provide more information about using Sarvam with LiveKit
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Sarvam.
 
 - **[Sarvam TTS](https://docs.livekit.io/agents/integrations/tts/sarvam.md)**: Guide to the Sarvam TTS integration with LiveKit Agents.
+
+---
+
+---
+
+## Soniox
+
+Available in:
+- [ ] Node.js
+- [x] Python
+
+## Overview
+
+[Soniox](https://soniox.com/) provides realtime speech recognition. Use the Soniox plugin with LiveKit Agents to build voice agents with fast, accurate transcription.
+
+## Quick reference
+
+This section provides a quick reference for the Soniox STT plugin. For more information, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install livekit-plugins-soniox
+
+```
+
+### Authentication
+
+The Soniox plugin requires an API key from the [Soniox console](https://console.soniox.com/).
+
+Set `SONIOX_API_KEY` in your `.env` file.
+
+### Usage
+
+Use Soniox STT in an `AgentSession` or as a standalone transcription service. For example, you can use this STT in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import soniox
+
+session = AgentSession(
+   stt=soniox.STT(),
+   # ... llm, tts, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/soniox/index.html.md) for a complete list of all available parameters.
+
+- **`model`** _(string)_ (optional) - Default: `stt-rt-preview`: The Soniox STT model to use. See [documentation](https://soniox.com/docs/stt/models) for a complete list of supported models.
+
+- **`context`** _(string)_ (optional) - Default: `None`: Free-form text that provides additional context or vocabulary to bias transcription towards domain-specific terms.
+
+- **`enable_language_identification`** _(boolean)_ (optional) - Default: `true`: When `true`, the Soniox attempts to identify the language of the input audio.
+
+## Additional resources
+
+The following resources provide more information about using Soniox with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-soniox/)**: The `livekit-plugins-soniox` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/soniox/index.html.md)**: Reference for the Soniox STT plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-soniox)**: View the source or contribute to the LiveKit Soniox STT plugin.
+
+- **[Soniox docs](https://soniox.com/docs)**: Soniox's full docs site.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Soniox.
 
 ---
 
@@ -32759,6 +32913,7 @@ All TTS providers support high quality, low-latency, and lifelike multilingual v
 | [Resemble AI](https://docs.livekit.io/agents/integrations/tts/resemble.md) | `resemble` |  | Python |
 | [Rime](https://docs.livekit.io/agents/integrations/tts/rime.md) | `rime` |  | Python |
 | [Sarvam](https://docs.livekit.io/agents/integrations/tts/sarvam.md) | `sarvam` |  | Python |
+| [Smallest AI](https://docs.livekit.io/agents/integrations/tts/smallestai.md) | `smallestai` |  | Python |
 | [Speechify](https://docs.livekit.io/agents/integrations/tts/speechify.md) | `speechify` |  | Python |
 | [Spitch](https://docs.livekit.io/agents/integrations/tts/spitch.md) | `spitch` |  | Python |
 
@@ -34532,6 +34687,85 @@ The following resources provide more information about using Sarvam with LiveKit
 - **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Sarvam.
 
 - **[Sarvam STT](https://docs.livekit.io/agents/integrations/stt/sarvam.md)**: Guide to the Sarvam STT integration with LiveKit Agents.
+
+---
+
+---
+
+## Smallest AI
+
+Available in:
+- [ ] Node.js
+- [x] Python
+
+## Overview
+
+[Smallest AI](https://smallest.ai/text-to-speech) provides a TTS platform called Waves, which turns text into natural-sounding speech. With LiveKit's Smallest AI integration, you can convert text to audio in real time, choose different voices, and control output format and quality for your agents.
+
+To learn more about TTS and generating agent speech, see [Agent speech](https://docs.livekit.io/agents/build/audio.md).
+
+## Quick reference
+
+This section includes a basic usage example and some reference material. For links to more detailed documentation, see [Additional resources](#additional-resources).
+
+### Installation
+
+Install the plugin from PyPI:
+
+```bash
+pip install livekit-plugins-smallestai
+
+```
+
+### Authentication
+
+The Smallest AI plugin requires an [API key](https://console.smallest.ai/apikeys).
+
+Set `SMALLEST_API_KEY` in your `.env` file.
+
+### Usage
+
+Use Smallest AI TTS within an `AgentSession` or as a standalone speech generator. For example, you can use this TTS in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
+
+```python
+from livekit.plugins import smallestai
+
+session = AgentSession(
+    tts=smallestai.TTS(
+        voice_id="irisha",
+        sample_rate=24000,
+        output_format="pcm",
+    ),
+    # ... llm, stt, etc.
+)
+
+```
+
+### Parameters
+
+This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/smallestai/index.html.md) for a complete list of all available parameters.
+
+- **`model`** _(TTSModels | string)_ (optional) - Default: `lightning`: Model to use.
+
+- **`voice_id`** _(string)_ (optional): The voice ID for synthesis. Must be a valid Smallest AI voice identifier.
+
+- **`sample_rate`** _(number)_ (optional) - Default: `24000`: Target audio sample rate in Hz. Match the rate to the rest of your audio pipeline to avoid resampling artifacts.
+
+- **`output_format`** _(TTSOutputFormat | string)_ (optional) - Default: `pcm`: Encoding format for synthesized audio. Select a format based on if you want raw audio for streaming/processing or compressed for storage/playback.
+
+## Additional resources
+
+The following resources provide more information about using Smallest AI with LiveKit Agents.
+
+- **[Python package](https://pypi.org/project/livekit-plugins-smallestai/)**: The `livekit-plugins-smallestai` package on PyPI.
+
+- **[Plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/smallestai/index.html.md)**: Reference for the Smallest AI TTS plugin.
+
+- **[GitHub repo](https://github.com/livekit/agents/tree/main/livekit-plugins/livekit-plugins-smallestai)**: View the source or contribute to the LiveKit Smallest AI TTS plugin.
+
+- **[Smallest AI docs](https://waves-docs.smallest.ai/v3.0.1/content/introduction/introduction)**: Smallest AI's Waves TTS docs.
+
+- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Get started with LiveKit Agents and Smallest AI TTS.
 
 ---
 
@@ -37440,6 +37674,37 @@ func main() {
 
 ---
 
+**Kotlin**:
+
+```kotlin
+import io.livekit.server.SipServiceClient
+import io.livekit.server.CreateSipInboundTrunkOptions
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.createSipInboundTrunk(
+    name = "My inbound trunk",
+    numbers = listOf("+15105550100")
+).execute()
+
+if (!response.isSuccessful) {
+    println(response.errorBody())
+} else {
+    val trunk = response.body()
+
+    if (trunk != null) {
+        println("Created inbound trunk: ${trunk.sipTrunkId}")
+    }
+}
+
+```
+
+---
+
 **LiveKit Cloud**:
 
 1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
@@ -37576,6 +37841,41 @@ trunkInfo := &livekit.SIPInboundTrunkInfo{
 
 ---
 
+**Kotlin**:
+
+```kotlin
+
+import io.livekit.server.SipServiceClient
+import io.livekit.server.CreateSipInboundTrunkOptions
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.createSipInboundTrunk(
+  name = "My inbound trunk",
+  numbers = listOf("+15105550100"),
+  options = CreateSipInboundTrunkOptions(
+    allowedNumbers = listOf("+13105550100", "+17145550100")
+  )
+).execute()
+
+if (!response.isSuccessful) {
+  println(response.errorBody())
+} else {
+  val trunk = response.body()
+
+  if (trunk != null) {
+    println("Created inbound trunk: ${trunk.sipTrunkId}")
+  }
+}
+
+```
+
+---
+
 **LiveKit Cloud**:
 
 1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
@@ -37706,6 +38006,33 @@ func main() {
     fmt.Println(err)
   } else {
     fmt.Println(trunks)
+  }
+}
+
+```
+
+---
+
+**Kotlin**:
+
+```kotlin
+import io.livekit.server.SipServiceClient
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.listSipInboundTrunk().execute()
+
+if (!response.isSuccessful) {
+  println(response.errorBody())
+} else {
+  val trunks = response.body()
+
+  if (trunks != null) {
+    println("Inbound trunks: ${trunks}")
   }
 }
 
@@ -37874,6 +38201,40 @@ func main() {
 
 ---
 
+**Kotlin**:
+
+```kotlin
+import io.livekit.server.SipServiceClient
+import io.livekit.server.UpdateSipInboundTrunkOptions
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.updateSipInboundTrunk(
+    sipTrunkId = trunkId,
+    options = UpdateSipInboundTrunkOptions(
+        name = "My updated trunk",
+        numbers = listOf("+15105550123")
+    )
+).execute()
+
+if (!response.isSuccessful) {
+    println(response.errorBody())
+} else {
+    val trunk = response.body()
+
+    if (trunk != null) {
+        println("Updated inbound trunk: ${trunk}")
+    }
+}
+
+```
+
+---
+
 **LiveKit Cloud**:
 
 Update and replace functions are the same in the LiveKit Cloud dashboard. For an example, see the [replace inbound trunk](#replace-inbound-trunk) section.
@@ -37974,6 +38335,12 @@ To replace the trunk, update the previous example with the following `trunkInfo`
   }
 
 ```
+
+---
+
+**Kotlin**:
+
+Replacing an inbound trunk is not supported in Kotlin.
 
 ---
 
@@ -38190,6 +38557,45 @@ func main() {
   } else {
     fmt.Println(dispatchRule)
   }
+}
+
+```
+
+---
+
+**Kotlin**:
+
+The SIP service client in Kotlin requires the HTTPS URL for the `host` parameter. This is your LIVEKIT_URL with the `wss` scheme replaced with the `https` scheme. For example, `https://<your-subdomain>.livekit.cloud`.
+
+> ℹ️ **Agent dispatch not supported**
+> 
+> Adding a room configuration to a dispatch rule to enable agent dispatch is not supported in Kotlin.
+
+```kotlin
+import io.livekit.server.SipServiceClient
+import io.livekit.server.SIPDispatchRuleIndividual
+import io.livekit.server.CreateSipDispatchRuleOptions
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val rule = SIPDispatchRuleIndividual(
+    roomPrefix = "call-"
+)
+
+val response = sipClient.createSipDispatchRule(
+    rule = rule,
+    options = CreateSipDispatchRuleOptions(
+      name = "My dispatch rule"
+    )
+).execute()
+
+if (response.isSuccessful) {
+    val dispatchRule = response.body()
+    println("Dispatch rule created: ${dispatchRule}")
 }
 
 ```
@@ -38417,6 +38823,43 @@ func main() {
 
 ---
 
+**Kotlin**:
+
+> ℹ️ **Agent dispatch not supported**
+> 
+> Adding a room configuration to a dispatch rule to enable agent dispatch is not supported in Kotlin.
+
+```kotlin
+import io.livekit.server.SipServiceClient
+import io.livekit.server.SIPDispatchRuleDirect
+import io.livekit.server.CreateSipDispatchRuleOptions
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val rule = SIPDispatchRuleDirect(
+    roomName = "open-room"
+)
+
+val response = sipClient.createSipDispatchRule(
+    rule = rule,
+    options = CreateSipDispatchRuleOptions(
+      name = "My dispatch rule"
+    )
+).execute()
+
+if (response.isSuccessful) {
+    val dispatchRule = response.body()
+    println("Dispatch rule created: ${dispatchRule}")
+}
+
+```
+
+---
+
 **LiveKit Cloud**:
 
 1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
@@ -38543,6 +38986,12 @@ For an executable example, replace the rule in the [Direct dispatch rule](#direc
   }
 
 ```
+
+---
+
+**Kotlin**:
+
+Callee dispatch rules can't be created using Kotlin.
 
 ---
 
@@ -38679,6 +39128,12 @@ For an executable example, replace `request` in the [Direct dispatch rule](#dire
 
 ---
 
+**Kotlin**:
+
+Setting participant attributes in dispatch rules is not supported in Kotlin.
+
+---
+
 **LiveKit Cloud**:
 
 1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
@@ -38792,6 +39247,23 @@ For an executable example, replace `request` in the [Direct dispatch rule](#dire
 			Metadata: "{\"is_internal\": true}",
 		},
 	}
+
+```
+
+---
+
+**Kotlin**:
+
+For an executable example, modify the parameters for `CreateSipDispatchRuleOptions` in the [Direct dispatch rule](#direct-dispatch-rule) example to include the `metadata` parameter:
+
+```kotlin
+val response = sipClient.createSipDispatchRule(
+    rule = rule,
+    options = CreateSipDispatchRuleOptions(
+      name = "My dispatch rule",
+      metadata = "{\"is_internal\": true}"
+    )
+).execute()
 
 ```
 
@@ -38981,6 +39453,40 @@ func main() {
 
 ---
 
+**Kotlin**:
+
+The following updates the dispatch rule created in the [Direct dispatch rule](#direct-dispatch-rule) example. To update an individual dispatch rule, pass in a `SIPDispatchRuleIndividual` object instead of a `SIPDispatchRuleDirect` object.
+
+```kotlin
+import io.livekit.server.SipServiceClient
+import io.livekit.server.SIPDispatchRuleDirect
+import io.livekit.server.UpdateSipDispatchRuleOptions
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.updateSipDispatchRule(
+    sipDispatchRuleId = <rule-id>,
+    options = UpdateSipDispatchRuleOptions(
+        name = "My updated dispatch rule",
+        metadata = "{'key1': 'value1', 'key2': 'value2'}",
+        rule = SipDispatchRuleDirect(
+            roomName = "new-room"
+        )
+    )).execute()
+
+if (response.isSuccessful) {
+    val dispatchRule = response.body()
+    println("Dispatch rule updated: ${dispatchRule}")
+}
+
+```
+
+---
+
 **LiveKit Cloud**:
 
 Update and replace functions are the same in the LiveKit Cloud dashboard. For an example, see the [replace dispatch rule](#replace-dispatch-rule) section.
@@ -39148,6 +39654,12 @@ func main() {
 
 ---
 
+**Kotlin**:
+
+Replacing a dispatch rule is not supported in Kotlin.
+
+---
+
 **LiveKit Cloud**:
 
 1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
@@ -39277,6 +39789,28 @@ func main() {
   } else {
     fmt.Println(dispatchRules)
   }
+}
+
+```
+
+---
+
+**Kotlin**:
+
+```kotlin
+import livekit.LivekitSip
+import io.livekit.server.SipServiceClient
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.listSipDispatchRule().execute()
+if (response.isSuccessful) {
+    val dispatchRules = response.body()
+    println("Number of dispatch rules: ${dispatchRules?.size}")
 }
 
 ```
@@ -39751,6 +40285,43 @@ func main() {
 
 ---
 
+**Kotlin**:
+
+```kotlin
+import io.livekit.server.SipServiceClient
+import io.livekit.server.CreateSipOutboundTrunkOptions
+
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.createSipOutboundTrunk(
+    name = "My outbound trunk",
+    address = "sip.telnyx.com",
+    numbers = listOf("+16265550100"),
+    options = CreateSipOutboundTrunkOptions(
+        authUsername = "username",
+        authPassword = "password"
+    )
+).execute()
+
+if (!response.isSuccessful) {
+    println(response.errorBody())
+} else {
+    val trunk = response.body()
+
+    if (trunk != null) {
+        println("Created outbound trunk: ${trunk.sipTrunkId}")
+    }
+}
+
+```
+
+---
+
 **LiveKit Cloud**:
 
 1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
@@ -39947,6 +40518,33 @@ func main() {
 
 ---
 
+**Kotlin**:
+
+```kotlin
+import io.livekit.server.SipServiceClient
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.listSipOutboundTrunk().execute()
+
+if (!response.isSuccessful) {
+  println(response.errorBody())
+} else {
+  val trunks = response.body()
+
+  if (trunks != null) {
+    println("Outbound trunks: ${trunks}")
+  }
+}
+
+```
+
+---
+
 **LiveKit Cloud**:
 
 1. Sign in to the **LiveKit Cloud** [dashboard](https://cloud.livekit.io/).
@@ -40131,6 +40729,43 @@ func main() {
 
 ---
 
+**Kotlin**:
+
+```kotlin
+import io.livekit.server.SipServiceClient
+import io.livekit.server.UpdateSipOutboundTrunkOptions
+
+val sipClient = SipServiceClient.createClient(
+  host = System.getenv("LIVEKIT_URL").replaceFirst(Regex("^ws"), "http"),
+  apiKey = System.getenv("LIVEKIT_API_KEY"),
+  secret = System.getenv("LIVEKIT_API_SECRET")
+)
+
+val response = sipClient.updateSipOutboundTrunk(
+    sipTrunkId = trunkId,
+    options = UpdateSipOutboundTrunkOptions(
+        name = "My updated outbound trunk",
+        numbers = listOf("+16265550100")
+        metadata = "{'key1': 'value1', 'key2': 'value2'}",
+        authUsername = "updated-username",
+        authPassword = "updated-password"
+    )
+).execute()
+
+if (!response.isSuccessful) {
+    println(response.errorBody())
+} else {
+    val trunk = response.body()
+
+    if (trunk != null) {
+        println("Updated outbound trunk: ${trunk}")
+    }
+}
+
+```
+
+---
+
 **LiveKit Cloud**:
 
 Update and replace functions are the same in the LiveKit Cloud dashboard. For an example, see the [replace an outbound trunk](#replace-trunk) section.
@@ -40234,6 +40869,12 @@ To replace a trunk, use the previous example with the following `trunkInfo` and 
   }
 
 ```
+
+---
+
+**Kotlin**:
+
+Replacing an outbound trunk is not supported in Kotlin.
 
 ---
 
@@ -42068,6 +42709,7 @@ Returns [SIPParticipantInfo](#sipparticipantinfo)
 | krisp_enabled | bool |  | True to enable [Krisp noise cancellation](https://docs.livekit.io/sip.md#noise-cancellation-for-calls) for the callee. |
 | media_encryption | [SIPMediaEncryption](#sipmediaencryption) |  | Whether or not to encrypt media. |
 | wait_until_answered | bool |  | If true, return after the call is answered — including if it goes to voicemail. |
+| display_name | string |  | Optional display name for the caller's number. If empty, results in a CNAM lookup by destination carrier. If ommitted, defaults to caller's number. |
 
 ### DeleteSIPDispatchRule
 
@@ -42465,5 +43107,5 @@ Check with your SIP trunking provider and verify you're using the correct SIP en
 
 ---
 
-This document was rendered at 2025-09-23T16:20:15.409Z.
+This document was rendered at 2025-09-29T19:20:59.540Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

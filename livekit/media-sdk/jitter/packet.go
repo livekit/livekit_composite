@@ -21,11 +21,10 @@ import (
 )
 
 type packet struct {
-	received   time.Time
+	extPacket  ExtPacket
 	prev, next *packet
 	start, end bool
 	discont    bool
-	packet     *rtp.Packet
 }
 
 func (b *Buffer) newPacket(pkt *rtp.Packet) *packet {
@@ -37,12 +36,11 @@ func (b *Buffer) newPacket(pkt *rtp.Packet) *packet {
 	}
 	b.pool = p.next
 
-	p.received = time.Now()
 	p.prev = nil
 	p.next = nil
 	p.start = b.depacketizer.IsPartitionHead(pkt.Payload)
 	p.end = b.depacketizer.IsPartitionTail(pkt.Marker, pkt.Payload)
-	p.packet = pkt
+	p.extPacket = ExtPacket{time.Now(), pkt}
 
 	return p
 }
@@ -57,7 +55,7 @@ func (p *packet) isComplete() bool {
 	}
 
 	for c := p; c.next != nil; c = c.next {
-		if c.next.packet.SequenceNumber != c.packet.SequenceNumber+1 {
+		if c.next.extPacket.SequenceNumber != c.extPacket.SequenceNumber+1 {
 			return false
 		}
 		if c.next.end {
@@ -72,7 +70,7 @@ func (b *Buffer) free(pkt *packet) {
 	b.size--
 
 	pkt.prev = nil
-	pkt.packet = nil
+	pkt.extPacket = ExtPacket{}
 	pkt.next = b.pool
 
 	b.pool = pkt

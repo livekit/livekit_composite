@@ -10,6 +10,7 @@ import (
 	"github.com/livekit/livekit-server/pkg/sfu"
 	"github.com/livekit/livekit-server/pkg/sfu/buffer"
 	"github.com/livekit/livekit-server/pkg/sfu/pacer"
+	"github.com/livekit/livekit-server/pkg/telemetry"
 	"github.com/livekit/protocol/auth"
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
@@ -940,6 +941,13 @@ type FakeLocalParticipant struct {
 	onUpdateSubscriptionsArgsForCall []struct {
 		arg1 func(types.LocalParticipant, []livekit.TrackID, []*livekit.ParticipantTracks, bool)
 	}
+	PerformRpcStub        func(*livekit.PerformRpcRequest, chan string, chan error)
+	performRpcMutex       sync.RWMutex
+	performRpcArgsForCall []struct {
+		arg1 *livekit.PerformRpcRequest
+		arg2 chan string
+		arg3 chan error
+	}
 	ProtocolVersionStub        func() types.ProtocolVersion
 	protocolVersionMutex       sync.RWMutex
 	protocolVersionArgsForCall []struct {
@@ -1249,6 +1257,16 @@ type FakeLocalParticipant struct {
 	}
 	supportsTransceiverReuseReturnsOnCall map[int]struct {
 		result1 bool
+	}
+	TelemetryGuardStub        func() *telemetry.ReferenceGuard
+	telemetryGuardMutex       sync.RWMutex
+	telemetryGuardArgsForCall []struct {
+	}
+	telemetryGuardReturns struct {
+		result1 *telemetry.ReferenceGuard
+	}
+	telemetryGuardReturnsOnCall map[int]struct {
+		result1 *telemetry.ReferenceGuard
 	}
 	ToProtoStub        func() *livekit.ParticipantInfo
 	toProtoMutex       sync.RWMutex
@@ -6413,6 +6431,40 @@ func (fake *FakeLocalParticipant) OnUpdateSubscriptionsArgsForCall(i int) func(t
 	return argsForCall.arg1
 }
 
+func (fake *FakeLocalParticipant) PerformRpc(arg1 *livekit.PerformRpcRequest, arg2 chan string, arg3 chan error) {
+	fake.performRpcMutex.Lock()
+	fake.performRpcArgsForCall = append(fake.performRpcArgsForCall, struct {
+		arg1 *livekit.PerformRpcRequest
+		arg2 chan string
+		arg3 chan error
+	}{arg1, arg2, arg3})
+	stub := fake.PerformRpcStub
+	fake.recordInvocation("PerformRpc", []interface{}{arg1, arg2, arg3})
+	fake.performRpcMutex.Unlock()
+	if stub != nil {
+		fake.PerformRpcStub(arg1, arg2, arg3)
+	}
+}
+
+func (fake *FakeLocalParticipant) PerformRpcCallCount() int {
+	fake.performRpcMutex.RLock()
+	defer fake.performRpcMutex.RUnlock()
+	return len(fake.performRpcArgsForCall)
+}
+
+func (fake *FakeLocalParticipant) PerformRpcCalls(stub func(*livekit.PerformRpcRequest, chan string, chan error)) {
+	fake.performRpcMutex.Lock()
+	defer fake.performRpcMutex.Unlock()
+	fake.PerformRpcStub = stub
+}
+
+func (fake *FakeLocalParticipant) PerformRpcArgsForCall(i int) (*livekit.PerformRpcRequest, chan string, chan error) {
+	fake.performRpcMutex.RLock()
+	defer fake.performRpcMutex.RUnlock()
+	argsForCall := fake.performRpcArgsForCall[i]
+	return argsForCall.arg1, argsForCall.arg2, argsForCall.arg3
+}
+
 func (fake *FakeLocalParticipant) ProtocolVersion() types.ProtocolVersion {
 	fake.protocolVersionMutex.Lock()
 	ret, specificReturn := fake.protocolVersionReturnsOnCall[len(fake.protocolVersionArgsForCall)]
@@ -8117,6 +8169,59 @@ func (fake *FakeLocalParticipant) SupportsTransceiverReuseReturnsOnCall(i int, r
 	}
 	fake.supportsTransceiverReuseReturnsOnCall[i] = struct {
 		result1 bool
+	}{result1}
+}
+
+func (fake *FakeLocalParticipant) TelemetryGuard() *telemetry.ReferenceGuard {
+	fake.telemetryGuardMutex.Lock()
+	ret, specificReturn := fake.telemetryGuardReturnsOnCall[len(fake.telemetryGuardArgsForCall)]
+	fake.telemetryGuardArgsForCall = append(fake.telemetryGuardArgsForCall, struct {
+	}{})
+	stub := fake.TelemetryGuardStub
+	fakeReturns := fake.telemetryGuardReturns
+	fake.recordInvocation("TelemetryGuard", []interface{}{})
+	fake.telemetryGuardMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeLocalParticipant) TelemetryGuardCallCount() int {
+	fake.telemetryGuardMutex.RLock()
+	defer fake.telemetryGuardMutex.RUnlock()
+	return len(fake.telemetryGuardArgsForCall)
+}
+
+func (fake *FakeLocalParticipant) TelemetryGuardCalls(stub func() *telemetry.ReferenceGuard) {
+	fake.telemetryGuardMutex.Lock()
+	defer fake.telemetryGuardMutex.Unlock()
+	fake.TelemetryGuardStub = stub
+}
+
+func (fake *FakeLocalParticipant) TelemetryGuardReturns(result1 *telemetry.ReferenceGuard) {
+	fake.telemetryGuardMutex.Lock()
+	defer fake.telemetryGuardMutex.Unlock()
+	fake.TelemetryGuardStub = nil
+	fake.telemetryGuardReturns = struct {
+		result1 *telemetry.ReferenceGuard
+	}{result1}
+}
+
+func (fake *FakeLocalParticipant) TelemetryGuardReturnsOnCall(i int, result1 *telemetry.ReferenceGuard) {
+	fake.telemetryGuardMutex.Lock()
+	defer fake.telemetryGuardMutex.Unlock()
+	fake.TelemetryGuardStub = nil
+	if fake.telemetryGuardReturnsOnCall == nil {
+		fake.telemetryGuardReturnsOnCall = make(map[int]struct {
+			result1 *telemetry.ReferenceGuard
+		})
+	}
+	fake.telemetryGuardReturnsOnCall[i] = struct {
+		result1 *telemetry.ReferenceGuard
 	}{result1}
 }
 

@@ -112,6 +112,26 @@ func (s *azureBLOBStorage) UploadFile(filepath, storagePath, contentType string)
 	return fmt.Sprintf("%s/%s", s.container, storagePath), stat.Size(), nil
 }
 
+func (s *azureBLOBStorage) ListObjects(prefix string) ([]string, error) {
+	var objects []string
+
+	for marker := (azblob.Marker{}); marker.NotDone(); {
+		listBlob, err := s.containerUrl.ListBlobsFlatSegment(context.Background(), marker, azblob.ListBlobsSegmentOptions{
+			Prefix: prefix,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		marker = listBlob.NextMarker
+		for _, blobInfo := range listBlob.Segment.BlobItems {
+			objects = append(objects, blobInfo.Name)
+		}
+	}
+
+	return objects, nil
+}
+
 func (s *azureBLOBStorage) DownloadData(storagePath string) ([]byte, error) {
 	b := make([]byte, 0)
 

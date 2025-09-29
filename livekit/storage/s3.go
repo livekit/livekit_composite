@@ -242,6 +242,31 @@ func (s *s3Storage) upload(reader io.Reader, storagePath, contentType string) (s
 	return location, nil
 }
 
+func (s *s3Storage) ListObjects(prefix string) ([]string, error) {
+	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
+		o.UsePathStyle = s.conf.ForcePathStyle
+	})
+
+	var objects []string
+	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.conf.Bucket),
+		Prefix: aws.String(prefix),
+	})
+
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(context.Background())
+		if err != nil {
+			return nil, err
+		}
+
+		for _, obj := range page.Contents {
+			objects = append(objects, *obj.Key)
+		}
+	}
+
+	return objects, nil
+}
+
 func (s *s3Storage) DownloadData(storagePath string) ([]byte, error) {
 	w := &manager.WriteAtBuffer{}
 	_, err := s.download(w, storagePath)

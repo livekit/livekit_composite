@@ -32,6 +32,7 @@ import (
 	"github.com/livekit/livekit-server/pkg/sfu/buffer"
 	"github.com/livekit/livekit-server/pkg/sfu/mime"
 	"github.com/livekit/livekit-server/pkg/sfu/pacer"
+	"github.com/livekit/livekit-server/pkg/telemetry"
 
 	"google.golang.org/protobuf/proto"
 )
@@ -353,6 +354,7 @@ type LocalParticipantHelper interface {
 type LocalParticipant interface {
 	Participant
 
+	TelemetryGuard() *telemetry.ReferenceGuard
 	ToProtoWithVersion() (*livekit.ParticipantInfo, utils.TimedVersion)
 
 	// getters
@@ -541,6 +543,8 @@ type LocalParticipant interface {
 	HandleLeaveRequest(reason ParticipantCloseReason)
 
 	HandleSignalMessage(msg proto.Message) error
+
+	PerformRpc(req *livekit.PerformRpcRequest, resultCh chan string, errorCh chan error)
 }
 
 // Room is a container of participants, and can provide room-level actions

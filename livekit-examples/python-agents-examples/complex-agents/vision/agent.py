@@ -15,9 +15,6 @@ demonstrates:
 ---
 """
 
-## This is a basic example of how to use function calling.
-## To test the function, you can ask the agent to print to the console!
-
 import asyncio
 import logging
 from pathlib import Path

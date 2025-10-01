@@ -17,6 +17,7 @@ package storage_test
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -167,6 +168,12 @@ func testStorage(t *testing.T, s storage.Storage) {
 	require.NoError(t, err)
 	require.Equal(t, int64(len(data)), size)
 	require.NotEmpty(t, url)
+
+	// list
+	items, err := s.ListObjects("test")
+	require.NoError(t, err)
+	require.Len(t, items, 1)
+	require.True(t, strings.HasSuffix(items[0], storagePath))
 
 	// download
 	downloaded, err := s.DownloadData(storagePath)

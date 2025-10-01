@@ -22,6 +22,9 @@ class AudioEngineAvailabilityTests: LKTestCase {
     // Check if audio engine will stop when availability is set to .none,
     // then resume (restart) when availability is set back to .default.
     func testRecording() async throws {
+        // Test without enabling VP
+        try AudioManager.shared.setVoiceProcessingEnabled(false)
+
         // First check
         XCTAssertFalse(AudioManager.shared.isEngineRunning)
 

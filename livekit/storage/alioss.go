@@ -68,6 +68,28 @@ func (s *aliOSSStorage) UploadFile(filepath, storagePath, _ string) (string, int
 	return fmt.Sprintf("https://%s.%s/%s", s.conf.Bucket, s.conf.Endpoint, storagePath), info.Size(), nil
 }
 
+func (s *aliOSSStorage) ListObjects(prefix string) ([]string, error) {
+	var objects []string
+	marker := oss.Marker("")
+	for {
+		lor, err := s.bucket.ListObjects(oss.Prefix(prefix), marker)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, object := range lor.Objects {
+			objects = append(objects, object.Key)
+		}
+
+		if !lor.IsTruncated {
+			break
+		}
+		marker = oss.Marker(lor.NextMarker)
+	}
+
+	return objects, nil
+}
+
 func (s *aliOSSStorage) DownloadData(storagePath string) ([]byte, error) {
 	reader, err := s.bucket.GetObject(storagePath)
 	if err != nil {

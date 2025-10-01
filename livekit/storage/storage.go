@@ -20,6 +20,8 @@ type Storage interface {
 	UploadData(data []byte, storagePath, contentType string) (location string, size int64, err error)
 	UploadFile(filepath, storagePath, contentType string) (location string, size int64, err error)
 
+	ListObjects(prefix string) ([]string, error)
+
 	DownloadData(storagePath string) (data []byte, err error)
 	DownloadFile(filepath, storagePath string) (size int64, err error)
 

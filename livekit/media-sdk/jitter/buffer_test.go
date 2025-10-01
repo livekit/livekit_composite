@@ -26,8 +26,8 @@ import (
 
 const testBufferLatency = 800 * time.Millisecond
 
-func chanFunc(t testing.TB, out chan<- []*rtp.Packet) PacketFunc {
-	return func(packets []*rtp.Packet) {
+func chanFunc(t testing.TB, out chan<- []ExtPacket) PacketFunc {
+	return func(packets []ExtPacket) {
 		select {
 		case out <- packets:
 		default:
@@ -37,7 +37,7 @@ func chanFunc(t testing.TB, out chan<- []*rtp.Packet) PacketFunc {
 }
 
 func TestJitterBuffer(t *testing.T) {
-	out := make(chan []*rtp.Packet, 100)
+	out := make(chan []ExtPacket, 100)
 	b := NewBuffer(&testDepacketizer{}, testBufferLatency, chanFunc(t, out))
 	s := newTestStream()
 
@@ -57,7 +57,7 @@ func TestJitterBuffer(t *testing.T) {
 }
 
 func TestSamples(t *testing.T) {
-	out := make(chan []*rtp.Packet, 100)
+	out := make(chan []ExtPacket, 100)
 	b := NewBuffer(&testDepacketizer{}, testBufferLatency, chanFunc(t, out))
 	s := newTestStream()
 
@@ -80,7 +80,7 @@ func TestSamples(t *testing.T) {
 }
 
 func TestJitter(t *testing.T) {
-	out := make(chan []*rtp.Packet, 100)
+	out := make(chan []ExtPacket, 100)
 	b := NewBuffer(&testDepacketizer{}, testBufferLatency, chanFunc(t, out))
 	s := newTestStream()
 
@@ -114,7 +114,7 @@ func TestJitter(t *testing.T) {
 }
 
 func TestDiscontinuity(t *testing.T) {
-	out := make(chan []*rtp.Packet, 100)
+	out := make(chan []ExtPacket, 100)
 	b := NewBuffer(&testDepacketizer{}, testBufferLatency, chanFunc(t, out))
 	s := newTestStream()
 
@@ -139,7 +139,7 @@ func TestDiscontinuity(t *testing.T) {
 }
 
 func TestLostPackets(t *testing.T) {
-	out := make(chan []*rtp.Packet, 100)
+	out := make(chan []ExtPacket, 100)
 	b := NewBuffer(&testDepacketizer{}, testBufferLatency, chanFunc(t, out))
 	s := newTestStream()
 
@@ -173,7 +173,7 @@ func TestLostPackets(t *testing.T) {
 }
 
 func TestDroppedPackets(t *testing.T) {
-	out := make(chan []*rtp.Packet, 100)
+	out := make(chan []ExtPacket, 100)
 	b := NewBuffer(&testDepacketizer{}, testBufferLatency, chanFunc(t, out))
 	s := newTestStream()
 
@@ -232,7 +232,7 @@ func TestDroppedPackets(t *testing.T) {
 	})
 }
 
-func checkSample(t *testing.T, out chan []*rtp.Packet, expected int) {
+func checkSample(t *testing.T, out chan []ExtPacket, expected int) {
 	select {
 	case sample := <-out:
 		if expected == 0 {

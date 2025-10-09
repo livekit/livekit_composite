@@ -1141,7 +1141,7 @@ class AgentActivity(RecognitionHooks):
 
     # region recognition hooks
 
-    def on_start_of_speech(self, ev: vad.VADEvent) -> None:
+    def on_start_of_speech(self, ev: vad.VADEvent | None) -> None:
         self._session._update_user_state("speaking")
 
         if self._false_interruption_timer:
@@ -1149,10 +1149,13 @@ class AgentActivity(RecognitionHooks):
             self._false_interruption_timer.cancel()
             self._false_interruption_timer = None
 
-    def on_end_of_speech(self, ev: vad.VADEvent) -> None:
+    def on_end_of_speech(self, ev: vad.VADEvent | None) -> None:
+        speech_end_time = time.time()
+        if ev:
+            speech_end_time = speech_end_time - ev.silence_duration
         self._session._update_user_state(
             "listening",
-            last_speaking_time=time.time() - ev.silence_duration,
+            last_speaking_time=speech_end_time,
         )
 
         if (
@@ -2289,6 +2292,18 @@ class AgentActivity(RecognitionHooks):
                 draining = True
 
             if len(new_fnc_outputs) > 0:
+                # wait all speeches played before updating the tool output and generating the response
+                # most realtime models dont't support generating multiple responses at the same time
+                while self._current_speech or self._speech_q:
+                    if (
+                        self._current_speech
+                        and not self._current_speech.done()
+                        and self._current_speech is not speech_handle
+                    ):
+                        await self._current_speech
+                    else:
+                        await asyncio.sleep(0)
+
                 chat_ctx = self._rt_session.chat_ctx.copy()
                 chat_ctx.items.extend(new_fnc_outputs)
                 try:

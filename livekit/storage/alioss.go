@@ -117,6 +117,11 @@ func (s *aliOSSStorage) GeneratePresignedUrl(storagePath string, expiration time
 	return s.bucket.SignURL(storagePath, oss.HTTPGet, int64(expiration.Seconds()))
 }
 
-func (s *aliOSSStorage) Delete(storagePath string) error {
+func (s *aliOSSStorage) DeleteObject(storagePath string) error {
 	return s.bucket.DeleteObject(storagePath)
+}
+
+func (s *aliOSSStorage) DeleteObjects(storagePaths []string) error {
+	_, err := s.bucket.DeleteObjects(storagePaths)
+	return err
 }

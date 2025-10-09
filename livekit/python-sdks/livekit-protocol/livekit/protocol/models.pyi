@@ -13,6 +13,7 @@ class AudioCodec(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     DEFAULT_AC: _ClassVar[AudioCodec]
     OPUS: _ClassVar[AudioCodec]
     AAC: _ClassVar[AudioCodec]
+    AC_MP3: _ClassVar[AudioCodec]
 
 class VideoCodec(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
@@ -112,6 +113,7 @@ class AudioTrackFeature(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
 DEFAULT_AC: AudioCodec
 OPUS: AudioCodec
 AAC: AudioCodec
+AC_MP3: AudioCodec
 DEFAULT_VC: VideoCodec
 H264_BASELINE: VideoCodec
 H264_MAIN: VideoCodec
@@ -188,15 +190,16 @@ class TokenPagination(_message.Message):
     def __init__(self, token: _Optional[str] = ...) -> None: ...
 
 class ListUpdate(_message.Message):
-    __slots__ = ("set", "add", "clear")
+    __slots__ = ("set", "add", "remove", "clear")
     SET_FIELD_NUMBER: _ClassVar[int]
     ADD_FIELD_NUMBER: _ClassVar[int]
-    DEL_FIELD_NUMBER: _ClassVar[int]
+    REMOVE_FIELD_NUMBER: _ClassVar[int]
     CLEAR_FIELD_NUMBER: _ClassVar[int]
     set: _containers.RepeatedScalarFieldContainer[str]
     add: _containers.RepeatedScalarFieldContainer[str]
+    remove: _containers.RepeatedScalarFieldContainer[str]
     clear: bool
-    def __init__(self, set: _Optional[_Iterable[str]] = ..., add: _Optional[_Iterable[str]] = ..., clear: bool = ..., **kwargs) -> None: ...
+    def __init__(self, set: _Optional[_Iterable[str]] = ..., add: _Optional[_Iterable[str]] = ..., remove: _Optional[_Iterable[str]] = ..., clear: bool = ...) -> None: ...
 
 class Room(_message.Message):
     __slots__ = ("sid", "name", "empty_timeout", "departure_timeout", "max_participants", "creation_time", "creation_time_ms", "turn_password", "enabled_codecs", "metadata", "num_participants", "num_publishers", "active_recording", "version")
@@ -420,9 +423,11 @@ class VideoLayer(_message.Message):
         MODE_UNUSED: _ClassVar[VideoLayer.Mode]
         ONE_SPATIAL_LAYER_PER_STREAM: _ClassVar[VideoLayer.Mode]
         MULTIPLE_SPATIAL_LAYERS_PER_STREAM: _ClassVar[VideoLayer.Mode]
+        ONE_SPATIAL_LAYER_PER_STREAM_INCOMPLETE_RTCP_SR: _ClassVar[VideoLayer.Mode]
     MODE_UNUSED: VideoLayer.Mode
     ONE_SPATIAL_LAYER_PER_STREAM: VideoLayer.Mode
     MULTIPLE_SPATIAL_LAYERS_PER_STREAM: VideoLayer.Mode
+    ONE_SPATIAL_LAYER_PER_STREAM_INCOMPLETE_RTCP_SR: VideoLayer.Mode
     QUALITY_FIELD_NUMBER: _ClassVar[int]
     WIDTH_FIELD_NUMBER: _ClassVar[int]
     HEIGHT_FIELD_NUMBER: _ClassVar[int]
@@ -1064,3 +1069,11 @@ class WebhookConfig(_message.Message):
     url: str
     signing_key: str
     def __init__(self, url: _Optional[str] = ..., signing_key: _Optional[str] = ...) -> None: ...
+
+class SubscribedAudioCodec(_message.Message):
+    __slots__ = ("codec", "enabled")
+    CODEC_FIELD_NUMBER: _ClassVar[int]
+    ENABLED_FIELD_NUMBER: _ClassVar[int]
+    codec: str
+    enabled: bool
+    def __init__(self, codec: _Optional[str] = ..., enabled: bool = ...) -> None: ...

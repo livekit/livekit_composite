@@ -33,12 +33,9 @@
     "typescript-eslint": "^8.41.0"
   },
   "dependencies": {
-    "@livekit/agents": "^1.0.0",
-    "@livekit/agents-plugin-cartesia": "^1.0.0",
-    "@livekit/agents-plugin-deepgram": "^1.0.0",
-    "@livekit/agents-plugin-livekit": "^1.0.0",
-    "@livekit/agents-plugin-openai": "^1.0.0",
-    "@livekit/agents-plugin-silero": "^1.0.0",
+    "@livekit/agents": "^1.0.10",
+    "@livekit/agents-plugin-livekit": "^1.0.10",
+    "@livekit/agents-plugin-silero": "^1.0.10",
     "@livekit/noise-cancellation-node": "^0.1.9",
     "dotenv": "^17.2.1",
     "zod": "^3.25.76"

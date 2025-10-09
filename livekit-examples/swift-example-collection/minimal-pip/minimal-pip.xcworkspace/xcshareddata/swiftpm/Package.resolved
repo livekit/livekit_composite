@@ -1,4 +1,5 @@
 {
+  "originHash" : "40c308a98343bbebbe392a08675c70f8f8cffcc0e78842b91f698ccda993d8d2",
   "pins" : [
     {
       "identity" : "jwt-kit",
@@ -7,6 +8,15 @@
       "state" : {
         "revision" : "c2595b9ad7f512d7f334830b4df1fed6e917946a",
         "version" : "4.13.4"
+      }
+    },
+    {
+      "identity" : "swift-collections",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-collections.git",
+      "state" : {
+        "revision" : "8c0c0a8b49e080e54e5e328cc552821ff07cd341",
+        "version" : "1.2.1"
       }
     },
     {
@@ -41,8 +51,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-log.git",
       "state" : {
-        "revision" : "e97a6fcb1ab07462881ac165fdbb37f067e205d5",
-        "version" : "1.5.4"
+        "revision" : "ce592ae52f982c847a4efc0dd881cc9eb32d29f2",
+        "version" : "1.6.4"
       }
     },
     {
@@ -50,8 +60,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-protobuf.git",
       "state" : {
-        "revision" : "9f0c76544701845ad98716f3f6a774a892152bcb",
-        "version" : "1.26.0"
+        "revision" : "2547102afd04fe49f1b286090f13ebce07284980",
+        "version" : "1.31.1"
       }
     },
     {
@@ -59,10 +69,10 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/livekit/webrtc-xcframework.git",
       "state" : {
-        "revision" : "e43fe60fddd27e2d88ba0568ac2a2a15591b3063",
-        "version" : "125.6422.11"
+        "revision" : "26be1457f076237df4d42c15c3bc23b0841d3c21",
+        "version" : "137.7151.9"
       }
     }
   ],
-  "version" : 2
+  "version" : 3
 }

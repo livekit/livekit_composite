@@ -18,7 +18,7 @@ import logging
 from dotenv import load_dotenv
 from livekit.agents import JobContext, WorkerOptions, cli
 from livekit.agents.voice import Agent, AgentSession
-from livekit.plugins import deepgram, openai
+from livekit.plugins import silero
 from livekit import rtc
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / '.env')
@@ -33,9 +33,10 @@ class InterruptUserAgent(Agent):
             instructions="""
                 You are a helpful assistant communicating through voice who will interrupt the user if they try to say more than one sentence.
             """,
-            stt=deepgram.STT(),
-            llm=openai.LLM(model="gpt-4o"),
-            tts=openai.TTS(),
+            stt="assemblyai/universal-streaming",
+            llm="openai/gpt-4.1-mini",
+            tts="cartesia/sonic-2:6f84f4b8-58a2-430c-8c79-688dad597532",
+            vad=silero.VAD.load(),
             allow_interruptions=False
         )
         self.text_buffer = ""
@@ -72,7 +73,7 @@ class InterruptUserAgent(Agent):
                 yield event
 
         return process_stream()
-    
+
     async def on_enter(self):
         self.session.say("I'll interrupt you after 1 sentence.")
 

@@ -1,10 +1,38 @@
 # @livekit/agents
 
-## 1.1.0
+## 1.0.10
 
-### Minor Changes
+### Patch Changes
 
-- Add LiveKit gateway model integrations - [#694](https://github.com/livekit/agents-js/pull/694) ([@toubatbrian](https://github.com/toubatbrian))
+- Ensure tool calls are not aborted when preamble text forwarding stops. It refines the execution flow so that cleanup of preamble forwarders does not propagate an abort to in-flight tool executions. - [#756](https://github.com/livekit/agents-js/pull/756) ([@jjsquillante](https://github.com/jjsquillante))
+
+## 1.0.9
+
+### Patch Changes
+
+- Wait for all speech playouts inside tool before tool reply in realtime model - [#753](https://github.com/livekit/agents-js/pull/753) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.8
+
+### Patch Changes
+
+- Fix inference gateway LLM to allow not passing OPENAI_API_KEY - [#743](https://github.com/livekit/agents-js/pull/743) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.7
+
+### Patch Changes
+
+- Support using 'lang/\*' format for defining gateway STT - [#728](https://github.com/livekit/agents-js/pull/728) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Update LLM inference gateway model names - [#742](https://github.com/livekit/agents-js/pull/742) ([@toubatbrian](https://github.com/toubatbrian))
+
+- update comments on room io configs - [#739](https://github.com/livekit/agents-js/pull/739) ([@Shubhrakanti](https://github.com/Shubhrakanti))
+
+- fix docstrings - [#740](https://github.com/livekit/agents-js/pull/740) ([@Shubhrakanti](https://github.com/Shubhrakanti))
+
+- update UserInputTranscribedEvent with language - [#741](https://github.com/livekit/agents-js/pull/741) ([@Shubhrakanti](https://github.com/Shubhrakanti))
+
+- Add LiveKit gateway model integrations - [#734](https://github.com/livekit/agents-js/pull/734) ([@toubatbrian](https://github.com/toubatbrian))
 
 ## 1.0.6
 

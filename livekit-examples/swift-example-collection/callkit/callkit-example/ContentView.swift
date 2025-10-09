@@ -63,7 +63,7 @@ struct ContentView: View {
 
                     HStack {
                         HStack(spacing: 8) {
-                            Image(systemName: "phone.badge")
+                            Image(systemName: "phone.circle")
                                 .foregroundColor(.blue)
                             Text("Call ID")
                                 .fontWeight(.medium)
@@ -179,6 +179,8 @@ struct ContentView: View {
             return "network"
         case .reconnecting:
             return "arrow.triangle.2.circlepath"
+        case .disconnecting:
+            return "arrow.down.circle"
         @unknown default:
             return "questionmark.circle"
         }
@@ -194,6 +196,8 @@ struct ContentView: View {
             return .green
         case .reconnecting:
             return .blue
+        case .disconnecting:
+            return .orange
         @unknown default:
             return .gray
         }

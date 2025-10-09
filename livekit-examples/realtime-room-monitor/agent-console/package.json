@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@livekit/components-core": "^0.12.10",
     "@livekit/components-react": "^2.8.1",
     "@livekit/components-styles": "^1.1.4",
     "@livekit/krisp-noise-filter": "^0.2.16",

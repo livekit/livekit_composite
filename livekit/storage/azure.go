@@ -207,8 +207,17 @@ func (s *azureBLOBStorage) GeneratePresignedUrl(storagePath string, expiration t
 	return fmt.Sprintf("https://%s.blob.core.windows.net?%s", s.conf.AccountName, qp.Encode()), nil
 }
 
-func (s *azureBLOBStorage) Delete(storagePath string) error {
+func (s *azureBLOBStorage) DeleteObject(storagePath string) error {
 	blobUrl := s.containerUrl.NewBlobURL(storagePath)
 	_, err := blobUrl.Delete(context.Background(), azblob.DeleteSnapshotsOptionNone, azblob.BlobAccessConditions{})
 	return err
+}
+
+func (s *azureBLOBStorage) DeleteObjects(storagePaths []string) error {
+	for _, path := range storagePaths {
+		if err := s.DeleteObject(path); err != nil {
+			return err
+		}
+	}
+	return nil
 }

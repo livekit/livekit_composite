@@ -4,46 +4,45 @@ import {
   WorkerOptions,
   cli,
   defineAgent,
-  llm,
   metrics,
   voice,
 } from '@livekit/agents';
-import * as cartesia from '@livekit/agents-plugin-cartesia';
-import * as deepgram from '@livekit/agents-plugin-deepgram';
 import * as livekit from '@livekit/agents-plugin-livekit';
-import * as openai from '@livekit/agents-plugin-openai';
 import * as silero from '@livekit/agents-plugin-silero';
 import { BackgroundVoiceCancellation } from '@livekit/noise-cancellation-node';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'node:url';
-import { z } from 'zod';
 
 dotenv.config({ path: '.env.local' });
 
 class Assistant extends voice.Agent {
   constructor() {
     super({
-      instructions: `You are a helpful voice AI assistant.
+      instructions: `You are a helpful voice AI assistant. The user is interacting with you via voice, even if you perceive the conversation as text.
       You eagerly assist users with their questions by providing information from your extensive knowledge.
       Your responses are concise, to the point, and without any complex formatting or punctuation including emojis, asterisks, or other symbols.
       You are curious, friendly, and have a sense of humor.`,
-      tools: {
-        getWeather: llm.tool({
-          description: `Use this tool to look up current weather information in the given location.
 
-          If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.`,
-          parameters: z.object({
-            location: z
-              .string()
-              .describe('The location to look up weather information for (e.g. city name)'),
-          }),
-          execute: async ({ location }) => {
-            console.log(`Looking up weather for ${location}`);
-
-            return 'sunny with a temperature of 70 degrees.';
-          },
-        }),
-      },
+      // To add tools, specify `tools` in the constructor.
+      // Here's an example that adds a simple weather tool.
+      // You also have to add `import { llm } from '@livekit/agents' and `import { z } from 'zod'` to the top of this file
+      // tools: {
+      //   getWeather: llm.tool({
+      //     description: `Use this tool to look up current weather information in the given location.
+      //
+      //     If the location is not supported by the weather service, the tool will indicate this. You must tell the user the location's weather is unavailable.`,
+      //     parameters: z.object({
+      //       location: z
+      //         .string()
+      //         .describe('The location to look up weather information for (e.g. city name)'),
+      //     }),
+      //     execute: async ({ location }) => {
+      //       console.log(`Looking up weather for ${location}`);
+      //
+      //       return 'sunny with a temperature of 70 degrees.';
+      //     },
+      //   }),
+      // },
     });
   }
 }
@@ -53,28 +52,33 @@ export default defineAgent({
     proc.userData.vad = await silero.VAD.load();
   },
   entry: async (ctx: JobContext) => {
-    // Set up a voice AI pipeline using OpenAI, Cartesia, Deepgram, and the LiveKit turn detector
+    // Set up a voice AI pipeline using OpenAI, Cartesia, AssemblyAI, and the LiveKit turn detector
     const session = new voice.AgentSession({
-      // A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
-      // See all providers at https://docs.livekit.io/agents/integrations/llm/
-      llm: new openai.LLM({ model: 'gpt-4o-mini' }),
       // Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
-      // See all providers at https://docs.livekit.io/agents/integrations/stt/
-      stt: new deepgram.STT({ model: 'nova-3' }),
+      // See all available models at https://docs.livekit.io/agents/models/stt/
+      stt: 'assemblyai/universal-streaming:en',
+
+      // A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
+      // See all providers at https://docs.livekit.io/agents/models/llm/
+      llm: 'openai/gpt-4.1-mini',
+
       // Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
-      // See all providers at https://docs.livekit.io/agents/integrations/tts/
-      tts: new cartesia.TTS({
-        voice: '6f84f4b8-58a2-430c-8c79-688dad597532',
-      }),
+      // See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
+      tts: 'cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc',
+
       // VAD and turn detection are used to determine when the user is speaking and when the agent should respond
       // See more at https://docs.livekit.io/agents/build/turns
       turnDetection: new livekit.turnDetector.MultilingualModel(),
       vad: ctx.proc.userData.vad! as silero.VAD,
     });
 
-    // To use a realtime model instead of a voice pipeline, use the following session setup instead:
+    // To use a realtime model instead of a voice pipeline, use the following session setup instead.
+    // (Note: This is for the OpenAI Realtime API. For other providers, see https://docs.livekit.io/agents/models/realtime/))
+    // 1. Install '@livekit/agents-plugin-openai'
+    // 2. Set OPENAI_API_KEY in .env.local
+    // 3. Add import `import * as openai from '@livekit/agents-plugin-openai'` to the top of this file
+    // 4. Use the following session setup instead of the version above
     // const session = new voice.AgentSession({
-    //   // See all providers at https://docs.livekit.io/agents/integrations/realtime/
     //   llm: new openai.realtime.RealtimeModel({ voice: 'marin' }),
     // });
 

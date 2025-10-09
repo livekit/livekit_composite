@@ -206,6 +206,16 @@ func (s *gcpStorage) GeneratePresignedUrl(storagePath string, expiration time.Du
 	})
 }
 
-func (s *gcpStorage) Delete(storagePath string) error {
+func (s *gcpStorage) DeleteObject(storagePath string) error {
 	return s.client.Bucket(s.conf.Bucket).Object(storagePath).Delete(context.Background())
+}
+
+func (s *gcpStorage) DeleteObjects(storagePaths []string) error {
+	bucket := s.client.Bucket(s.conf.Bucket)
+	for _, path := range storagePaths {
+		if err := bucket.Object(path).Delete(context.Background()); err != nil {
+			return err
+		}
+	}
+	return nil
 }

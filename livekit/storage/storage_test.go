@@ -181,6 +181,6 @@ func testStorage(t *testing.T, s storage.Storage) {
 	require.Equal(t, data, downloaded)
 
 	// delete
-	err = s.Delete(storagePath)
+	err = s.DeleteObject(storagePath)
 	require.NoError(t, err)
 }

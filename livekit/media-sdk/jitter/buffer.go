@@ -23,6 +23,7 @@ import (
 	"github.com/pion/rtp"
 
 	"github.com/livekit/protocol/logger"
+	"github.com/livekit/protocol/utils/mono"
 )
 
 type ExtPacket struct {
@@ -127,10 +128,24 @@ func (b *Buffer) UpdateLatency(latency time.Duration) {
 }
 
 func (b *Buffer) Push(pkt *rtp.Packet) {
+	b.PushAt(pkt, mono.Now())
+}
+
+func (b *Buffer) PushExtPacket(extPkt ExtPacket) {
+	b.PushAt(extPkt.Packet, extPkt.ReceivedAt)
+}
+
+func (b *Buffer) PushExtPacketBatch(extPktBatch []ExtPacket) {
+	for _, extPkt := range extPktBatch {
+		b.PushAt(extPkt.Packet, extPkt.ReceivedAt)
+	}
+}
+
+func (b *Buffer) PushAt(pkt *rtp.Packet, receivedAt time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
-	b.push(pkt)
+	b.push(pkt, receivedAt)
 	if b.head == nil {
 		return
 	}
@@ -173,7 +188,7 @@ func (b *Buffer) Close() {
 }
 
 // push adds a packet to the buffer
-func (b *Buffer) push(pkt *rtp.Packet) {
+func (b *Buffer) push(pkt *rtp.Packet, receivedAt time.Time) {
 	b.stats.PacketsPushed++
 	if pkt.Padding {
 		b.stats.PaddingPushed++
@@ -193,7 +208,7 @@ func (b *Buffer) push(pkt *rtp.Packet) {
 		return
 	}
 
-	p := b.newPacket(pkt)
+	p := b.newPacket(pkt, receivedAt)
 
 	discont := !b.initialized || !withinRange(pkt.SequenceNumber, b.prevSN)
 

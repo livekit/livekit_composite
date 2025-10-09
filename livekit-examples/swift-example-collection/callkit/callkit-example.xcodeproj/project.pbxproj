@@ -415,8 +415,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/livekit/client-sdk-swift";
 			requirement = {
-				branch = "hiroshi/audio-engine-io-perms";
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.8.1;
 			};
 		};
 		68B7EA062E7CA70C001802FC /* XCRemoteSwiftPackageReference "swift-log" */ = {

@@ -27,5 +27,6 @@ type Storage interface {
 
 	GeneratePresignedUrl(storagePath string, expiration time.Duration) (url string, err error)
 
-	Delete(storagePath string) error
+	DeleteObject(storagePath string) error
+	DeleteObjects(storagePaths []string) error
 }

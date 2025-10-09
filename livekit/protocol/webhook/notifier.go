@@ -31,11 +31,13 @@ type WebHookConfig struct {
 	APIKey              string                    `yaml:"api_key,omitempty"`
 	URLNotifier         URLNotifierConfig         `yaml:"url_notifier,omitempty"`
 	ResourceURLNotifier ResourceURLNotifierConfig `yaml:"resource_url_notifier,omitempty"`
+	FilterParams        FilterParams              `yaml:"filter_params,omitempty"`
 }
 
 var DefaultWebHookConfig = WebHookConfig{
 	URLNotifier:         DefaultURLNotifierConfig,
 	ResourceURLNotifier: DefaultResourceURLNotifierConfig,
+	FilterParams:        FilterParams{},
 }
 
 type NotifyParams struct {
@@ -83,11 +85,12 @@ func NewDefaultNotifier(config WebHookConfig, kp auth.KeyProvider) (QueuedNotifi
 	}
 	for _, url := range config.URLs {
 		u := NewResourceURLNotifier(ResourceURLNotifierParams{
-			URL:       url,
-			Logger:    logger.GetLogger().WithComponent("webhook"),
-			APIKey:    config.APIKey,
-			APISecret: apiSecret,
-			Config:    config.ResourceURLNotifier,
+			URL:          url,
+			Logger:       logger.GetLogger().WithComponent("webhook"),
+			APIKey:       config.APIKey,
+			APISecret:    apiSecret,
+			Config:       config.ResourceURLNotifier,
+			FilterParams: config.FilterParams,
 		})
 		n.notifiers = append(n.notifiers, u)
 	}
@@ -185,8 +188,8 @@ type HTTPClientParams struct {
 }
 
 type FilterParams struct {
-	IncludeEvents []string
-	ExcludeEvents []string
+	IncludeEvents []string `yaml:"include_events,omitempty"`
+	ExcludeEvents []string `yaml:"exclude_events,omitempty"`
 }
 
 // ---------------------------------

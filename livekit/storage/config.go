@@ -21,48 +21,48 @@ import (
 )
 
 type S3Config struct {
-	AccessKey            string       `yaml:"access_key"`
-	Secret               string       `yaml:"secret"`
-	SessionToken         string       `yaml:"session_token"`
-	AssumeRoleArn        string       `yaml:"assume_role_arn"`         // ARN of the role to assume for file upload. Egress will make an AssumeRole API call using the provided access_key and secret to assume that role
-	AssumeRoleExternalId string       `yaml:"assume_role_external_id"` // ExternalID to use when assuming role for upload
-	Region               string       `yaml:"region"`
-	Endpoint             string       `yaml:"endpoint"`
-	Bucket               string       `yaml:"bucket"`
-	ForcePathStyle       bool         `yaml:"force_path_style"`
-	ProxyConfig          *ProxyConfig `yaml:"proxy_config"`
+	AccessKey            string       `yaml:"access_key,omitempty"`
+	Secret               string       `yaml:"secret,omitempty"`
+	SessionToken         string       `yaml:"session_token,omitempty"`
+	AssumeRoleArn        string       `yaml:"assume_role_arn,omitempty"`         // ARN of the role to assume for file upload. Egress will make an AssumeRole API call using the provided access_key and secret to assume that role
+	AssumeRoleExternalId string       `yaml:"assume_role_external_id,omitempty"` // ExternalID to use when assuming role for upload
+	Region               string       `yaml:"region,omitempty"`
+	Endpoint             string       `yaml:"endpoint,omitempty"`
+	Bucket               string       `yaml:"bucket,omitempty"`
+	ForcePathStyle       bool         `yaml:"force_path_style,omitempty"`
+	ProxyConfig          *ProxyConfig `yaml:"proxy_config,omitempty"`
 
-	MaxRetries    int           `yaml:"max_retries"`
-	MaxRetryDelay time.Duration `yaml:"max_retry_delay"`
-	MinRetryDelay time.Duration `yaml:"min_retry_delay"`
+	MaxRetries    int           `yaml:"max_retries,omitempty"`
+	MaxRetryDelay time.Duration `yaml:"max_retry_delay,omitempty"`
+	MinRetryDelay time.Duration `yaml:"min_retry_delay,omitempty"`
 
-	Metadata           map[string]string `yaml:"metadata"`
-	Tagging            string            `yaml:"tagging"`
-	ContentDisposition string            `yaml:"content_disposition"`
+	Metadata           map[string]string `yaml:"metadata,omitempty"`
+	Tagging            string            `yaml:"tagging,omitempty"`
+	ContentDisposition string            `yaml:"content_disposition,omitempty"`
 }
 
 type AzureConfig struct {
-	AccountName     string                 `yaml:"account_name"` // (env AZURE_STORAGE_ACCOUNT)
-	AccountKey      string                 `yaml:"account_key"`  // (env AZURE_STORAGE_KEY)
-	ContainerName   string                 `yaml:"container_name"`
+	AccountName     string                 `yaml:"account_name,omitempty"` // (env AZURE_STORAGE_ACCOUNT)
+	AccountKey      string                 `yaml:"account_key,omitempty"`  // (env AZURE_STORAGE_KEY)
+	ContainerName   string                 `yaml:"container_name,omitempty"`
 	TokenCredential azblob.TokenCredential `yaml:"-"` // required for presigned url generation
 }
 
 type GCPConfig struct {
-	CredentialsJSON string       `yaml:"credentials_json"` // (env GOOGLE_APPLICATION_CREDENTIALS)
-	Bucket          string       `yaml:"bucket"`
-	ProxyConfig     *ProxyConfig `yaml:"proxy_config"`
+	CredentialsJSON string       `yaml:"credentials_json,omitempty"` // (env GOOGLE_APPLICATION_CREDENTIALS)
+	Bucket          string       `yaml:"bucket,omitempty"`
+	ProxyConfig     *ProxyConfig `yaml:"proxy_config,omitempty"`
 }
 
 type AliOSSConfig struct {
-	AccessKey string `yaml:"access_key"`
-	Secret    string `yaml:"secret"`
-	Endpoint  string `yaml:"endpoint"`
-	Bucket    string `yaml:"bucket"`
+	AccessKey string `yaml:"access_key,omitempty"`
+	Secret    string `yaml:"secret,omitempty"`
+	Endpoint  string `yaml:"endpoint,omitempty"`
+	Bucket    string `yaml:"bucket,omitempty"`
 }
 
 type ProxyConfig struct {
-	Url      string `yaml:"url"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
+	Url      string `yaml:"url,omitempty"`
+	Username string `yaml:"username,omitempty"`
+	Password string `yaml:"password,omitempty"`
 }

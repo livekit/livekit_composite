@@ -27,7 +27,7 @@ type packet struct {
 	discont    bool
 }
 
-func (b *Buffer) newPacket(pkt *rtp.Packet) *packet {
+func (b *Buffer) newPacket(pkt *rtp.Packet, receivedAt time.Time) *packet {
 	b.size++
 
 	p := b.pool
@@ -40,7 +40,7 @@ func (b *Buffer) newPacket(pkt *rtp.Packet) *packet {
 	p.next = nil
 	p.start = b.depacketizer.IsPartitionHead(pkt.Payload)
 	p.end = b.depacketizer.IsPartitionTail(pkt.Marker, pkt.Payload)
-	p.extPacket = ExtPacket{time.Now(), pkt}
+	p.extPacket = ExtPacket{receivedAt, pkt}
 
 	return p
 }

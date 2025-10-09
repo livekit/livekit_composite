@@ -1,51 +1,60 @@
-//
-//  PiP.swift
-//  minimal-pip
-//
-//  Created by Blaze Pankowski on 11/08/2025.
-//
+/*
+ * Copyright 2025 LiveKit
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-import SwiftUI
 import AVKit
 import LiveKit
+import SwiftUI
 
 struct PiPView: UIViewControllerRepresentable {
     let track: VideoTrack
     let pip: Bool
-    
+
     @State private var previewController = PreviewViewController()
     @State private var videoCallController = VideoCallViewController()
-    
-    func makeUIViewController(context: Context) -> UIViewController {
+
+    func makeUIViewController(context _: Context) -> UIViewController {
         track.add(videoRenderer: previewController)
         track.add(videoRenderer: videoCallController)
-        
+
         return previewController
     }
-    
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
+
+    func updateUIViewController(_: UIViewController, context: Context) {
         context.coordinator.toggle()
     }
-    
+
     func makeCoordinator() -> Coordinator {
         let contentSource = AVPictureInPictureController.ContentSource(activeVideoCallSourceView: previewController.view, contentViewController: videoCallController)
         let controller = AVPictureInPictureController(contentSource: contentSource)
         controller.canStartPictureInPictureAutomaticallyFromInline = true
         controller.setValue(1, forKey: "controlsStyle") // optional, display close/fullscreen buttons
-        
+
         let coordinator = Coordinator(controller: controller)
         controller.delegate = coordinator
         return coordinator
     }
-    
+
     final class Coordinator: NSObject, AVPictureInPictureControllerDelegate {
         private let controller: AVPictureInPictureController
-        
+
         init(controller: AVPictureInPictureController) {
             self.controller = controller
             super.init()
         }
-        
+
         func toggle() {
             if controller.isPictureInPictureActive {
                 controller.stopPictureInPicture()
@@ -60,12 +69,12 @@ struct PiPView: UIViewControllerRepresentable {
 
 final class PreviewViewController: UIViewController, VideoRenderer {
     private lazy var renderingView = SampleRenderingView()
-    
+
     override func loadView() {
         renderingView.sampleBufferDisplayLayer.videoGravity = .resizeAspectFill
         view = renderingView
     }
-    
+
     var isAdaptiveStreamEnabled: Bool { true }
     var adaptiveStreamSize: CGSize { view.bounds.size }
 
@@ -81,13 +90,13 @@ final class PreviewViewController: UIViewController, VideoRenderer {
 
 final class VideoCallViewController: AVPictureInPictureVideoCallViewController, VideoRenderer {
     private lazy var renderingView = SampleRenderingView()
-    
+
     override func loadView() {
         renderingView.sampleBufferDisplayLayer.videoGravity = .resizeAspectFill
         view = renderingView
         // or add more subviews...
     }
-    
+
     var isAdaptiveStreamEnabled: Bool { true }
     var adaptiveStreamSize: CGSize { view.bounds.size }
 
@@ -106,7 +115,7 @@ final class SampleRenderingView: UIView {
     override class var layerClass: AnyClass {
         AVSampleBufferDisplayLayer.self
     }
-    
+
     var sampleBufferDisplayLayer: AVSampleBufferDisplayLayer {
         layer as! AVSampleBufferDisplayLayer
     }
@@ -127,8 +136,8 @@ extension LiveKit.VideoRotation {
 extension LiveKit.VideoFrame {
     var rotatedSize: CGSize {
         switch rotation {
-        case ._90, ._270: return CGSize(width: Int(dimensions.height), height: Int(dimensions.width))
-        default: return CGSize(width: Int(dimensions.width), height: Int(dimensions.height))
+        case ._90, ._270: CGSize(width: Int(dimensions.height), height: Int(dimensions.width))
+        default: CGSize(width: Int(dimensions.width), height: Int(dimensions.height))
         }
     }
 }

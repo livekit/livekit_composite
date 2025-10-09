@@ -46,7 +46,7 @@ class RoomViewController: UIViewController {
 
         timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true, block: { [weak self] _ in
             guard let self else { return }
-            self.reComputeVideoViewEnabled()
+            reComputeVideoViewEnabled()
         })
     }
 
@@ -92,12 +92,6 @@ class RoomViewController: UIViewController {
         navigationItem.rightBarButtonItem = nil
 
         switch room.connectionState {
-        case .disconnected:
-            navigationItem.title = "Disconnected"
-            navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Connect",
-                                                               style: .plain,
-                                                               target: self,
-                                                               action: #selector(onTapConnect(sender:)))
         case .connecting:
             navigationItem.title = "Connecting..."
         case .reconnecting:
@@ -112,6 +106,14 @@ class RoomViewController: UIViewController {
                                                                 style: .plain,
                                                                 target: self,
                                                                 action: #selector(onTapShuffle(sender:)))
+        case .disconnecting:
+            navigationItem.title = "Disconnecting..."
+        case .disconnected:
+            navigationItem.title = "Disconnected"
+            navigationItem.leftBarButtonItem = UIBarButtonItem(title: "Connect",
+                                                               style: .plain,
+                                                               target: self,
+                                                               action: #selector(onTapConnect(sender:)))
         }
     }
 

@@ -33,6 +33,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/credentials/stscreds"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
@@ -288,7 +289,10 @@ func (s *s3Storage) DownloadFile(filepath, storagePath string) (int64, error) {
 }
 
 func (s *s3Storage) download(w io.WriterAt, storagePath string) (int64, error) {
-	client := s3.NewFromConfig(*s.awsConf)
+	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
+		o.UsePathStyle = s.conf.ForcePathStyle
+	})
+
 	return manager.NewDownloader(client).Download(
 		context.Background(),
 		w,
@@ -315,11 +319,45 @@ func (s *s3Storage) GeneratePresignedUrl(storagePath string, expiration time.Dur
 	return res.URL, nil
 }
 
-func (s *s3Storage) Delete(storagePath string) error {
-	client := s3.NewFromConfig(*s.awsConf)
+func (s *s3Storage) DeleteObject(storagePath string) error {
+	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
+		o.UsePathStyle = s.conf.ForcePathStyle
+	})
+
 	_, err := client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
 		Bucket: aws.String(s.conf.Bucket),
 		Key:    aws.String(storagePath),
 	})
 	return err
+}
+
+func (s *s3Storage) DeleteObjects(storagePaths []string) error {
+	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
+		o.UsePathStyle = s.conf.ForcePathStyle
+	})
+
+	for i := 0; i < len(storagePaths); i += 1000 {
+		end := i + 1000
+		if end > len(storagePaths) {
+			end = len(storagePaths)
+		}
+
+		objects := make([]types.ObjectIdentifier, 0, end-i)
+		for _, path := range storagePaths[i:end] {
+			objects = append(objects, types.ObjectIdentifier{Key: aws.String(path)})
+		}
+
+		_, err := client.DeleteObjects(context.Background(), &s3.DeleteObjectsInput{
+			Bucket: aws.String(s.conf.Bucket),
+			Delete: &types.Delete{
+				Objects: objects,
+				Quiet:   aws.Bool(true),
+			},
+		})
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

@@ -176,7 +176,7 @@ message ParticipantInfo {
   DisconnectReason disconnect_reason = 16;
   repeated KindDetail kind_details = 18;
 
-  // NEXT_ID: 19 
+  // NEXT_ID: 19
 }
 
 enum TrackType {
@@ -221,9 +221,9 @@ message TrackInfo {
   bool muted = 4;
   // original width of video (unset for audio)
   // clients may receive a lower resolution version with simulcast
-  uint32 width = 5 [deprecated=true];
+  uint32 width = 5;
   // original height of video (unset for audio)
-  uint32 height = 6 [deprecated=true];
+  uint32 height = 6;
   // true if track is simulcasted
   bool simulcast = 7 [deprecated = true]; // see `video_layer_mode` in `codecs`
   // true if DTX (Discontinuous Transmission) is disabled for audio
@@ -310,7 +310,7 @@ message EncryptedPacket {
   Encryption.Type encryption_type = 1;
   bytes iv = 2;
   uint32 key_index = 3;
-  bytes encrypted_value = 4; // This is an encrypted EncryptedPacketPayload message representation 
+  bytes encrypted_value = 4; // This is an encrypted EncryptedPacketPayload message representation
 }
 
 message EncryptedPacketPayload {
@@ -757,13 +757,18 @@ message DataStream {
   }
 }
 
+message FilterParams {
+  repeated string include_events = 1;
+  repeated string exclude_events = 2;
+}
+
 message WebhookConfig {
   string url = 1;
   string signing_key = 2;
+  FilterParams filter_params = 3;
 }
 
 message SubscribedAudioCodec {
   string codec = 1;
   bool enabled = 2;
 }
-

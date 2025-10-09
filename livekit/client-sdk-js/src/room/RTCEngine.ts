@@ -267,7 +267,9 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 
       // create offer
       if (!this.subscriberPrimary || joinResponse.fastPublish) {
-        this.negotiate();
+        this.negotiate().catch((err) => {
+          log.error(err, this.logContext);
+        });
       }
 
       this.registerOnLineListener();
@@ -453,7 +455,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
         }
       } else if (connectionState === PCTransportState.FAILED) {
         // on Safari, PeerConnection will switch to 'disconnected' during renegotiation
-        if (this.pcState === PCState.Connected) {
+        if (this.pcState === PCState.Connected || this.pcState === PCState.Reconnecting) {
           this.pcState = PCState.Disconnected;
 
           this.handleDisconnect(
@@ -732,6 +734,8 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
         const decryptedPacket = EncryptedPacketPayload.fromBinary(decryptedData.payload);
         const newDp = new DataPacket({
           value: decryptedPacket.value,
+          participantIdentity: dp.participantIdentity,
+          participantSid: dp.participantSid,
         });
         if (newDp.value?.case === 'user') {
           // compatibility
@@ -1338,7 +1342,9 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     }
     if (needNegotiation) {
       // start negotiation
-      this.negotiate();
+      this.negotiate().catch((err) => {
+        log.error(err, this.logContext);
+      });
     }
 
     const targetChannel = this.dataChannelForKind(kind, subscriber);

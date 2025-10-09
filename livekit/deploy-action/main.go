@@ -21,9 +21,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/livekit/livekit-cli/v2/pkg/agentfs"
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
-	lksdk "github.com/livekit/server-sdk-go/v2"
 
 	"github.com/slack-go/slack"
 )
@@ -79,7 +79,7 @@ func main() {
 
 			secretParts := strings.SplitN(strings.TrimPrefix(env, "SECRET_"), "=", 2)
 			secretName := secretParts[0]
-			secretValue := secretParts[1]
+			secretValue := strings.TrimSpace(secretParts[1])
 
 			log.Infow("Loading secret", "secret", secretName)
 			if secretName == "LIVEKIT_URL" || secretName == "LIVEKIT_API_KEY" || secretName == "LIVEKIT_API_SECRET" {
@@ -101,9 +101,9 @@ func main() {
 
 	if lkUrl == "" || lkApiKey == "" || lkApiSecret == "" {
 		// try to load directly from the env first instead of the SECRET_ prefix
-		lkUrl = os.Getenv("LIVEKIT_URL")
-		lkApiKey = os.Getenv("LIVEKIT_API_KEY")
-		lkApiSecret = os.Getenv("LIVEKIT_API_SECRET")
+		lkUrl = strings.TrimSpace(os.Getenv("LIVEKIT_URL"))
+		lkApiKey = strings.TrimSpace(os.Getenv("LIVEKIT_API_KEY"))
+		lkApiSecret = strings.TrimSpace(os.Getenv("LIVEKIT_API_SECRET"))
 
 		if lkUrl == "" || lkApiKey == "" || lkApiSecret == "" {
 			log.Errorw("LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET must be set", nil)
@@ -121,8 +121,8 @@ func main() {
 				os.Exit(1)
 			}
 
-			secretName := secretParts[0]
-			secretValue := secretParts[1]
+			secretName := strings.TrimSpace(secretParts[0])
+			secretValue := strings.TrimSpace(secretParts[1])
 			log.Infow("Loading secret from SECRET_LIST", "secret", secretName)
 			secrets = append(secrets, &livekit.AgentSecret{
 				Name:  secretName,
@@ -131,7 +131,10 @@ func main() {
 		}
 	}
 
-	client, err := lksdk.NewAgentClient(lkUrl, lkApiKey, lkApiSecret)
+	client, err := agentfs.New(
+		agentfs.WithProject(lkUrl, lkApiKey, lkApiSecret),
+		agentfs.WithLogger(log),
+	)
 	if err != nil {
 		log.Errorw("Failed to create agent client", err)
 		os.Exit(1)
@@ -195,7 +198,7 @@ func sendSlackNotification(message string) {
 	}
 }
 
-func agentStatusRetry(client *lksdk.AgentClient, workingDir string, timeoutDuration time.Duration) error {
+func agentStatusRetry(client *agentfs.Client, workingDir string, timeoutDuration time.Duration) error {
 	startTime := time.Now()
 	for {
 		err := agentStatus(client, workingDir)
@@ -212,7 +215,7 @@ func agentStatusRetry(client *lksdk.AgentClient, workingDir string, timeoutDurat
 	}
 }
 
-func agentStatus(client *lksdk.AgentClient, workingDir string) error {
+func agentStatus(client *agentfs.Client, workingDir string) error {
 	lkConfig, exists, err := LoadTOMLFile(workingDir, LiveKitTOMLFile)
 	if err != nil {
 		return err
@@ -248,7 +251,7 @@ func agentStatus(client *lksdk.AgentClient, workingDir string) error {
 	return nil
 }
 
-func deployAgent(client *lksdk.AgentClient, secrets []*livekit.AgentSecret, workingDir string) {
+func deployAgent(client *agentfs.Client, secrets []*livekit.AgentSecret, workingDir string) {
 	lkConfig, exists, err := LoadTOMLFile(workingDir, LiveKitTOMLFile)
 	if err != nil {
 		log.Errorw("Failed to load livekit.toml", err)
@@ -260,49 +263,34 @@ func deployAgent(client *lksdk.AgentClient, secrets []*livekit.AgentSecret, work
 		os.Exit(1)
 	}
 
-	req := &livekit.DeployAgentRequest{
-		AgentId: lkConfig.Agent.ID,
-		Secrets: secrets,
-	}
-
-	resp, err := client.DeployAgent(context.Background(), req)
-	if err != nil {
+	if err := client.DeployAgent(
+		context.Background(),
+		lkConfig.Agent.ID,
+		workingDir,
+		secrets,
+		[]string{LiveKitTOMLFile},
+	); err != nil {
 		log.Errorw("Failed to deploy agent", err)
 		os.Exit(1)
 	}
 
-	err = UploadTarball(workingDir, resp.PresignedUrl, []string{LiveKitTOMLFile})
-	if err != nil {
-		log.Errorw("Failed to upload tarball", err)
-		os.Exit(1)
-	}
-
-	err = Build(context.Background(), resp.AgentId, &ProjectConfig{
-		URL:       lkUrl,
-		APIKey:    lkApiKey,
-		APISecret: lkApiSecret,
-	})
-	if err != nil {
-		log.Errorw("Failed to build agent", err)
-		os.Exit(1)
-	}
-
-	log.Infow("Agent deployed", "agent", resp.AgentId)
+	log.Infow("Agent deployed", "agent", lkConfig.Agent.ID)
 }
 
-func createAgent(client *lksdk.AgentClient, subdomain string, secrets []*livekit.AgentSecret, workingDir string) {
+func createAgent(client *agentfs.Client, subdomain string, secrets []*livekit.AgentSecret, workingDir string) {
 	if _, err := os.Stat(fmt.Sprintf("%s/%s", workingDir, LiveKitTOMLFile)); err == nil {
 		log.Infow("livekit.toml already exists", "path", fmt.Sprintf("%s/%s", workingDir, LiveKitTOMLFile))
 		os.Exit(0)
 	}
-
 	lkConfig := NewLiveKitTOML(subdomain).WithDefaultAgent()
-
-	req := &livekit.CreateAgentRequest{
-		Secrets: secrets,
-	}
-
-	resp, err := client.CreateAgent(context.Background(), req)
+	regions := []string{}
+	resp, err := client.CreateAgent(
+		context.Background(),
+		workingDir,
+		secrets,
+		regions,
+		[]string{LiveKitTOMLFile},
+	)
 	if err != nil {
 		log.Errorw("Failed to create agent", err)
 		os.Exit(1)
@@ -314,26 +302,10 @@ func createAgent(client *lksdk.AgentClient, subdomain string, secrets []*livekit
 		os.Exit(1)
 	}
 
-	err = UploadTarball(workingDir, resp.PresignedUrl, []string{LiveKitTOMLFile})
-	if err != nil {
-		log.Errorw("Failed to upload tarball", err)
-		os.Exit(1)
-	}
-
-	err = Build(context.Background(), resp.AgentId, &ProjectConfig{
-		URL:       lkUrl,
-		APIKey:    lkApiKey,
-		APISecret: lkApiSecret,
-	})
-	if err != nil {
-		log.Errorw("Failed to build agent", err)
-		os.Exit(1)
-	}
-
 	log.Infow("Agent created", "agent", resp.AgentId)
 }
 
-func deleteAgent(client *lksdk.AgentClient, workingDir string) {
+func deleteAgent(client *agentfs.Client, workingDir string) {
 	lkConfig, exists, err := LoadTOMLFile(workingDir, LiveKitTOMLFile)
 	if err != nil {
 		log.Errorw("Failed to load livekit.toml", err)
@@ -358,7 +330,7 @@ func deleteAgent(client *lksdk.AgentClient, workingDir string) {
 	log.Infow("Agent deleted", "agent", lkConfig.Agent.ID)
 }
 
-func deleteAgentMulti(client *lksdk.AgentClient, agentIds []string) {
+func deleteAgentMulti(client *agentfs.Client, agentIds []string) {
 	for _, agentId := range agentIds {
 		req := &livekit.DeleteAgentRequest{
 			AgentId: agentId,

@@ -124,12 +124,14 @@ func NewSubscribedTrack(params SubscribedTrackParams) (*SubscribedTrack, error) 
 		streamID = PackSyncStreamID(params.MediaTrack.PublisherID(), params.MediaTrack.Stream())
 	}
 
+	isEncrypted := params.MediaTrack.IsEncrypted()
 	var trailer []byte
-	if params.MediaTrack.IsEncrypted() {
+	if isEncrypted {
 		trailer = params.Subscriber.GetTrailer()
 	}
 	downTrack, err := sfu.NewDownTrack(sfu.DownTrackParams{
 		Codecs:            codecs,
+		IsEncrypted:       isEncrypted,
 		Source:            params.MediaTrack.Source(),
 		Receiver:          params.WrappedReceiver,
 		BufferFactory:     params.Subscriber.GetBufferFactory(),
@@ -433,7 +435,7 @@ func (t *SubscribedTrack) OnRttUpdate(rtt uint32) {
 }
 
 func (t *SubscribedTrack) OnCodecNegotiated(codec webrtc.RTPCodecCapability) {
-	if !t.params.WrappedReceiver.DetermineReceiver(codec) {
+	if isAvailable, needsPublish := t.params.WrappedReceiver.DetermineReceiver(codec); !isAvailable || !needsPublish {
 		return
 	}
 

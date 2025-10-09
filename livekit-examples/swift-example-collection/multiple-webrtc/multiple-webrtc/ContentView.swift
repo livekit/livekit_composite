@@ -1,5 +1,5 @@
 /*
- * Copyright 2024 LiveKit
+ * Copyright 2025 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ struct ContentView: View {
                 print("LiveKitSDK.version: \(LiveKitSDK.version)")
 
                 // Example reading symbol from LiveKitWebRTC
-                print("kRTCVp9CodecName (LiveKitWebRTC): \(LiveKitWebRTC.kRTCVp9CodecName)")
+                print("kRTCVp9CodecName (LiveKitWebRTC): \(LiveKitWebRTC.kLKRTCVp9CodecName)")
                 // Example reading symbol from WebRTC
                 print("kRTCVp9CodecName (WebRTC): \(WebRTC.kRTCVp9CodecName)")
 

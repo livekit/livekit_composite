@@ -25,7 +25,7 @@ from pydantic import Field
 from livekit.agents import JobContext, WorkerOptions, cli
 from livekit.agents.llm import function_tool
 from livekit.agents.voice import Agent, AgentSession
-from livekit.plugins import deepgram, openai, cartesia, silero
+from livekit.plugins import silero
 from livekit import api
 
 # Load environment and configure logger
@@ -45,16 +45,16 @@ class BaseAgent(Agent):
         self.job_context = job_context
         super().__init__(
             instructions=instructions,
-            stt=deepgram.STT(),
-            llm=openai.LLM(model="gpt-4o"),
-            tts=elevenlabs.TTS(),
+            stt="assemblyai/universal-streaming",
+            llm="openai/gpt-4.1-mini",
+            tts="cartesia/sonic-2:6f84f4b8-58a2-430c-8c79-688dad597532",
             vad=silero.VAD.load()
         )
 
     @function_tool
     async def adjust_rapport(self, delta: int) -> int:
         """
-        Adjust the NPC's rapport score by delta and return the new score. 
+        Adjust the NPC's rapport score by delta and return the new score.
         A score of -100 is the lowest, and means they will tell you to leave.
         A score of 100 is the highest, and means they will be very friendly.
         """

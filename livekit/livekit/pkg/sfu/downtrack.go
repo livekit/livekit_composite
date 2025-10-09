@@ -88,6 +88,7 @@ const (
 
 	waitBeforeSendPaddingOnMute = 100 * time.Millisecond
 	maxPaddingOnMuteDuration    = 5 * time.Second
+	paddingOnMuteInterval       = 100 * time.Millisecond
 )
 
 // -------------------------------------------------------------------
@@ -243,6 +244,7 @@ type ReceiverReportListener func(dt *DownTrack, report *rtcp.ReceiverReport)
 
 type DownTrackParams struct {
 	Codecs                         []webrtc.RTPCodecParameters
+	IsEncrypted                    bool
 	Source                         livekit.TrackSource
 	Receiver                       TrackReceiver
 	BufferFactory                  *buffer.Factory
@@ -355,8 +357,7 @@ type DownTrack struct {
 
 // NewDownTrack returns a DownTrack.
 func NewDownTrack(params DownTrackParams) (*DownTrack, error) {
-	codecs := params.Codecs
-	mimeType := mime.NormalizeMimeType(codecs[0].MimeType)
+	mimeType := mime.NormalizeMimeType(params.Codecs[0].MimeType)
 	var kind webrtc.RTPCodecType
 	switch {
 	case mime.IsMimeTypeAudio(mimeType):
@@ -367,19 +368,19 @@ func NewDownTrack(params DownTrackParams) (*DownTrack, error) {
 		kind = webrtc.RTPCodecType(0)
 	}
 
+	codec := params.Codecs[0].RTPCodecCapability
 	d := &DownTrack{
 		params:              params,
 		id:                  params.Receiver.TrackID(),
-		upstreamCodecs:      codecs,
+		upstreamCodecs:      params.Codecs,
 		kind:                kind,
-		clockRate:           codecs[0].ClockRate,
+		clockRate:           codec.ClockRate,
 		pacer:               params.Pacer,
 		maxLayerNotifierCh:  make(chan string, 1),
 		keyFrameRequesterCh: make(chan struct{}, 1),
 		createdAt:           time.Now().UnixNano(),
 		receiver:            params.Receiver,
 	}
-	codec := codecs[0].RTPCodecCapability
 	d.codec.Store(codec)
 	d.bindState.Store(bindStateUnbound)
 	d.params.Logger = params.Logger.WithValues(
@@ -452,8 +453,9 @@ func (d *DownTrack) Bind(t webrtc.TrackLocalContext) (webrtc.RTPCodecParameters,
 		d.bindLock.Unlock()
 		return webrtc.RTPCodecParameters{}, ErrDownTrackAlreadyBound
 	}
-	// the context's codec parameters will be set to the binded codec after Bind return so we keep
-	// a copy of the codec parameters here to use it later
+
+	// the TrackLocalContext's codec parameters will be set to the bound codec after Bind returns,
+	// so keep a copy of the codec parameters here to use it later
 	d.negotiatedCodecParameters = append([]webrtc.RTPCodecParameters{}, t.CodecParameters()...)
 	var codec, matchedUpstreamCodec webrtc.RTPCodecParameters
 	for _, c := range d.upstreamCodecs {
@@ -462,6 +464,21 @@ func (d *DownTrack) Bind(t webrtc.TrackLocalContext) (webrtc.RTPCodecParameters,
 			codec = matchCodec
 			matchedUpstreamCodec = c
 			break
+		} else {
+			// for encrypyted tracks, should match on primary codec,
+			// i. e. codec at index 0 if the combination of upstream codecs is opus and RED
+			if d.params.IsEncrypted {
+				isRedAndOpus := true
+				for _, u := range d.upstreamCodecs {
+					if !mime.IsMimeTypeStringOpus(u.MimeType) || !mime.IsMimeTypeStringRED(u.MimeType) {
+						isRedAndOpus = false
+						break
+					}
+				}
+				if isRedAndOpus {
+					break
+				}
+			}
 		}
 	}
 
@@ -469,7 +486,11 @@ func (d *DownTrack) Bind(t webrtc.TrackLocalContext) (webrtc.RTPCodecParameters,
 		err := webrtc.ErrUnsupportedCodec
 		onBinding := d.onBinding
 		d.bindLock.Unlock()
-		d.params.Logger.Infow("bind error for unsupported codec", "codecs", d.upstreamCodecs, "remoteParameters", d.negotiatedCodecParameters)
+		d.params.Logger.Infow(
+			"bind error for unsupported codec",
+			"codecs", d.upstreamCodecs,
+			"remoteParameters", d.negotiatedCodecParameters,
+		)
 		if onBinding != nil {
 			onBinding(err)
 		}
@@ -510,12 +531,19 @@ func (d *DownTrack) Bind(t webrtc.TrackLocalContext) (webrtc.RTPCodecParameters,
 				}
 			}
 			if d.upstreamPrimaryPT == 0 {
-				d.params.Logger.Errorw("failed to find upstream primary opus payload type for RED", nil, "matchedCodec", codec, "upstreamCodec", d.upstreamCodecs)
+				d.params.Logger.Errorw(
+					"failed to find upstream primary opus payload type for RED", nil,
+					"matchedCodec", codec,
+					"upstreamCodec", d.upstreamCodecs,
+				)
 			}
 
 			var primaryPT, secondaryPT int
 			if n, err := fmt.Sscanf(codec.SDPFmtpLine, "%d/%d", &primaryPT, &secondaryPT); err != nil || n != 2 {
-				d.params.Logger.Errorw("failed to parse primary and secondary payload type for RED", err, "matchedCodec", codec)
+				d.params.Logger.Errorw(
+					"failed to parse primary and secondary payload type for RED", err,
+					"matchedCodec", codec,
+				)
 			}
 			d.primaryPT = uint8(primaryPT)
 		} else if mime.IsMimeTypeStringAudio(matchedUpstreamCodec.MimeType) {
@@ -1094,32 +1122,34 @@ func (d *DownTrack) WritePaddingRTP(bytesToSend int, paddingOnMute bool, forceMa
 		return 0
 	}
 
-	if !d.rtpStats.IsActive() && !paddingOnMute {
-		return 0
-	}
+	if !paddingOnMute {
+		if !d.rtpStats.IsActive() {
+			return 0
+		}
 
-	// Ideally should look at header extensions negotiated for
-	// track and decide if padding can be sent. But, browsers behave
-	// in unexpected ways when using audio for bandwidth estimation and
-	// padding is mainly used to probe for excess available bandwidth.
-	// So, to be safe, limit to video tracks
-	if d.kind == webrtc.RTPCodecTypeAudio {
-		return 0
-	}
+		// Ideally should look at header extensions negotiated for
+		// track and decide if padding can be sent. But, browsers behave
+		// in unexpected ways when using audio for bandwidth estimation and
+		// padding is mainly used to probe for excess available bandwidth.
+		// So, to be safe, limit to video tracks
+		if d.kind == webrtc.RTPCodecTypeAudio {
+			return 0
+		}
 
-	// LK-TODO-START
-	// Potentially write padding even if muted. Given that padding
-	// can be sent only on frame boundaries, writing on disabled tracks
-	// will give more options.
-	// LK-TODO-END
-	if d.forwarder.IsMuted() && !paddingOnMute {
-		return 0
-	}
+		// LK-TODO-START
+		// Potentially write padding even if muted. Given that padding
+		// can be sent only on frame boundaries, writing on disabled tracks
+		// will give more options.
+		// LK-TODO-END
+		if d.forwarder.IsMuted() {
+			return 0
+		}
 
-	// Hold sending padding packets till first RTCP-RR is received for this RTP stream.
-	// That is definitive proof that the remote side knows about this RTP stream.
-	if d.rtpStats.LastReceiverReportTime() == 0 && !paddingOnMute {
-		return 0
+		// Hold sending padding packets till first RTCP-RR is received for this RTP stream.
+		// That is definitive proof that the remote side knows about this RTP stream.
+		if d.rtpStats.LastReceiverReportTime() == 0 {
+			return 0
+		}
 	}
 
 	// RTP padding maximum is 255 bytes. Break it up.
@@ -1129,7 +1159,14 @@ func (d *DownTrack) WritePaddingRTP(bytesToSend int, paddingOnMute bool, forceMa
 		return 0
 	}
 
-	snts, err := d.forwarder.GetSnTsForPadding(num, forceMarker)
+	frameRate := uint32(0)
+	if paddingOnMute {
+		// advance timestamps when sending dummy padding packets to start a stream
+		// to ensure receiver sees proper timestamp and starts the stream
+		frameRate = uint32(time.Second / paddingOnMuteInterval)
+	}
+
+	snts, err := d.forwarder.GetSnTsForPadding(num, frameRate, forceMarker)
 	if err != nil {
 		return 0
 	}
@@ -1173,6 +1210,7 @@ func (d *DownTrack) WritePaddingRTP(bytesToSend int, paddingOnMute bool, forceMa
 			payloadSize,
 			false,
 		)
+
 		d.pacer.Enqueue(&pacer.Packet{
 			Header:             hdr,
 			HeaderSize:         hdrSize,
@@ -2256,10 +2294,10 @@ func (d *DownTrack) addDummyExtensions(hdr *rtp.Header) {
 	}
 }
 
-func (d *DownTrack) getTranslatedPayloadType(src uint8) uint8 {
-	// send primary codec to subscriber if the publisher send primary codec to us when red is negotiated,
+func (d *DownTrack) getTranslatedPayloadType(srcPT uint8) uint8 {
+	// send primary codec to subscriber if the publisher sent primary codec when red is negotiated,
 	// this will happen when the payload is too large to encode into red payload (exceeds mtu).
-	if d.isRED && src == d.upstreamPrimaryPT && d.primaryPT != 0 {
+	if d.isRED && srcPT == d.upstreamPrimaryPT && d.primaryPT != 0 {
 		return d.primaryPT
 	}
 	return uint8(d.payloadType.Load())
@@ -2361,15 +2399,6 @@ func (d *DownTrack) sendPaddingOnMute() {
 	// let uptrack have chance to send packet before we send padding
 	time.Sleep(waitBeforeSendPaddingOnMute)
 
-	if d.kind == webrtc.RTPCodecTypeVideo {
-		d.sendPaddingOnMuteForVideo()
-	} else if d.Mime() == mime.MimeTypeOpus {
-		d.sendSilentFrameOnMuteForOpus()
-	}
-}
-
-func (d *DownTrack) sendPaddingOnMuteForVideo() {
-	paddingOnMuteInterval := 100 * time.Millisecond
 	numPackets := maxPaddingOnMuteDuration / paddingOnMuteInterval
 	for i := 0; i < int(numPackets); i++ {
 		if d.rtpStats.IsActive() || d.IsClosed() {
@@ -2380,69 +2409,6 @@ func (d *DownTrack) sendPaddingOnMuteForVideo() {
 		}
 		d.WritePaddingRTP(20, true, true)
 		time.Sleep(paddingOnMuteInterval)
-	}
-}
-
-func (d *DownTrack) sendSilentFrameOnMuteForOpus() {
-	frameRate := uint32(50)
-	frameDuration := time.Duration(1000/frameRate) * time.Millisecond
-	numFrames := frameRate * uint32(maxPaddingOnMuteDuration/time.Second)
-	first := true
-	for {
-		if d.rtpStats.IsActive() || d.IsClosed() || numFrames <= 0 {
-			return
-		}
-		if first {
-			first = false
-			d.params.Logger.Debugw("sending padding on mute")
-		}
-		snts, _, err := d.forwarder.GetSnTsForBlankFrames(frameRate, 1)
-		if err != nil {
-			d.params.Logger.Warnw("could not get SN/TS for blank frame", err)
-			return
-		}
-		for i := 0; i < len(snts); i++ {
-			hdr := &rtp.Header{
-				Version:        2,
-				Padding:        false,
-				Marker:         true,
-				PayloadType:    uint8(d.payloadType.Load()),
-				SequenceNumber: uint16(snts[i].extSequenceNumber),
-				Timestamp:      uint32(snts[i].extTimestamp),
-				SSRC:           d.ssrc,
-			}
-			d.addDummyExtensions(hdr)
-
-			payload, err := d.getOpusBlankFrame(false)
-			if err != nil {
-				d.params.Logger.Warnw("could not get blank frame", err)
-				return
-			}
-
-			headerSize := hdr.MarshalSize()
-			d.rtpStats.Update(
-				mono.UnixNano(),
-				snts[i].extSequenceNumber,
-				snts[i].extTimestamp,
-				hdr.Marker,
-				headerSize,
-				0,
-				len(payload), // although this is using empty frames, mark as padding as these are used to trigger Pion OnTrack only
-				false,
-			)
-			d.pacer.Enqueue(&pacer.Packet{
-				Header:             hdr,
-				HeaderSize:         headerSize,
-				Payload:            payload,
-				ProbeClusterId:     ccutils.ProbeClusterId(d.probeClusterId.Load()),
-				AbsSendTimeExtID:   uint8(d.absSendTimeExtID),
-				TransportWideExtID: uint8(d.transportWideExtID),
-				WriteStream:        d.writeStream,
-			})
-		}
-
-		numFrames--
-		time.Sleep(frameDuration)
 	}
 }
 

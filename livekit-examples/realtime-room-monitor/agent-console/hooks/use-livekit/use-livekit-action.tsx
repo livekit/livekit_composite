@@ -13,7 +13,7 @@ import { useConnectionDetails } from "./use-conn-details";
 
 export const useLivekitAction = () => {
   const room = useRoomContext();
-  const { roomName, userId } = useRoomInfo();
+  const { roomName, userId, hidden } = useRoomInfo();
   const { updateConnectionDetails } = useConnectionDetails();
   const { credentials } = useCredentials();
 
@@ -21,12 +21,12 @@ export const useLivekitAction = () => {
     const url = new URL("/api/token", window.location.origin);
     const response = await fetch(url.toString(), {
       method: "POST",
-      body: JSON.stringify({ roomName, userId, ...credentials }),
+      body: JSON.stringify({ roomName, userId, hidden, ...credentials }),
     });
 
     const connectionDetailsData = await response.json();
     updateConnectionDetails(connectionDetailsData);
-  }, [roomName, updateConnectionDetails, userId, credentials]);
+  }, [roomName, updateConnectionDetails, userId, hidden, credentials]);
 
   const handleDisconnect = useCallback(async () => {
     if (room) await room.disconnect();

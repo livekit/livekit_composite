@@ -29,12 +29,12 @@ class SimpleAgent(Agent):
             instructions="""
                 You are a helpful agent.
             """,
-            stt=deepgram.STT(),
-            llm=openai.LLM(model="gpt-4o"),
-            tts=openai.TTS(),
+            stt="assemblyai/universal-streaming",
+            llm="openai/gpt-4.1-mini",
+            tts="cartesia/sonic-2:6f84f4b8-58a2-430c-8c79-688dad597532",
             vad=silero.VAD.load()
         )
-        
+
     async def on_enter(self):
         # Generate initial greeting
         self.session.generate_reply()

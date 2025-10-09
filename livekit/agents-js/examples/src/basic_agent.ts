@@ -7,7 +7,7 @@ import {
   WorkerOptions,
   cli,
   defineAgent,
-  inference,
+  llm,
   metrics,
   voice,
 } from '@livekit/agents';
@@ -24,36 +24,35 @@ export default defineAgent({
     const agent = new voice.Agent({
       instructions:
         "You are a helpful assistant, you can hear the user's message and respond to it.",
+      tools: {
+        getWeather: llm.tool({
+          description: 'Get the weather for a given location.',
+          execute: async ({ location }) => {
+            return `The weather in ${location} is sunny.`;
+          },
+        }),
+      },
     });
 
-    const vad = ctx.proc.userData.vad! as silero.VAD;
-
     const session = new voice.AgentSession({
-      vad,
-      // stt: 'deepgram/nova-3',
-      stt: new inference.STT({
-        model: 'deepgram/nova-3',
-        extraKwargs: {
-          filler_words: false,
-        },
-      }),
-      // llm: 'azure/gpt-4.1',
-      llm: new inference.LLM({
-        model: 'azure/gpt-4.1',
-        extraKwargs: {
-          top_p: 0.9,
-        },
-      }),
-      // tts: 'elevenlabs:cgSgspJ2msm6clMCkdW9',
-      tts: new inference.TTS({
-        model: 'elevenlabs:cgSgspJ2msm6clMCkdW9',
-        extraKwargs: {
-          apply_text_normalization: 'on',
-        },
-      }),
+      // Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
+      // See all available models at https://docs.livekit.io/agents/models/stt/
+      // stt: new inference.STT({ model: 'assemblyai/universal-streaming:en', language: 'en' }),
+      stt: 'assemblyai/universal-streaming:en',
+      // A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
+      // See all available models at https://docs.livekit.io/agents/models/llm/
+      // llm: new inference.LLM({ model: 'openai/gpt-4.1-mini' }),
+      llm: 'openai/gpt-4.1-mini',
+      // Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
+      // See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
+      // tts: new inference.TTS({ model: 'cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc', voice: '9626c31c-bec5-4cca-baa8-f8ba9e84c8bc' }),
+      tts: 'cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc',
+      // VAD and turn detection are used to determine when the user is speaking and when the agent should respond
+      // See more at https://docs.livekit.io/agents/build/turns
+      vad: ctx.proc.userData.vad! as silero.VAD,
+      turnDetection: new livekit.turnDetector.MultilingualModel(),
       // to use realtime model, replace the stt, llm, tts and vad with the following
       // llm: new openai.realtime.RealtimeModel(),
-      turnDetection: new livekit.turnDetector.MultilingualModel(),
     });
 
     const usageCollector = new metrics.UsageCollector();

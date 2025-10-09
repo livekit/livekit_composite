@@ -25,7 +25,11 @@ import {
 import { Track } from "livekit-client";
 import React from "react";
 
-export const ControlBar = ({ controls, saveUserChoices = true, ...props }: ControlBarProps) => {
+export const ControlBar = ({
+  controls,
+  saveUserChoices = true,
+  ...props
+}: ControlBarProps) => {
   const visibleControls = { leave: true, ...controls };
   const localPermissions = useLocalParticipantPermissions();
 
@@ -51,7 +55,10 @@ export const ControlBar = ({ controls, saveUserChoices = true, ...props }: Contr
   } = usePersistentUserChoices({ preventSave: !saveUserChoices });
 
   return (
-    <div {...props} className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg mt-3">
+    <div
+      {...props}
+      className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg mt-3"
+    >
       {visibleControls.microphone && (
         <MediaDeviceControl
           className="flex-1 min-w-[300px]"
@@ -116,11 +123,12 @@ const MediaDeviceControl = <T extends ToggleSource>({
     source,
     onChange: setDeviceEnabled,
   });
-  const { devices, activeDeviceId, setActiveMediaDevice } = useMediaDeviceSelect({
-    kind,
-    room,
-    requestPermissions: true,
-  });
+  const { devices, activeDeviceId, setActiveMediaDevice } =
+    useMediaDeviceSelect({
+      kind,
+      room,
+      requestPermissions: true,
+    });
 
   return (
     <div

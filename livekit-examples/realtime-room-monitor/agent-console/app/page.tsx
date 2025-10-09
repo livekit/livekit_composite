@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { useCredentials } from "@/hooks/use-credentials";
 import { useRoomInfo } from "@/hooks/use-room-info";
 import { Github } from "lucide-react";
@@ -14,14 +15,17 @@ import { useRouter } from "next/navigation";
 
 export default function Page() {
   const router = useRouter();
-  const { roomName, userId, setRoomName, setUserId } = useRoomInfo();
+  const { roomName, userId, hidden, setRoomName, setUserId, setHidden } =
+    useRoomInfo();
   const { isConfigured } = useCredentials();
 
   const handleJoinRoom = async (e) => {
     e.preventDefault();
     try {
       router.push(
-        `/room?roomId=${encodeURIComponent(roomName)}&userId=${encodeURIComponent(userId)}`
+        `/room?roomId=${encodeURIComponent(
+          roomName
+        )}&userId=${encodeURIComponent(userId)}`
       );
     } catch (error) {
       console.error("Connection failed:", error);
@@ -96,6 +100,21 @@ export default function Page() {
                   Unique identifier for this monitoring session
                 </p>
               </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-md border p-4">
+                <div className="space-y-1">
+                  <Label htmlFor="hidden">Join as hidden observer</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Hide this participant from other attendees while monitoring
+                    the room
+                  </p>
+                </div>
+                <Switch
+                  id="hidden"
+                  checked={hidden}
+                  onCheckedChange={(checked) => setHidden(checked)}
+                />
+              </div>
             </div>
 
             <Button
@@ -105,12 +124,15 @@ export default function Page() {
               disabled={!isConfigured()}
               onClick={(e) => handleJoinRoom(e)}
             >
-              {isConfigured() ? "Start Observing" : "Configure Credentials First"}
+              {isConfigured()
+                ? "Start Observing"
+                : "Configure Credentials First"}
             </Button>
 
             {!isConfigured() && (
               <div className="text-center text-sm text-red-500">
-                Please configure LiveKit credentials in settings at the top right corner
+                Please configure LiveKit credentials in settings at the top
+                right corner
               </div>
             )}
           </div>

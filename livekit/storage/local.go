@@ -126,6 +126,15 @@ func (u *localUploader) GeneratePresignedUrl(storagePath string, _ time.Duration
 	return fmt.Sprintf("file://%s", abs), nil
 }
 
-func (u *localUploader) Delete(storagePath string) error {
+func (u *localUploader) DeleteObject(storagePath string) error {
 	return os.Remove(storagePath)
+}
+
+func (u *localUploader) DeleteObjects(storagePaths []string) error {
+	for _, p := range storagePaths {
+		if err := os.Remove(p); err != nil {
+			return err
+		}
+	}
+	return nil
 }

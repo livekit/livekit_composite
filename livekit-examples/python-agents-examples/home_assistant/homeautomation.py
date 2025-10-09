@@ -2,7 +2,7 @@
 ---
 title: Home Automation
 category: home-automation
-tags: [home-automation, openai, deepgram]
+tags: [home-automation, openai, assemblyai]
 difficulty: intermediate
 description: Shows how to create an agent that can control home automation devices.
 demonstrates:
@@ -23,12 +23,12 @@ from livekit import rtc
 from livekit.agents import JobContext, WorkerOptions, cli
 from livekit.agents.voice import Agent, AgentSession
 from livekit.agents.voice.agent_activity import StopResponse
-from livekit.plugins import openai, deepgram, silero
+from livekit.plugins import silero
 from livekit.agents.llm import function_tool
 
 load_dotenv(dotenv_path=Path(__file__).parent.parent / '.env')
 
-logger = logging.getLogger("listen-and-respond")
+logger = logging.getLogger("home-automation")
 logger.setLevel(logging.INFO)
 
 WAKE_WORD = "hey casa"
@@ -43,11 +43,11 @@ class SimpleAgent(Agent):
                 You can list available devices and control them by turning them on or off.
                 When asked about devices, first list what's available and then help control them.
             """,
-            stt=deepgram.STT(),
-            llm=openai.LLM(),
-            tts=openai.TTS(),
+            stt="assemblyai/universal-streaming",
+            llm="openai/gpt-4.1-mini",
+            tts="cartesia/sonic-2:6f84f4b8-58a2-430c-8c79-688dad597532",
             vad=silero.VAD.load()
-        )  
+        )
         self.wake_word_detected = False
         self.wake_word = WAKE_WORD
 
@@ -87,7 +87,7 @@ class SimpleAgent(Agent):
                                 event.alternatives[0].text = content_after_wake_word
                                 yield event
                         # If wake word not detected, don't yield the event (discard input)
-                    else:  
+                    else:
                         # Wake word already detected, process this utterance
                         yield event
 
@@ -137,7 +137,7 @@ class SimpleAgent(Agent):
     @function_tool()
     async def control_device(self, entity_id: str, state: str) -> None:
         """Turn a device on or off.
-        
+
         Args:
             entity_id: The ID of the device to control (e.g. 'light.kitchen')
             state: Either 'on' or 'off'
@@ -153,13 +153,13 @@ class SimpleAgent(Agent):
         # First get the device's friendly name
         url = f"{HOMEAUTOMATION_URL}/api/states/{entity_id}"
         headers = {"Authorization": f"Bearer {HOMEAUTOMAITON_TOKEN}"}
-        
+
         try:
             response = requests.get(url, headers=headers, timeout=10)
             if response.status_code != 200:
                 self.session.say(f"Sorry, I couldn't find the device {entity_id}")
                 return
-                
+
             device = response.json()
             friendly_name = device['attributes'].get('friendly_name', entity_id)
 
@@ -167,7 +167,7 @@ class SimpleAgent(Agent):
             service = "turn_on" if state == "on" else "turn_off"
             domain = entity_id.split(".")[0]
             url = f"{HOMEAUTOMATION_URL}/api/services/{domain}/{service}"
-            
+
             response = requests.post(url, headers=headers, json={"entity_id": entity_id}, timeout=10)
             if response.status_code in (200, 201):
                 self.session.say(f"Ok, I've turned {friendly_name} {state}")
@@ -175,13 +175,13 @@ class SimpleAgent(Agent):
                 self.session.say(f"Sorry, I couldn't control {friendly_name}")
         except requests.exceptions.RequestException:
             self.session.say("Sorry, I'm having trouble connecting to the home automation system")
-        
+
         return None
 
-    async def on_user_turn_completed(self, chat_ctx, new_message=None):  
-        # Only generate a reply if the wake word was detected  
-        if self.wake_word_detected:  
-            # Let the default behavior happen  
+    async def on_user_turn_completed(self, chat_ctx, new_message=None):
+        # Only generate a reply if the wake word was detected
+        if self.wake_word_detected:
+            # Let the default behavior happen
             result = await super().on_user_turn_completed(chat_ctx, new_message)
             # Reset the wake word detection after processing the response
             self.wake_word_detected = False

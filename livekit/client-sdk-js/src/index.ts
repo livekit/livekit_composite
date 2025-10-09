@@ -50,6 +50,7 @@ import {
   isVideoTrack,
   supportsAV1,
   supportsAdaptiveStream,
+  supportsAudioOutputSelection,
   supportsDynacast,
   supportsVP9,
 } from './room/utils';
@@ -66,6 +67,8 @@ export * from './room/errors';
 export * from './room/events';
 export * from './room/track/Track';
 export * from './room/track/create';
+export * from './room/token-source/TokenSource';
+export * from './room/token-source/types';
 export { facingModeFromDeviceLabel, facingModeFromLocalTrack } from './room/track/facingMode';
 export * from './room/track/options';
 export * from './room/track/processor/types';
@@ -119,6 +122,7 @@ export {
   setLogLevel,
   supportsAV1,
   supportsAdaptiveStream,
+  supportsAudioOutputSelection,
   supportsDynacast,
   supportsVP9,
   Mutex,

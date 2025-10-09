@@ -1,5 +1,9 @@
 import { getLiveKitCredentialsFromRequest } from "@/lib/livekit-utils";
-import { AccessToken, AccessTokenOptions, VideoGrant } from "livekit-server-sdk";
+import {
+  AccessToken,
+  AccessTokenOptions,
+  VideoGrant,
+} from "livekit-server-sdk";
 import { NextResponse } from "next/server";
 
 export const revalidate = 0;
@@ -14,19 +18,28 @@ export type ConnectionDetails = {
 export async function POST(request: Request) {
   try {
     const req = await request.json();
-    const { roomName, userId } = req;
-    const { API_KEY, API_SECRET, LIVEKIT_URL } = await getLiveKitCredentialsFromRequest(req);
+    const { roomName, userId, hidden: hiddenFromRequest } = req;
+    const { API_KEY, API_SECRET, LIVEKIT_URL } =
+      await getLiveKitCredentialsFromRequest(req);
 
     if (!roomName || !userId) {
       throw new Error("Missing roomName or userId parameters");
     }
+
+    const hidden =
+      typeof hiddenFromRequest === "boolean"
+        ? hiddenFromRequest
+        : typeof hiddenFromRequest === "string"
+        ? hiddenFromRequest === "true"
+        : false;
 
     // Generate participant token with provided values
     const participantToken = await createParticipantToken(
       { identity: userId },
       roomName,
       API_KEY,
-      API_SECRET
+      API_SECRET,
+      { hidden }
     );
 
     const data: ConnectionDetails = {
@@ -36,7 +49,9 @@ export async function POST(request: Request) {
       participantName: userId,
     };
 
-    return NextResponse.json(data, { headers: new Headers({ "Cache-Control": "no-store" }) });
+    return NextResponse.json(data, {
+      headers: new Headers({ "Cache-Control": "no-store" }),
+    });
   } catch (error) {
     if (error instanceof Error) {
       console.error(error);
@@ -49,7 +64,8 @@ function createParticipantToken(
   userInfo: AccessTokenOptions,
   roomName: string,
   apiKey: string,
-  apiSecret: string
+  apiSecret: string,
+  options: { hidden: boolean }
 ) {
   const at = new AccessToken(apiKey, apiSecret, {
     ...userInfo,
@@ -62,6 +78,7 @@ function createParticipantToken(
     canPublish: true,
     canPublishData: true,
     canSubscribe: true,
+    hidden: options.hidden,
   };
 
   at.addGrant(grant);

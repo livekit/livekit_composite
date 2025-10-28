@@ -1,6 +1,6 @@
 # Voice Agent Hackathon Template
 
-Welcome to the Voice Agent Hackathon! This template contains a ready-to-use voice agent built with [AssemblyAI](https://assemblyai.com) and [Rime](https://rime.ai). All you need to run it is a [LiveKit Cloud](https://cloud.livekit.io) project.
+Welcome to the Voice Agent Hackathon! This template contains a ready-to-use voice agent built [LiveKit Agents](https://github.com/livekit/agents). All you need is a [LiveKit Cloud](https://cloud.livekit.io) project.
 
 This starter app is compatible with any [custom web/mobile frontend](https://docs.livekit.io/agents/start/frontend/) or [SIP-based telephony](https://docs.livekit.io/agents/start/telephony/).
 
@@ -46,9 +46,9 @@ Finally, open the [LiveKit Agents Playground](https://agents-playground.livekit.
 
 ## Tips for managing background noise
 
-This hackathon may be a noisy place which can make it tricky to test your agent. Here are some tips to help you:
+If you're in a noisy hackathon environment, it may be tricky to test your agent. Here are some tips to help you:
 
-1. Use headphones with a microphone and noise isolation features (such as Airpods) 
+1. Use headphones with a microphone and noise isolation features (such as AirPods Pro) 
 2. Use the LiveKit [background voice cancellation](https://docs.livekit.io/home/cloud/noise-cancellation/) model (pre-installed in this template)
 3. Turn off your microphone in the [Agents Playground](https://agents-playground.livekit.io/#cam=0&mic=1&screen=0&video=0&audio=1&chat=1&theme_color=cyan) and use text input to test your agent instead.
 
@@ -84,79 +84,8 @@ This project is production-ready and includes a working `Dockerfile`. To deploy 
 
 ## Models
 
-This project uses models from AssemblyAI and Rime, as well as GPT-4o-mini from Azure OpenAI. By default, these are served through early-access to LiveKit Inference and no extra account is required.
+This project uses LiveKit Inference with models from AssemblyAI, OpenAI, and Cartesia. No extra account is required to use these models, which have been selected for their quality and performance.
 
-### AssemblyAI customization
+Many more models are available, both through LiveKit Inference and through SDK plugins for a wide variety of third-party APIs. See the [LiveKit Agents documentation](https://docs.livekit.io/agents/models/) for a full list.
 
-To customize the AssemblyAI model, while still using LiveKit Cloud, you can use the following session setup in your [agent code](https://github.com/livekit-examples/voice-agent-hackathon/blob/main/src/agent.py) instead of the version above:
-
-```python
-from livekit.agents import inference
-
-session = AgentSession(
-    stt=inference.STT(model="assemblyai", extra_kwargs={ ... })
-)
-```
-
-Refer to the [source code](https://github.com/livekit/agents/blob/main/livekit-agents/livekit/agents/inference/stt.py#L57) for available parameters (docs for LiveKit Inference are coming soon)
-
-#### AssemblyAI plugin
-
-To use your own AssemblyAI account, or access additional AssemblyAI features, use the AssemblyAI plugin:
-
-```shell
-uv add livekit-agents[assemblyai]
-```
-
-```python
-from livekit.plugins import assemblyai
-
-session = AgentSession(
-    stt=assemblyai.STT()
-)
-```
-
-Refer to the [plugin documentation](https://docs.livekit.io/agents/integrations/stt/assemblyai/) for more information.
-
-### Rime customization
-
-To use a different Rime voice, while still using LiveKit Cloud, just change the voice name after the colon in your [agent code](https://github.com/livekit-examples/voice-agent-hackathon/blob/main/src/agent.py):
-
-```python
-session = AgentSession(
-    tts="rime/arcana:andromeda"
-)
-```
-
-Refer to the [Rime voices list](https://docs.rime.ai/api-reference/voices) for more information.
-
-#### Rime plugin
-
-To use your own Rime account, or access additional features, use the Rime plugin:
-
-```shell
-uv add livekit-agents[rime]
-```
-
-```python
-from livekit.plugins import rime
-
-session = AgentSession(
-    tts=rime.TTS(model="arcana", speaker="andromeda")
-)
-```
-
-Refer to the [plugin documentation](https://docs.livekit.io/agents/integrations/tts/rime/) for more information.
-
-
-## Other large language models
-
-Refer to the [source code](https://github.com/livekit/agents/blob/main/livekit-agents/livekit/agents/inference/llm.py) for available models (LiveKit Inference docs are coming soon).
-
-```python
-session = AgentSession(
-    llm="azure/gpt-4o-mini"
-)
-```
-
-Or, use an [LLM plugin](https://docs.livekit.io/agents/integrations/llm/) for a wider range of models and more configuration options.
+Happy hacking!

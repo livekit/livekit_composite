@@ -1,7 +1,6 @@
 import 'well-known-symbols/Symbol.asyncIterator/auto';
 import 'well-known-symbols/Symbol.iterator/auto';
 import './polyfills/MediaRecorderShim';
-import 'react-native-quick-base64';
 import { registerGlobals as webrtcRegisterGlobals } from '@livekit/react-native-webrtc';
 import { setupURLPolyfill } from 'react-native-url-polyfill';
 import './polyfills/EncoderDecoderTogether.min.js';
@@ -28,9 +27,9 @@ export interface RegisterGlobalsOptions {
   /**
    * Automatically configure audio session before accessing microphone.
    * When enabled, sets the iOS audio category to 'playAndRecord' before getUserMedia.
+   * Has no effect on non-iOS platforms.
    *
    * @default true
-   * @platform ios
    */
   autoConfigureAudioSession?: boolean;
 }

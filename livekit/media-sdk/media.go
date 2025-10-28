@@ -71,17 +71,24 @@ func NopCloser[T any](w Writer[T]) WriteCloser[T] {
 }
 
 func NewSwitchWriter(sampleRate int) *SwitchWriter {
-	if sampleRate <= 0 {
-		panic("invalid sample rate")
+	// This protects from a case when sample rate is not initialized,
+	// but still allows passing -1 to delay initialization.
+	// If sample rate is still uninitialized when another writer is attached,
+	// the SampleRate method will panic instead of this check.
+	if sampleRate == 0 {
+		panic("no sample rate specified")
 	}
-	return &SwitchWriter{
-		sampleRate: sampleRate,
+	if sampleRate < 0 {
+		sampleRate = -1 // checked by SetSampleRate
 	}
+	w := &SwitchWriter{}
+	w.sampleRate.Store(int32(sampleRate))
+	return w
 }
 
 type SwitchWriter struct {
-	sampleRate int
 	ptr        atomic.Pointer[PCM16Writer]
+	sampleRate atomic.Int32
 	disabled   atomic.Bool
 }
 
@@ -108,8 +115,8 @@ func (s *SwitchWriter) Swap(w PCM16Writer) PCM16Writer {
 	if w == nil {
 		old = s.ptr.Swap(nil)
 	} else {
-		if w.SampleRate() != s.sampleRate {
-			w = ResampleWriter(w, s.sampleRate)
+		if rate := s.SampleRate(); rate != w.SampleRate() {
+			w = ResampleWriter(w, rate)
 		}
 		old = s.ptr.Swap(&w)
 	}
@@ -121,14 +128,29 @@ func (s *SwitchWriter) Swap(w PCM16Writer) PCM16Writer {
 
 func (s *SwitchWriter) String() string {
 	w := s.Get()
-	return fmt.Sprintf("Switch(%d) -> %v", s.sampleRate, w)
+	return fmt.Sprintf("Switch(%d) -> %v", s.sampleRate.Load(), w)
 }
 
-func (s *SwitchWriter) SampleRate() int {
-	if s.sampleRate == 0 {
-		panic("switch writer not initialized")
+// SetSampleRate sets a new sample rate for the switch. For this to work, NewSwitchWriter(-1) must be called.
+// The code will panic if sample rate is unset when a writer is attached, or if this method is called twice.
+func (s *SwitchWriter) SetSampleRate(rate int) {
+	if rate <= 0 {
+		panic("invalid sample rate")
 	}
-	return s.sampleRate
+	if !s.sampleRate.CompareAndSwap(-1, int32(rate)) {
+		panic("sample rate can only be changed once")
+	}
+}
+
+// SampleRate returns an expected sample rate for this writer. It panics if the sample rate is not specified.
+func (s *SwitchWriter) SampleRate() int {
+	rate := int(s.sampleRate.Load())
+	if rate == 0 {
+		panic("switch writer not initialized")
+	} else if rate < 0 {
+		panic("sample rate is unset on a switch writer")
+	}
+	return rate
 }
 
 func (s *SwitchWriter) Close() error {

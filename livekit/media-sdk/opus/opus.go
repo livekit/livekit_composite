@@ -99,6 +99,9 @@ func (d *decoder) SampleRate() int {
 }
 
 func (d *decoder) WriteSample(in Sample) error {
+	if len(in) == 0 {
+		return nil
+	}
 	channels, err := d.resetForSample(in)
 	if err != nil {
 		return err

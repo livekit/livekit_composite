@@ -217,6 +217,7 @@ func (c *outboundCall) WaitClose(ctx context.Context) error {
 		case <-ticker.C:
 			c.log.Debugw("sending keep-alive")
 			c.state.ForceFlush(ctx)
+			c.printStats()
 		case <-c.Disconnected():
 			c.CloseWithReason(callDropped, "removed", livekit.DisconnectReason_CLIENT_INITIATED)
 			return nil
@@ -269,8 +270,15 @@ func (c *outboundCall) closeWithTimeout() {
 	c.close(psrpc.NewErrorf(psrpc.DeadlineExceeded, "media-timeout"), callDropped, "media-timeout", livekit.DisconnectReason_UNKNOWN_REASON)
 }
 
+func (c *outboundCall) printStats() {
+	c.log.Infow("call statistics", "stats", c.stats.Load())
+}
+
 func (c *outboundCall) close(err error, status CallStatus, description string, reason livekit.DisconnectReason) {
 	c.stopped.Once(func() {
+		c.stats.Closed.Store(true)
+		defer c.printStats()
+
 		c.setStatus(status)
 		if err != nil {
 			c.log.Warnw("Closing outbound call with error", nil, "reason", description)
@@ -292,8 +300,6 @@ func (c *outboundCall) close(err error, status CallStatus, description string, r
 
 		c.stopSIP(description)
 
-		c.log.Infow("call statistics", "stats", c.stats.Load())
-
 		c.c.cmu.Lock()
 		delete(c.c.activeCalls, c.cc.ID())
 		if tag := c.cc.Tag(); tag != "" {
@@ -308,7 +314,7 @@ func (c *outboundCall) close(err error, status CallStatus, description string, r
 			go c.c.handler.OnSessionEnd(context.Background(), &CallIdentifier{
 				ProjectID: c.projectID,
 				CallID:    c.state.callInfo.CallId,
-				SipCallID: c.cc.CallID(),
+				SipCallID: c.cc.SIPCallID(),
 			}, c.state.callInfo, description)
 		}
 	})
@@ -728,7 +734,7 @@ func (c *sipOutbound) Tag() RemoteTag {
 	return c.tag
 }
 
-func (c *sipOutbound) CallID() string {
+func (c *sipOutbound) SIPCallID() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.callID
@@ -750,7 +756,6 @@ func (c *sipOutbound) Invite(ctx context.Context, to URI, user, pass string, hea
 	defer c.mu.Unlock()
 	toHeader := &sip.ToHeader{Address: *to.GetURI()}
 
-	dest := to.GetDest()
 	c.callID = guid.HashedID(fmt.Sprintf("%s-%s", string(c.id), toHeader.Address.String()))
 	c.log = c.log.WithValues("sipCallID", c.callID)
 
@@ -773,7 +778,7 @@ authLoop:
 		if try >= 5 {
 			return nil, fmt.Errorf("max auth retry attemps reached")
 		}
-		req, resp, err = c.attemptInvite(ctx, sip.CallIDHeader(c.callID), dest, toHeader, sdpOffer, authHeaderRespName, authHeader, sipHeaders, setState)
+		req, resp, err = c.attemptInvite(ctx, sip.CallIDHeader(c.callID), toHeader, sdpOffer, authHeaderRespName, authHeader, sipHeaders, setState)
 		if err != nil {
 			return nil, err
 		}
@@ -883,7 +888,7 @@ func (c *sipOutbound) AckInviteOK(ctx context.Context) error {
 	return c.c.sipCli.WriteRequest(sip.NewAckRequest(c.invite, c.inviteOk, nil))
 }
 
-func (c *sipOutbound) attemptInvite(ctx context.Context, callID sip.CallIDHeader, dest string, to *sip.ToHeader, offer []byte, authHeaderName, authHeader string, headers Headers, setState sipRespFunc) (*sip.Request, *sip.Response, error) {
+func (c *sipOutbound) attemptInvite(ctx context.Context, callID sip.CallIDHeader, to *sip.ToHeader, offer []byte, authHeaderName, authHeader string, headers Headers, setState sipRespFunc) (*sip.Request, *sip.Response, error) {
 	ctx, span := tracer.Start(ctx, "sipOutbound.attemptInvite")
 	defer span.End()
 	req := sip.NewRequest(sip.INVITE, to.Address)
@@ -891,7 +896,6 @@ func (c *sipOutbound) attemptInvite(ctx context.Context, callID sip.CallIDHeader
 	req.RemoveHeader("Call-ID")
 	req.AppendHeader(&callID)
 
-	req.SetDestination(dest)
 	req.SetBody(offer)
 	req.AppendHeader(to)
 	req.AppendHeader(c.from)

@@ -25,6 +25,7 @@ import (
 	"github.com/livekit/media-sdk/jitter"
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/utils/mono"
+	"github.com/livekit/protocol/utils/rtputil"
 )
 
 // ---- test fakes & helpers ----
@@ -47,7 +48,7 @@ func newTSForTests(tc *testing.T, clockRate uint32, kind webrtc.RTPCodecType) *T
 		sync:               nil, // construct directly to avoid depending on Synchronizer
 		track:              fakeTrack{id: "t", rate: clockRate, kind: kind},
 		logger:             logger.NewTestLogger(tc),
-		rtpConverter:       newRTPConverter(int64(clockRate)),
+		RTPConverter:       rtputil.NewRTPConverter(int64(clockRate)),
 		maxTsDiff:          200 * time.Millisecond,
 		maxDriftAdjustment: 5 * time.Millisecond,
 	}
@@ -56,6 +57,16 @@ func newTSForTests(tc *testing.T, clockRate uint32, kind webrtc.RTPCodecType) *T
 	// pick an arbitrary RTP base
 	t.startRTP = 1000
 	return t
+}
+
+func newTSPipelineForTests(t *testing.T, running, delay time.Duration) *TrackSynchronizer {
+	s := NewSynchronizerWithOptions(
+		WithMediaRunningTime(func() (time.Duration, bool) { return running, true }, delay),
+	)
+	ts := newTrackSynchronizer(s, fakeTrack{id: "pipeline", rate: 90000, kind: webrtc.RTPCodecTypeAudio})
+	ts.logger = logger.NewTestLogger(t)
+	ts.startTime = time.Now().Add(-running)
+	return ts
 }
 
 // ---- tests ----
@@ -100,7 +111,7 @@ func TestGetPTSWithoutRebase_Increasing(t *testing.T) {
 
 	// Simulate accepting two frames in order: 20ms and then 20ms later
 	// Convert 20ms -> RTP ticks
-	rtp20ms := ts.rtpConverter.toRTP(20 * time.Millisecond)
+	rtp20ms := ts.ToRTP(20 * time.Millisecond)
 
 	now := time.Now()
 	// First packet initializes lastTS path
@@ -144,7 +155,7 @@ func TestGetPTSWithoutRebase_NegativeAdjustedPTS(t *testing.T) {
 	ts.initialize(firstPacket)
 	require.Less(t, ts.currentPTSOffset, time.Duration(0), "expected negative PTS offset when synchronizer start is later")
 
-	stepTS := ts.rtpConverter.toRTP(10 * time.Millisecond)
+	stepTS := ts.ToRTP(10 * time.Millisecond)
 	secondPacket := jitter.ExtPacket{
 		Packet: &rtp.Packet{
 			Header:  rtp.Header{Timestamp: firstPacket.Packet.Timestamp + stepTS, SequenceNumber: 2},
@@ -193,8 +204,8 @@ func TestGetPTSWithRebase_PropelsForward(t *testing.T) {
 	ts.startRTP = 100000
 	ts.lastTS = ts.startRTP
 
-	rtp500ms := ts.rtpConverter.toRTP(500 * time.Millisecond)
-	rtp10ms := ts.rtpConverter.toRTP(10 * time.Millisecond)
+	rtp500ms := ts.ToRTP(500 * time.Millisecond)
+	rtp10ms := ts.ToRTP(10 * time.Millisecond)
 
 	// First packet (~500ms)
 	ts1 := ts.startRTP + rtp500ms
@@ -233,7 +244,7 @@ func TestShouldAdjustPTS_Deadband_Suppresses(t *testing.T) {
 	// ensure throttle window has elapsed
 	ts.nextPTSAdjustmentAt = mono.Now().Add(-time.Second)
 
-	require.False(t, ts.shouldAdjustPTS(), "delta < step should suppress adjustment")
+	require.False(t, ts.shouldAdjustPTS(80*time.Millisecond), "delta < step should suppress adjustment")
 }
 
 func TestShouldAdjustPTS_Deadband_BoundaryAdjusts(t *testing.T) {
@@ -246,7 +257,7 @@ func TestShouldAdjustPTS_Deadband_BoundaryAdjusts(t *testing.T) {
 	ts.desiredPTSOffset = 105 * time.Millisecond
 	ts.nextPTSAdjustmentAt = mono.Now().Add(-time.Second)
 
-	require.True(t, ts.shouldAdjustPTS(), "delta == step should allow adjustment")
+	require.True(t, ts.shouldAdjustPTS(80*time.Millisecond), "delta == step should allow adjustment")
 }
 
 func TestShouldAdjustPTS_Deadband_AboveAdjusts(t *testing.T) {
@@ -259,7 +270,7 @@ func TestShouldAdjustPTS_Deadband_AboveAdjusts(t *testing.T) {
 	ts.desiredPTSOffset = 112 * time.Millisecond
 	ts.nextPTSAdjustmentAt = mono.Now().Add(-time.Second)
 
-	require.True(t, ts.shouldAdjustPTS(), "delta > step should allow adjustment")
+	require.True(t, ts.shouldAdjustPTS(80*time.Millisecond), "delta > step should allow adjustment")
 }
 
 func TestPrimeForStartWithStartGate(t *testing.T) {
@@ -269,7 +280,7 @@ func TestPrimeForStartWithStartGate(t *testing.T) {
 	ts.sync = NewSynchronizerWithOptions()
 
 	stepDur := 20 * time.Millisecond
-	step := ts.rtpConverter.toRTP(stepDur)
+	step := ts.ToRTP(stepDur)
 	baseTS := ts.startRTP
 	base := time.Now()
 
@@ -324,7 +335,7 @@ func TestShouldAdjustPTS_Deadband_NegativeDelta_Suppresses(t *testing.T) {
 	ts.desiredPTSOffset = 96 * time.Millisecond
 	ts.nextPTSAdjustmentAt = mono.Now().Add(-time.Second)
 
-	require.False(t, ts.shouldAdjustPTS(), "negative delta with |delta| < step should suppress adjustment")
+	require.False(t, ts.shouldAdjustPTS(80*time.Millisecond), "negative delta with |delta| < step should suppress adjustment")
 }
 
 func TestShouldAdjustPTS_Deadband_NegativeDelta_AboveAdjusts(t *testing.T) {
@@ -337,7 +348,7 @@ func TestShouldAdjustPTS_Deadband_NegativeDelta_AboveAdjusts(t *testing.T) {
 	ts.desiredPTSOffset = 94 * time.Millisecond
 	ts.nextPTSAdjustmentAt = mono.Now().Add(-time.Second)
 
-	require.True(t, ts.shouldAdjustPTS(), "negative delta with |delta| > step should allow adjustment")
+	require.True(t, ts.shouldAdjustPTS(80*time.Millisecond), "negative delta with |delta| > step should allow adjustment")
 }
 
 func TestShouldAdjustPTS_AudioGating_DisabledBlocks(t *testing.T) {
@@ -353,5 +364,94 @@ func TestShouldAdjustPTS_AudioGating_DisabledBlocks(t *testing.T) {
 	ts.desiredPTSOffset = 140 * time.Millisecond // large delta
 	ts.nextPTSAdjustmentAt = mono.Now().Add(-time.Second)
 
-	require.False(t, ts.shouldAdjustPTS(), "audio gating should block adjustment when disabled")
+	require.False(t, ts.shouldAdjustPTS(80*time.Millisecond), "audio gating should block adjustment when disabled")
+}
+
+func TestShouldAdjustPTS_NoPTSRegression(t *testing.T) {
+	clock := uint32(48000)
+	ts := newTSForTests(t, clock, webrtc.RTPCodecTypeVideo)
+	ts.maxDriftAdjustment = 5 * time.Millisecond
+	ts.currentPTSOffset = 100 * time.Millisecond
+
+	ts.lastPTS = 200 * time.Millisecond
+	currentPTS := ts.lastPTS + ts.maxDriftAdjustment - time.Millisecond
+
+	ts.desiredPTSOffset = 80 * time.Millisecond
+	ts.nextPTSAdjustmentAt = mono.Now().Add(-time.Second)
+
+	require.False(t, ts.shouldAdjustPTS(currentPTS), "should not adjust PTS when it would regress")
+}
+
+func TestNormalizePTSToMediaPipelineTimeline_NoPipeline(t *testing.T) {
+	ts := newTSForTests(t, 90000, webrtc.RTPCodecTypeAudio)
+	ptsIn := 5 * time.Second
+	adjusted, ptsOut := ts.normalizePTSToMediaPipelineTimeline(ptsIn, 0, mono.Now())
+	require.Equal(t, ptsIn, ptsOut)
+	require.Equal(t, ptsIn+ts.currentPTSOffset, adjusted)
+}
+
+func TestNormalizePTSToMediaPipelineTimeline_FreshBehindDoesNotCorrect(t *testing.T) {
+	running := 10 * time.Second
+	delay := 50 * time.Millisecond
+	ts := newTSPipelineForTests(t, running, delay)
+	ptsIn := running - delay - time.Second
+	ts.lastPTS = ptsIn
+	ts.lastPTSAdjusted = ptsIn
+	sampleTS := ts.ToRTP(ptsIn)
+	initialStartRTP := ts.startRTP
+	initialTimely := mono.Now()
+	ts.lastTimelyPacket = initialTimely
+
+	adjusted, ptsOut := ts.normalizePTSToMediaPipelineTimeline(ptsIn, sampleTS, mono.Now())
+	require.Equal(t, ptsIn, ptsOut)
+	require.Equal(t, ptsIn+ts.currentPTSOffset, adjusted)
+	require.Equal(t, initialStartRTP, ts.startRTP, "fresh lag must not rebase immediately")
+}
+
+func TestNormalizePTSToMediaPipelineTimeline_CorrectsAfterLongLag(t *testing.T) {
+	running := 20 * time.Second
+	delay := 100 * time.Millisecond
+	ts := newTSPipelineForTests(t, running, delay)
+	ptsIn := running - delay - 5*time.Second
+	ts.lastPTS = ptsIn
+	ts.lastPTSAdjusted = ptsIn
+	sampleTS := ts.ToRTP(ptsIn)
+	ts.lastTimelyPacket = mono.Now().Add(-cMaxTimelyPacketAge - time.Second)
+
+	deadline, ok := ts.sync.getExternalMediaDeadline()
+	require.True(t, ok)
+
+	adjusted, ptsOut := ts.normalizePTSToMediaPipelineTimeline(ptsIn, sampleTS, mono.Now())
+	expectedPTS := deadline + ts.maxMediaRunningTimeDelay - ts.currentPTSOffset
+	require.InDelta(t, float64(expectedPTS), float64(ptsOut), float64(3*time.Millisecond))
+	require.InDelta(t, float64(expectedPTS+ts.currentPTSOffset), float64(adjusted), float64(3*time.Millisecond))
+}
+
+func TestAcceptableSRDrift_UsesOldPacketThreshold(t *testing.T) {
+	ts := newTSForTests(t, 48000, webrtc.RTPCodecTypeAudio)
+	ts.oldPacketThreshold = 400 * time.Millisecond
+	ts.maxMediaRunningTimeDelay = 0
+
+	require.True(t, ts.acceptableSRDrift(399*time.Millisecond))
+	require.True(t, ts.acceptableSRDrift(-399*time.Millisecond))
+	require.False(t, ts.acceptableSRDrift(400*time.Millisecond))
+}
+
+func TestAcceptableSRDrift_PrefersMediaRunningTimeDelay(t *testing.T) {
+	ts := newTSForTests(t, 48000, webrtc.RTPCodecTypeAudio)
+	ts.oldPacketThreshold = time.Second
+	ts.maxMediaRunningTimeDelay = 150 * time.Millisecond
+
+	require.True(t, ts.acceptableSRDrift(149*time.Millisecond))
+	require.True(t, ts.acceptableSRDrift(-149*time.Millisecond))
+	require.False(t, ts.acceptableSRDrift(151*time.Millisecond))
+}
+
+func TestAcceptableSRDrift_FallsBackToDefault(t *testing.T) {
+	ts := newTSForTests(t, 48000, webrtc.RTPCodecTypeAudio)
+	ts.oldPacketThreshold = 0
+	ts.maxMediaRunningTimeDelay = 0
+
+	require.True(t, ts.acceptableSRDrift(time.Second))
+	require.False(t, ts.acceptableSRDrift(3*time.Second))
 }

@@ -191,6 +191,19 @@ enum SIPMediaEncryption {
   SIP_MEDIA_ENCRYPT_REQUIRE = 2; // require encryption
 }
 
+message ProviderInfo {
+  string id = 1;
+  string name = 2;
+  ProviderType type = 3;
+  bool prevent_transfer = 4;
+}
+
+enum ProviderType {
+  PROVIDER_TYPE_UNKNOWN = 0;
+  PROVIDER_TYPE_INTERNAL = 1;  // Internally implemented
+  PROVIDER_TYPE_EXTERNAL = 2;  // Vendor provided
+}
+
 message SIPTrunkInfo {
   option deprecated = true;
 
@@ -677,7 +690,8 @@ message CreateSIPParticipantRequest {
   // 2) Empty string: Do not send a display name, which will result in a CNAM lookup downstream.
   // 3) Non-empty: Use the specified value as the display name.
   optional string display_name = 21;
-  // NEXT ID: 22
+  optional Destination destination = 22;
+  // NEXT ID: 23
 }
 
 message SIPParticipantInfo {
@@ -701,6 +715,7 @@ message TransferSIPParticipantRequest {
   // Max time for the transfer destination to answer the call.
   google.protobuf.Duration ringing_timeout = 6;
 }
+
 
 message SIPCallInfo {
   string call_id = 1;
@@ -729,8 +744,9 @@ message SIPCallInfo {
   string media_encryption = 21;
   string pcap_file_link = 25;
   repeated google.protobuf.Any call_context = 26;
+  ProviderInfo provider_info = 27;
 
-  // NEXT ID: 27
+  // NEXT ID: 28
 }
 
 message SIPTransferInfo {
@@ -777,4 +793,10 @@ enum SIPCallDirection {
   SCD_UNKNOWN = 0;
   SCD_INBOUND = 1;
   SCD_OUTBOUND = 2;
+}
+
+message Destination {
+  string city = 1;
+  string country = 2;
+  string region = 3;
 }

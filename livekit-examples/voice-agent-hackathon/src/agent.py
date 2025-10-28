@@ -2,17 +2,13 @@ import logging
 
 from dotenv import load_dotenv
 from livekit.agents import (
-    NOT_GIVEN,
     Agent,
-    AgentFalseInterruptionEvent,
     AgentSession,
     JobContext,
     JobProcess,
-    MetricsCollectedEvent,
     RoomInputOptions,
     WorkerOptions,
     cli,
-    metrics,
 )
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -54,71 +50,17 @@ def prewarm(proc: JobProcess):
 
 
 async def entrypoint(ctx: JobContext):
-    # Logging setup
-    # Add any other context you want in all log entries here
-    ctx.log_context_fields = {
-        "room": ctx.room.name,
-    }
-
     # Set up a voice AI pipeline using OpenAI, Rime, AssemblyAI, and the LiveKit turn detector
+    # For a list of all available models, as well as configuration options see
+    # https://docs.livekit.io/agents/models/
     session = AgentSession(
-        # This starter template uses GPT-4o-mini via LiveKit Cloud.
-        # For a list of available models, see https://github.com/livekit/agents/blob/main/livekit-agents/livekit/agents/inference/llm.py
-        # Or, for a wider range of models, see plugins at https://docs.livekit.io/agents/integrations/llm/
-        llm="azure/gpt-4o-mini",
-        # This starter template uses AssemblyAI via LiveKit Cloud.
-        # To send extra parameters, use the following session setup instead of the version above:
-        # 1. add `from livekit.agents import inference` to the top of this file
-        # 2. Use the following session setup instead of the version above:
-        #     stt=inference.STT(model="assemblyai", extra_kwargs={ ... })
-        # See available configuration at https://github.com/livekit/agents/blob/main/livekit-agents/livekit/agents/inference/stt.py#L57
-        #
-        # Or to use your own AssemblyAI account:
-        # 1. Install livekit-agents[assemblyai]
-        # 2. Set ASSEMBLYAI_API_KEY in .env.local
-        # 3. Add `from livekit.plugins import assemblyai` to the top of this file
-        # 4. Use the following session setup instead of the version above
-        #     stt=assemblyai.STT()
-        # See available configuration at https://docs.livekit.io/agents/integrations/stt/assemblyai/
-        stt="assemblyai",
-        # This starter template uses Rime via LiveKit Cloud
-        # To change the voice, alter the voice name (currently "luna") after the colon.
-        # See available voices at https://docs.rime.ai/api-reference/voices
-        #
-        # Or, to use your own Rime account:
-        # 1. Install livekit-agents[rime]
-        # 2. Set RIME_API_KEY in .env.local
-        # 3. Add `from livekit.plugins import rime` to the top of this file
-        # 4. Use the following session setup instead of the version above
-        #     tts=rime.TTS(model="arcana", speaker="luna")
-        # See available configuration at https://docs.livekit.io/agents/integrations/tts/rime/
-        tts="rime/arcana:luna",
+        stt="assemblyai/universal-streaming:en",
+        llm="openai/gpt-4.1-mini",
+        tts="cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
-
-    # sometimes background noise could interrupt the agent session, these are considered false positive interruptions
-    # when it's detected, you may resume the agent's speech
-    @session.on("agent_false_interruption")
-    def _on_agent_false_interruption(ev: AgentFalseInterruptionEvent):
-        logger.info("false positive interruption, resuming")
-        session.generate_reply(instructions=ev.extra_instructions or NOT_GIVEN)
-
-    # Metrics collection, to measure pipeline performance
-    # For more information, see https://docs.livekit.io/agents/build/metrics/
-    usage_collector = metrics.UsageCollector()
-
-    @session.on("metrics_collected")
-    def _on_metrics_collected(ev: MetricsCollectedEvent):
-        metrics.log_metrics(ev.metrics)
-        usage_collector.collect(ev.metrics)
-
-    async def log_usage():
-        summary = usage_collector.get_summary()
-        logger.info(f"Usage: {summary}")
-
-    ctx.add_shutdown_callback(log_usage)
 
     # Start the session, which initializes the voice pipeline and warms up the models
     await session.start(
@@ -137,7 +79,7 @@ async def entrypoint(ctx: JobContext):
     await session.generate_reply(
         instructions="""
         The user has just finished getting their first voice agent up and running.
-        Welcome them to the Voice Agent Hackathon and wish them good luck!
+        Wish them good luck with their hackathon project!
         """,
         allow_interruptions=False,
     )

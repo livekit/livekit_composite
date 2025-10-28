@@ -4,10 +4,13 @@ import {
   AudioTrackFeature,
   ClientInfo,
   ConnectionQualityUpdate,
+  ConnectionSettings,
   DisconnectReason,
+  JoinRequest,
   JoinResponse,
   LeaveRequest,
   LeaveRequest_Action,
+  MediaSectionsRequirement,
   MuteTrackRequest,
   ParticipantInfo,
   Ping,
@@ -38,6 +41,7 @@ import {
   UpdateTrackSettings,
   UpdateVideoLayers,
   VideoLayer,
+  WrappedJoinRequest,
   protoInt64,
 } from '@livekit/protocol';
 import log, { LoggerNames, getLogger } from '../logger';
@@ -47,7 +51,12 @@ import type { LoggerOptions } from '../room/types';
 import { getClientInfo, isReactNative, sleep } from '../room/utils';
 import { AsyncQueue } from '../utils/AsyncQueue';
 import { type WebSocketConnection, WebSocketStream } from './WebSocketStream';
-import { createRtcUrl, createValidateUrl, parseSignalResponse } from './utils';
+import {
+  createRtcUrl,
+  createValidateUrl,
+  getAbortReasonAsString,
+  parseSignalResponse,
+} from './utils';
 
 // internal options
 interface ConnectOpts extends SignalOptions {
@@ -66,6 +75,7 @@ export interface SignalOptions {
   maxRetries: number;
   e2eeEnabled: boolean;
   websocketTimeout: number;
+  singlePeerConnection: boolean;
 }
 
 type SignalMessage = SignalRequest['message'];
@@ -114,9 +124,17 @@ export class SignalClient {
 
   onClose?: (reason: string) => void;
 
-  onAnswer?: (sd: RTCSessionDescriptionInit, offerId: number) => void;
+  onAnswer?: (
+    sd: RTCSessionDescriptionInit,
+    offerId: number,
+    midToTrackId: { [key: string]: string },
+  ) => void;
 
-  onOffer?: (sd: RTCSessionDescriptionInit, offerId: number) => void;
+  onOffer?: (
+    sd: RTCSessionDescriptionInit,
+    offerId: number,
+    midToTrackId: { [key: string]: string },
+  ) => void;
 
   // when a new ICE candidate is made available
   onTrickle?: (sd: RTCIceCandidateInit, target: SignalTarget) => void;
@@ -154,6 +172,8 @@ export class SignalClient {
   onLocalTrackSubscribed?: (trackSid: string) => void;
 
   onRoomMoved?: (res: RoomMovedResponse) => void;
+
+  onMediaSectionsRequirement?: (requirement: MediaSectionsRequirement) => void;
 
   connectOptions?: ConnectOpts;
 
@@ -271,31 +291,46 @@ export class SignalClient {
 
     this.connectOptions = opts;
     const clientInfo = getClientInfo();
-    const params = createConnectionParams(token, clientInfo, opts);
+    const params = opts.singlePeerConnection
+      ? createJoinRequestConnectionParams(token, clientInfo, opts)
+      : createConnectionParams(token, clientInfo, opts);
     const rtcUrl = createRtcUrl(url, params);
     const validateUrl = createValidateUrl(rtcUrl);
 
     return new Promise<JoinResponse | ReconnectResponse | undefined>(async (resolve, reject) => {
       try {
-        const timeoutAbortController = new AbortController();
-
-        const signals = abortSignal
-          ? [timeoutAbortController.signal, abortSignal]
-          : [timeoutAbortController.signal];
-
-        const combinedAbort = AbortSignal.any(signals);
-
-        const abortHandler = async (event: Event) => {
-          this.close();
-          clearTimeout(wsTimeout);
-          const target = event.currentTarget;
+        let alreadyAborted = false;
+        const abortHandler = async (eventOrError: Event | Error) => {
+          if (alreadyAborted) {
+            return;
+          }
+          alreadyAborted = true;
+          const target = eventOrError instanceof Event ? eventOrError.currentTarget : eventOrError;
+          const reason = getAbortReasonAsString(target, 'Abort handler called');
+          // send leave if we have an active stream writer (connection is open)
+          if (this.streamWriter && !this.isDisconnected) {
+            this.sendLeave()
+              .then(() => this.close(reason))
+              .catch((e) => {
+                this.log.error(e);
+                this.close();
+              });
+          } else {
+            this.close();
+          }
+          cleanupAbortHandlers();
           reject(target instanceof AbortSignal ? target.reason : target);
         };
 
-        combinedAbort.addEventListener('abort', abortHandler);
+        abortSignal?.addEventListener('abort', abortHandler);
+
+        const cleanupAbortHandlers = () => {
+          clearTimeout(wsTimeout);
+          abortSignal?.removeEventListener('abort', abortHandler);
+        };
 
         const wsTimeout = setTimeout(() => {
-          timeoutAbortController.abort(
+          abortHandler(
             new ConnectionError(
               'room connection has timed out (signal)',
               ConnectionErrorReason.ServerUnreachable,
@@ -322,7 +357,7 @@ export class SignalClient {
         if (this.ws) {
           await this.close(false);
         }
-        this.ws = new WebSocketStream<ArrayBuffer>(rtcUrl, { signal: combinedAbort });
+        this.ws = new WebSocketStream<ArrayBuffer>(rtcUrl);
 
         try {
           this.ws.closed
@@ -374,6 +409,7 @@ export class SignalClient {
             return;
           }
           const signalReader = connection.readable.getReader();
+          this.streamWriter = connection.writable.getWriter();
           const firstMessage = await signalReader.read();
           signalReader.releaseLock();
           if (!firstMessage.value) {
@@ -417,8 +453,9 @@ export class SignalClient {
           handleSignalConnected(connection, firstMessageToProcess);
           resolve(validation.response);
         } catch (e) {
-          clearTimeout(wsTimeout);
           reject(e);
+        } finally {
+          cleanupAbortHandlers();
         }
       } finally {
         unlock();
@@ -459,9 +496,10 @@ export class SignalClient {
     this.onTokenRefresh = undefined;
     this.onTrickle = undefined;
     this.onClose = undefined;
+    this.onMediaSectionsRequirement = undefined;
   };
 
-  async close(updateState: boolean = true) {
+  async close(updateState: boolean = true, reason = 'Close method called on signal client') {
     const unlock = await this.closingLock.lock();
     try {
       this.clearPingInterval();
@@ -469,7 +507,7 @@ export class SignalClient {
         this.state = SignalConnectionState.DISCONNECTING;
       }
       if (this.ws) {
-        this.ws.close({ closeCode: 1000, reason: 'Close method called on signal client' });
+        this.ws.close({ closeCode: 1000, reason });
 
         // calling `ws.close()` only starts the closing handshake (CLOSING state), prefer to wait until state is actually CLOSED
         const closePromise = this.ws.closed;
@@ -688,12 +726,12 @@ export class SignalClient {
     if (msg.case === 'answer') {
       const sd = fromProtoSessionDescription(msg.value);
       if (this.onAnswer) {
-        this.onAnswer(sd, msg.value.id);
+        this.onAnswer(sd, msg.value.id, msg.value.midToTrackId);
       }
     } else if (msg.case === 'offer') {
       const sd = fromProtoSessionDescription(msg.value);
       if (this.onOffer) {
-        this.onOffer(sd, msg.value.id);
+        this.onOffer(sd, msg.value.id, msg.value.midToTrackId);
       }
     } else if (msg.case === 'trickle') {
       const candidate: RTCIceCandidateInit = JSON.parse(msg.value.candidateInit!);
@@ -772,6 +810,10 @@ export class SignalClient {
       if (this.onRoomMoved) {
         this.onRoomMoved(msg.value);
       }
+    } else if (msg.case === 'mediaSectionsRequirement') {
+      if (this.onMediaSectionsRequirement) {
+        this.onMediaSectionsRequirement(msg.value);
+      }
     } else {
       this.log.debug('unsupported message', { ...this.logContext, msgCase: msg.case });
     }
@@ -793,7 +835,7 @@ export class SignalClient {
   private async handleOnClose(reason: string) {
     if (this.state === SignalConnectionState.DISCONNECTED) return;
     const onCloseCallback = this.onClose;
-    await this.close();
+    await this.close(undefined, reason);
     this.log.debug(`websocket connection closed: ${reason}`, { ...this.logContext, reason });
     if (onCloseCallback) {
       onCloseCallback(reason);
@@ -871,7 +913,6 @@ export class SignalClient {
     clearTimeout(timeoutHandle);
     this.startPingInterval();
     this.startReadingLoop(connection.readable.getReader(), firstMessage);
-    this.streamWriter = connection.writable.getWriter();
   }
 
   /**
@@ -1060,6 +1101,34 @@ function createConnectionParams(
     // @ts-ignore
     params.set('network', navigator.connection.type);
   }
+
+  return params;
+}
+
+function createJoinRequestConnectionParams(
+  token: string,
+  info: ClientInfo,
+  opts: ConnectOpts,
+): URLSearchParams {
+  const params = new URLSearchParams();
+  params.set('access_token', token);
+
+  const joinRequest = new JoinRequest({
+    clientInfo: info,
+    connectionSettings: new ConnectionSettings({
+      autoSubscribe: !!opts.autoSubscribe,
+      adaptiveStream: !!opts.adaptiveStream,
+    }),
+    reconnect: !!opts.reconnect,
+    participantSid: opts.sid ? opts.sid : undefined,
+  });
+  if (opts.reconnectReason) {
+    joinRequest.reconnectReason = opts.reconnectReason;
+  }
+  const wrappedJoinRequest = new WrappedJoinRequest({
+    joinRequest: joinRequest.toBinary(),
+  });
+  params.set('join_request', btoa(new TextDecoder('utf-8').decode(wrappedJoinRequest.toBinary())));
 
   return params;
 }

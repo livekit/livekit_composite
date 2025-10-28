@@ -36,6 +36,10 @@ inputs:
     description: Timeout for the operation
     required: false
     default: "5m"
+  REGION:
+    description: Region to deploy to. If not specified, the nearest LiveKit Cloudregion will be used.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -48,6 +52,7 @@ runs:
           -e INPUT_OPERATION="${{ inputs.OPERATION }}" \
           -e INPUT_WORKING_DIRECTORY="${{ inputs.WORKING_DIRECTORY }}" \
           -e INPUT_TIMEOUT="${{ inputs.TIMEOUT }}" \
+          -e INPUT_REGION="${{ inputs.REGION }}"
           -e SLACK_TOKEN="${{ inputs.SLACK_TOKEN }}" \
           -e SLACK_CHANNEL="${{ inputs.SLACK_CHANNEL }}" \
           -e LIVEKIT_URL="${{ env.LIVEKIT_URL }}" \
@@ -57,4 +62,4 @@ runs:
           -e GITHUB_RUN_ID="${{ github.run_id }}" \
           -v "${{ github.workspace }}:/workspace" \
           -w "/workspace" \
-          docker.io/livekit/cloud-agents-github-plugin:v0.0.203
+          docker.io/livekit/cloud-agents-github-plugin:v2.12.1

@@ -77,18 +77,14 @@ impl LogoTrack {
                 LocalTrack::Video(track.clone()),
                 TrackPublishOptions {
                     source: TrackSource::Camera,
-                    simulcast: false,
-                    video_codec: VideoCodec::H264,
+                    simulcast: true,
+                    video_codec: VideoCodec::H265,
                     ..Default::default()
                 },
             )
             .await?;
 
-        let handle = TrackHandle {
-            close_tx,
-            task,
-            track,
-        };
+        let handle = TrackHandle { close_tx, task, track };
 
         self.handle = Some(handle);
         Ok(())
@@ -99,10 +95,7 @@ impl LogoTrack {
             let _ = handle.close_tx.send(());
             let _ = handle.task.await;
 
-            self.room
-                .local_participant()
-                .unpublish_track(&handle.track.sid())
-                .await?;
+            self.room.local_participant().unpublish_track(&handle.track.sid()).await?;
         }
         Ok(())
     }

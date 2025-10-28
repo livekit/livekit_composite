@@ -34,6 +34,7 @@ import (
 const (
 	// defaults to 30 fps
 	defaultH264FrameDuration = 33 * time.Millisecond
+	defaultH265FrameDuration = 33 * time.Millisecond
 )
 
 // ReaderSampleProvider provides samples by reading from an io.ReadCloser implementation
@@ -160,16 +161,20 @@ func NewLocalReaderTrack(in io.ReadCloser, mime string, options ...ReaderSampleP
 		opt(provider)
 	}
 
+	var clockRate uint32
+
 	// check if mime type is supported
 	switch provider.Mime {
-	case webrtc.MimeTypeH264, webrtc.MimeTypeH265, webrtc.MimeTypeOpus, webrtc.MimeTypeVP8, webrtc.MimeTypeVP9:
-	// allow
+	case webrtc.MimeTypeH264, webrtc.MimeTypeH265, webrtc.MimeTypeVP8, webrtc.MimeTypeVP9:
+		clockRate = 90000
+	case webrtc.MimeTypeOpus:
+		clockRate = 48000
 	default:
 		return nil, ErrUnsupportedFileType
 	}
 
 	// Create sample track & bind handler
-	track, err := NewLocalTrack(webrtc.RTPCodecCapability{MimeType: provider.Mime}, provider.trackOpts...)
+	track, err := NewLocalTrack(webrtc.RTPCodecCapability{MimeType: provider.Mime, ClockRate: clockRate}, provider.trackOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -288,7 +293,7 @@ func (p *ReaderSampleProvider) NextSample(ctx context.Context) (media.Sample, er
 				return sample, nil
 			}
 
-			sample.Duration = defaultH264FrameDuration
+			sample.Duration = defaultH265FrameDuration
 			break
 		}
 

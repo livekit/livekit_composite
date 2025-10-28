@@ -15,6 +15,7 @@ import {
   type JoinResponse,
   type LeaveRequest,
   LeaveRequest_Action,
+  MediaSectionsRequirement,
   ParticipantInfo,
   ReconnectReason,
   type ReconnectResponse,
@@ -55,7 +56,7 @@ import { TTLMap } from '../utils/ttlmap';
 import PCTransport, { PCEvents } from './PCTransport';
 import { PCTransportManager, PCTransportState } from './PCTransportManager';
 import type { ReconnectContext, ReconnectPolicy } from './ReconnectPolicy';
-import type { RegionUrlProvider } from './RegionUrlProvider';
+import { DEFAULT_MAX_AGE_MS, type RegionUrlProvider } from './RegionUrlProvider';
 import { roomConnectOptionDefaults } from './defaults';
 import {
   ConnectionError,
@@ -200,6 +201,8 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
   private reliableMessageBuffer = new DataPacketBuffer();
 
   private reliableReceivedState: TTLMap<string, number> = new TTLMap(reliabeReceiveStateTTL);
+
+  private midToTrackId: { [key: string]: string } = {};
 
   constructor(private options: InternalRoomOptions) {
     super();
@@ -425,7 +428,11 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 
     this.pcManager = new PCTransportManager(
       rtcConfig,
-      joinResponse.subscriberPrimary,
+      this.options.singlePeerConnection
+        ? 'publisher-only'
+        : joinResponse.subscriberPrimary
+          ? 'subscriber-primary'
+          : 'publisher-primary',
       this.loggerOptions,
     );
 
@@ -481,6 +488,9 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       }
     };
     this.pcManager.onTrack = (ev: RTCTrackEvent) => {
+      // this fires after the underlying transceiver is stopped and potentially
+      // peer connection closed, so do not bubble up if there are no streams
+      if (ev.streams.length === 0) return;
       this.emit(EngineEvent.MediaTrackAdded, ev.track, ev.streams[0], ev.receiver);
     };
 
@@ -491,11 +501,17 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 
   private setupSignalClientCallbacks() {
     // configure signaling client
-    this.client.onAnswer = async (sd, offerId) => {
+    this.client.onAnswer = async (sd, offerId, midToTrackId) => {
       if (!this.pcManager) {
         return;
       }
-      this.log.debug('received server answer', { ...this.logContext, RTCSdpType: sd.type });
+      this.log.debug('received server answer', {
+        ...this.logContext,
+        RTCSdpType: sd.type,
+        sdp: sd.sdp,
+        midToTrackId,
+      });
+      this.midToTrackId = midToTrackId;
       await this.pcManager.setPublisherAnswer(sd, offerId);
     };
 
@@ -509,11 +525,12 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     };
 
     // when server creates an offer for the client
-    this.client.onOffer = async (sd, offerId) => {
+    this.client.onOffer = async (sd, offerId, midToTrackId) => {
       this.latestRemoteOfferId = offerId;
       if (!this.pcManager) {
         return;
       }
+      this.midToTrackId = midToTrackId;
       const answer = await this.pcManager.createSubscriberAnswerFromOffer(sd, offerId);
       if (answer) {
         this.client.sendAnswer(answer, offerId);
@@ -566,6 +583,18 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       this.emit(EngineEvent.RoomMoved, res);
     };
 
+    this.client.onMediaSectionsRequirement = (requirement: MediaSectionsRequirement) => {
+      const transceiverInit: RTCRtpTransceiverInit = { direction: 'recvonly' };
+      for (let i: number = 0; i < requirement.numAudios; i++) {
+        this.pcManager?.addPublisherTransceiverOfKind('audio', transceiverInit);
+      }
+      for (let i: number = 0; i < requirement.numVideos; i++) {
+        this.pcManager?.addPublisherTransceiverOfKind('video', transceiverInit);
+      }
+
+      this.negotiate();
+    };
+
     this.client.onClose = () => {
       this.handleDisconnect('signal', ReconnectReason.RR_SIGNAL_DISCONNECTED);
     };
@@ -574,7 +603,11 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       this.log.debug('client leave request', { ...this.logContext, reason: leave?.reason });
       if (leave.regions && this.regionUrlProvider) {
         this.log.debug('updating regions', this.logContext);
-        this.regionUrlProvider.setServerReportedRegions(leave.regions);
+        this.regionUrlProvider.setServerReportedRegions({
+          updatedAtInMs: Date.now(),
+          maxAgeInMs: DEFAULT_MAX_AGE_MS,
+          regionSettings: leave.regions,
+        });
       }
       switch (leave.action) {
         case LeaveRequest_Action.DISCONNECT:
@@ -1480,8 +1513,10 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       this.log.warn('sync state cannot be sent without peer connection setup', this.logContext);
       return;
     }
-    const previousAnswer = this.pcManager.subscriber.getLocalDescription();
-    const previousOffer = this.pcManager.subscriber.getRemoteDescription();
+    const previousPublisherOffer = this.pcManager.publisher.getLocalDescription();
+    const previousPublisherAnswer = this.pcManager.publisher.getRemoteDescription();
+    const previousSubscriberOffer = this.pcManager.subscriber?.getRemoteDescription();
+    const previousSubscriberAnswer = this.pcManager.subscriber?.getLocalDescription();
 
     /* 1. autosubscribe on, so subscribed tracks = all tracks - unsub tracks,
           in this case, we send unsub tracks, so server add all tracks to this
@@ -1503,18 +1538,32 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 
     this.client.sendSyncState(
       new SyncState({
-        answer: previousAnswer
-          ? toProtoSessionDescription({
-              sdp: previousAnswer.sdp,
-              type: previousAnswer.type,
-            })
-          : undefined,
-        offer: previousOffer
-          ? toProtoSessionDescription({
-              sdp: previousOffer.sdp,
-              type: previousOffer.type,
-            })
-          : undefined,
+        answer: this.options.singlePeerConnection
+          ? previousPublisherAnswer
+            ? toProtoSessionDescription({
+                sdp: previousPublisherAnswer.sdp,
+                type: previousPublisherAnswer.type,
+              })
+            : undefined
+          : previousSubscriberAnswer
+            ? toProtoSessionDescription({
+                sdp: previousSubscriberAnswer.sdp,
+                type: previousSubscriberAnswer.type,
+              })
+            : undefined,
+        offer: this.options.singlePeerConnection
+          ? previousPublisherOffer
+            ? toProtoSessionDescription({
+                sdp: previousPublisherOffer.sdp,
+                type: previousPublisherOffer.type,
+              })
+            : undefined
+          : previousSubscriberOffer
+            ? toProtoSessionDescription({
+                sdp: previousSubscriberOffer.sdp,
+                type: previousSubscriberOffer.type,
+              })
+            : undefined,
         subscription: new UpdateSubscription({
           trackSids,
           subscribe: !autoSubscribe,
@@ -1589,6 +1638,16 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       window.removeEventListener('online', this.handleBrowserOnLine);
     }
   }
+
+  getTrackIdForReceiver(receiver: RTCRtpReceiver): string | undefined {
+    const mid = this.pcManager?.getMidForReceiver(receiver);
+    if (mid) {
+      const match = Object.entries(this.midToTrackId).find(([key]) => key === mid);
+      if (match) {
+        return match[1];
+      }
+    }
+  }
 }
 
 class SignalReconnectError extends Error {}
@@ -1611,7 +1670,7 @@ export type EngineEventCallbacks = {
   activeSpeakersUpdate: (speakers: Array<SpeakerInfo>) => void;
   dataPacketReceived: (packet: DataPacket, encryptionType: Encryption_Type) => void;
   transcriptionReceived: (transcription: Transcription) => void;
-  transportsCreated: (publisher: PCTransport, subscriber: PCTransport) => void;
+  transportsCreated: (publisher: PCTransport, subscriber?: PCTransport) => void;
   /** @internal */
   trackSenderAdded: (track: Track, sender: RTCRtpSender) => void;
   rtpVideoMapUpdate: (rtpMap: Map<number, VideoCodec>) => void;

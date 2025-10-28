@@ -413,7 +413,8 @@ func NewDownTrack(params DownTrackParams) (*DownTrack, error) {
 	d.forwarder = NewForwarder(
 		d.kind,
 		d.params.Logger,
-		false,
+		false, // skipReferenceTS
+		false, // disableOpportunisticAllocation
 		d.rtpStats,
 	)
 
@@ -708,9 +709,10 @@ func (d *DownTrack) handleUpstreamCodecChange(mimeType string) {
 		"oldCodec", oldCodec, "newCodec", codec.RTPCodecCapability,
 	)
 
-	d.forwarder.Restart()
 	receiver := d.Receiver()
+	d.forwarder.Restart()
 	d.forwarder.DetermineCodec(codec.RTPCodecCapability, receiver.HeaderExtensions(), receiver.VideoLayerMode())
+
 	d.connectionStats.UpdateCodec(d.Mime(), isFECEnabled)
 }
 
@@ -793,13 +795,17 @@ func (d *DownTrack) SetReceiver(r TrackReceiver) {
 	d.receiverLock.Unlock()
 
 	old.DeleteDownTrack(d.SubscriberID())
+	d.bindLock.Unlock()
+
+	r.AddOnReady(d.handleReceiverReady)
+	d.handleUpstreamCodecChange(r.Codec().MimeType)
+
+	d.bindLock.Lock()
 	if err := r.AddDownTrack(d); err != nil {
 		d.params.Logger.Warnw("failed to add downtrack to receiver", err)
 	}
 	d.bindLock.Unlock()
 
-	r.AddOnReady(d.handleReceiverReady)
-	d.handleUpstreamCodecChange(r.Codec().MimeType)
 	if sal := d.getStreamAllocatorListener(); sal != nil {
 		sal.OnSubscribedLayerChanged(d, d.forwarder.MaxLayer())
 	}
@@ -847,6 +853,14 @@ func (d *DownTrack) setRTPHeaderExtensions() {
 			d.absCaptureTimeExtID = ext.ID
 		}
 	}
+	d.params.Logger.Debugw(
+		"negotiated extension ids",
+		"absSendTimeExtID", d.absSendTimeExtID,
+		"dependencyDescriptorExtID", d.dependencyDescriptorExtID,
+		"playoutDelayExtID", d.playoutDelayExtID,
+		"transportWideExtID", d.transportWideExtID,
+		"absCaptureTimeExtID", d.absCaptureTimeExtID,
+	)
 	d.bindLock.Unlock()
 }
 
@@ -2399,8 +2413,16 @@ func (d *DownTrack) sendPaddingOnMute() {
 	// let uptrack have chance to send packet before we send padding
 	time.Sleep(waitBeforeSendPaddingOnMute)
 
+	if d.kind == webrtc.RTPCodecTypeVideo {
+		d.sendPaddingOnMuteForVideo()
+	} else if d.Mime() == mime.MimeTypeOpus {
+		d.sendSilentFrameOnMuteForOpus()
+	}
+}
+
+func (d *DownTrack) sendPaddingOnMuteForVideo() {
 	numPackets := maxPaddingOnMuteDuration / paddingOnMuteInterval
-	for i := 0; i < int(numPackets); i++ {
+	for i := range int(numPackets) {
 		if d.rtpStats.IsActive() || d.IsClosed() {
 			return
 		}
@@ -2409,6 +2431,69 @@ func (d *DownTrack) sendPaddingOnMute() {
 		}
 		d.WritePaddingRTP(20, true, true)
 		time.Sleep(paddingOnMuteInterval)
+	}
+}
+
+func (d *DownTrack) sendSilentFrameOnMuteForOpus() {
+	frameRate := uint32(50)
+	frameDuration := time.Duration(1000/frameRate) * time.Millisecond
+	numFrames := frameRate * uint32(maxPaddingOnMuteDuration/time.Second)
+	first := true
+	for {
+		if d.rtpStats.IsActive() || d.IsClosed() || numFrames <= 0 {
+			return
+		}
+		if first {
+			first = false
+			d.params.Logger.Debugw("sending padding on mute")
+		}
+		snts, _, err := d.forwarder.GetSnTsForBlankFrames(frameRate, 1)
+		if err != nil {
+			d.params.Logger.Warnw("could not get SN/TS for blank frame", err)
+			return
+		}
+		for i := range len(snts) {
+			hdr := &rtp.Header{
+				Version:        2,
+				Padding:        false,
+				Marker:         true,
+				PayloadType:    uint8(d.payloadType.Load()),
+				SequenceNumber: uint16(snts[i].extSequenceNumber),
+				Timestamp:      uint32(snts[i].extTimestamp),
+				SSRC:           d.ssrc,
+			}
+			d.addDummyExtensions(hdr)
+
+			payload, err := d.getOpusBlankFrame(false)
+			if err != nil {
+				d.params.Logger.Warnw("could not get blank frame", err)
+				return
+			}
+
+			headerSize := hdr.MarshalSize()
+			d.rtpStats.Update(
+				mono.UnixNano(),
+				snts[i].extSequenceNumber,
+				snts[i].extTimestamp,
+				hdr.Marker,
+				headerSize,
+				0,
+				len(payload), // although this is using empty frames, mark as padding as these are used to trigger Pion OnTrack only
+				false,
+			)
+			d.pacer.Enqueue(&pacer.Packet{
+				Header:             hdr,
+				HeaderSize:         headerSize,
+				Payload:            payload,
+				ProbeClusterId:     ccutils.ProbeClusterId(d.probeClusterId.Load()),
+				AbsSendTimeExtID:   uint8(d.absSendTimeExtID),
+				TransportWideExtID: uint8(d.transportWideExtID),
+				WriteStream:        d.writeStream,
+			})
+		}
+
+		numFrames--
+		time.Sleep(frameDuration)
 	}
 }
 

@@ -1,5 +1,67 @@
 # Change Log
 
+## 2.15.14
+
+### Patch Changes
+
+- Apply server supplied cache control settings for region url provider - [#1669](https://github.com/livekit/client-sdk-js/pull/1669) ([@lukasIO](https://github.com/lukasIO))
+
+- Only export types for TokenSource variants to try to push users to use the TokenSource.foo static constructors instead - [#1707](https://github.com/livekit/client-sdk-js/pull/1707) ([@1egoman](https://github.com/1egoman))
+
+- Add check to ensure track visibility update only happens when `adaptiveStream` is enabled - [#1712](https://github.com/livekit/client-sdk-js/pull/1712) ([@1egoman](https://github.com/1egoman))
+
+- Cache region settings per project - [#1709](https://github.com/livekit/client-sdk-js/pull/1709) ([@lukasIO](https://github.com/lukasIO))
+
+- Export decodeTokenPayload from package - [#1710](https://github.com/livekit/client-sdk-js/pull/1710) ([@1egoman](https://github.com/1egoman))
+
+## 2.15.13
+
+### Patch Changes
+
+- Disable ScriptTransform for Chromium based browsers - [#1703](https://github.com/livekit/client-sdk-js/pull/1703) ([@lukasIO](https://github.com/lukasIO))
+
+## 2.15.12
+
+### Patch Changes
+
+- Remove AbortSignal.any usage - [#1700](https://github.com/livekit/client-sdk-js/pull/1700) ([@lukasIO](https://github.com/lukasIO))
+
+## 2.15.11
+
+### Patch Changes
+
+- Fix abort race resulting in multiple code paths trying to close the ws connection - [#1695](https://github.com/livekit/client-sdk-js/pull/1695) ([@lukasIO](https://github.com/lukasIO))
+
+- fix the RPC comment and clam the timeout if the provided value is less than 8s - [#1694](https://github.com/livekit/client-sdk-js/pull/1694) ([@xianshijing-lk](https://github.com/xianshijing-lk))
+
+- Fix track mapping when single peer connectionis used - [#1696](https://github.com/livekit/client-sdk-js/pull/1696) ([@lukasIO](https://github.com/lukasIO))
+
+## 2.15.10
+
+### Patch Changes
+
+- Ensure leave requests can be sent before join response is received - [#1687](https://github.com/livekit/client-sdk-js/pull/1687) ([@lukasIO](https://github.com/lukasIO))
+
+- Increase RPC total timeout to 15s and connection timeout to 7s for better reliability under network latency. - [#1692](https://github.com/livekit/client-sdk-js/pull/1692) ([@xianshijing-lk](https://github.com/xianshijing-lk))
+
+- Add sdp to answer debug log - [#1689](https://github.com/livekit/client-sdk-js/pull/1689) ([@lukasIO](https://github.com/lukasIO))
+
+## 2.15.9
+
+### Patch Changes
+
+- Populate participant identity when receiving encrypted e2ee packets - [#1679](https://github.com/livekit/client-sdk-js/pull/1679) ([@lukasIO](https://github.com/lukasIO))
+
+- Export supportsAudioOutputSelection helper - [#1676](https://github.com/livekit/client-sdk-js/pull/1676) ([@lukasIO](https://github.com/lukasIO))
+
+- Fix bug in isResponseExpired token expiry checking logic - [#1683](https://github.com/livekit/client-sdk-js/pull/1683) ([@1egoman](https://github.com/1egoman))
+
+- Use WebSocketStream for sequential signal processing - [#1638](https://github.com/livekit/client-sdk-js/pull/1638) ([@lukasIO](https://github.com/lukasIO))
+
+- Support for data channel encryption on React-Native - [#1678](https://github.com/livekit/client-sdk-js/pull/1678) ([@davidliu](https://github.com/davidliu))
+
+- Single peer connection support - [#1682](https://github.com/livekit/client-sdk-js/pull/1682) ([@lukasIO](https://github.com/lukasIO))
+
 ## 2.15.8
 
 ### Patch Changes

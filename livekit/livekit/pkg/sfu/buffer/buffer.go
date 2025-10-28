@@ -53,6 +53,10 @@ const (
 	InitPacketBufferSizeAudio = 70
 )
 
+var (
+	errInvalidCodec = errors.New("invalid codec")
+)
+
 type pendingPacket struct {
 	arrivalTime int64
 	packet      []byte
@@ -214,11 +218,16 @@ func (b *Buffer) SetAudioLossProxying(enable bool) {
 	b.enableAudioLossProxying = enable
 }
 
-func (b *Buffer) Bind(params webrtc.RTPParameters, codec webrtc.RTPCodecCapability, bitrates int) {
+func (b *Buffer) Bind(params webrtc.RTPParameters, codec webrtc.RTPCodecCapability, bitrates int) error {
 	b.Lock()
 	defer b.Unlock()
 	if b.bound {
-		return
+		return nil
+	}
+
+	if codec.ClockRate == 0 {
+		b.logger.Warnw("invalid codec", nil, "params", params, "codec", codec, "bitrates", bitrates)
+		return errInvalidCodec
 	}
 
 	b.rtpStats = rtpstats.NewRTPStatsReceiver(rtpstats.RTPStatsParams{
@@ -240,7 +249,7 @@ func (b *Buffer) Bind(params webrtc.RTPParameters, codec webrtc.RTPCodecCapabili
 		}
 	}
 
-	if b.payloadType == 0 {
+	if b.payloadType == 0 && !mime.IsMimeTypeStringEqual(codec.MimeType, webrtc.MimeTypePCMU) {
 		b.logger.Warnw("could not find payload type for codec", nil, "codec", codec.MimeType, "parameters", params)
 		b.payloadType = uint8(params.Codecs[0].PayloadType)
 	}
@@ -322,6 +331,8 @@ func (b *Buffer) Bind(params webrtc.RTPParameters, codec webrtc.RTPCodecCapabili
 	if mime.IsMimeTypeVideo(b.mime) {
 		go b.seedKeyFrame(b.keyFrameSeederGeneration.Inc())
 	}
+
+	return nil
 }
 
 func (b *Buffer) OnCodecChange(fn func(webrtc.RTPCodecParameters)) {
@@ -444,7 +455,7 @@ func (b *Buffer) SetPrimaryBufferForRTX(primaryBuffer *Buffer) {
 	}
 }
 
-func (b *Buffer) writeRTX(rtxPkt *rtp.Packet, arrivalTime int64) (n int, err error) {
+func (b *Buffer) writeRTX(rtxPkt *rtp.Packet, arrivalTime int64) {
 	b.Lock()
 	defer b.Unlock()
 	if !b.bound {
@@ -460,19 +471,24 @@ func (b *Buffer) writeRTX(rtxPkt *rtp.Packet, arrivalTime int64) (n int, err err
 		b.rtxPktBuf = make([]byte, bucket.MaxPktSize)
 	}
 
+	if len(rtxPkt.Payload) < 2 {
+		b.logger.Warnw("rtx payload too short", nil, "size", len(rtxPkt.Payload))
+		return
+	}
+
 	repairedPkt := *rtxPkt
 	repairedPkt.PayloadType = b.payloadType
 	repairedPkt.SequenceNumber = binary.BigEndian.Uint16(rtxPkt.Payload[:2])
 	repairedPkt.SSRC = b.mediaSSRC
 	repairedPkt.Payload = rtxPkt.Payload[2:]
-	n, err = repairedPkt.MarshalTo(b.rtxPktBuf)
+	n, err := repairedPkt.MarshalTo(b.rtxPktBuf)
 	if err != nil {
 		b.logger.Errorw("could not marshal repaired packet", err, "ssrc", b.mediaSSRC, "sn", repairedPkt.SequenceNumber)
 		return
 	}
 
 	b.calc(b.rtxPktBuf[:n], &repairedPkt, arrivalTime, true)
-	return
+	b.readCond.Broadcast()
 }
 
 func (b *Buffer) Read(buff []byte) (n int, err error) {

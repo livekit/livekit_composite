@@ -7,6 +7,7 @@ using RoomOptions = LiveKit.RoomOptions;
 using System.Collections.Generic;
 using Application = UnityEngine.Application;
 using TMPro;
+using UnityEngine.Android; // Required for Android-specific permission handling
 
 public class LivekitSamples : MonoBehaviour
 {
@@ -32,6 +33,7 @@ public class LivekitSamples : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+
     }
 
     // Update is called once per frame
@@ -68,11 +70,20 @@ public class LivekitSamples : MonoBehaviour
     public void onClickMakeCall()
     {
         Debug.Log("onClickMakeCall clicked!");
-        if(webCamTexture == null)
+        if (webCamTexture == null)
         {
+                           // Check if the platform is Android
+#if PLATFORM_ANDROID
+            // Check if camera permission is already granted
+            if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
+            {
+                // Request camera permission from the user
+                Permission.RequestUserPermission(Permission.Camera);
+            }
+#endif
             StartCoroutine(OpenCamera());
         }
-        
+
         StartCoroutine(MakeCall());
     }
 
@@ -87,7 +98,7 @@ public class LivekitSamples : MonoBehaviour
 
     IEnumerator MakeCall()
     {
-        if(room == null)
+        if (room == null)
         {
             room = new Room();
             room.TrackSubscribed += TrackSubscribed;
@@ -102,12 +113,12 @@ public class LivekitSamples : MonoBehaviour
                 UpdateStatusText("Connected");
             }
         }
-        
+
     }
 
     void CleanUp()
     {
-        foreach(var item in _audioObjects)
+        foreach (var item in _audioObjects)
         {
             var source = item.Value.GetComponent<AudioSource>();
             source.Stop();
@@ -115,7 +126,7 @@ public class LivekitSamples : MonoBehaviour
         }
 
         _audioObjects.Clear();
-        
+
         foreach (var item in _rtcAudioSources)
         {
             item.Stop();
@@ -168,12 +179,12 @@ public class LivekitSamples : MonoBehaviour
         var stream = new VideoStream(videoTrack);
         stream.TextureReceived += (tex) =>
         {
-            if(image != null)
+            if (image != null)
             {
                 image.texture = tex;
             }
         };
-     
+
         _videoObjects[videoTrack.Sid] = imgObject;
 
         imgObject.transform.SetParent(layoutGroup.gameObject.transform, false);
@@ -194,7 +205,6 @@ public class LivekitSamples : MonoBehaviour
             var source = audObject.AddComponent<AudioSource>();
             var stream = new AudioStream(audioTrack, source);
             _audioObjects[audioTrack.Sid] = audObject;
-            _rtcAudioSources.Add(stream.AudioSource);
         }
     }
 
@@ -203,7 +213,7 @@ public class LivekitSamples : MonoBehaviour
         if (track is RemoteVideoTrack videoTrack)
         {
             var imgObject = _videoObjects[videoTrack.Sid];
-            if(imgObject != null)
+            if (imgObject != null)
             {
                 Destroy(imgObject);
             }
@@ -236,8 +246,14 @@ public class LivekitSamples : MonoBehaviour
         var localSid = "my-audio-source";
         GameObject audObject = new GameObject(localSid);
         _audioObjects[localSid] = audObject;
-        var rtcSource = new MicrophoneSource(audObject.AddComponent<AudioSource>());
-        rtcSource.Configure(Microphone.devices[0], true, 2, (int)RtcAudioSource.DefaultMirophoneSampleRate);
+
+        _audioObjects[localSid] = audObject;
+        var source = audObject.AddComponent<AudioSource>();
+        source.clip = Microphone.Start(Microphone.devices[0], true, 2, (int)RtcAudioSource.DefaultSampleRate);
+        source.loop = true;
+
+        var rtcSource = new BasicAudioSource(source);
+
         Debug.Log($"CreateAudioTrack");
         var track = LocalAudioTrack.CreateAudioTrack("my-audio-track", rtcSource, room);
 
@@ -254,9 +270,9 @@ public class LivekitSamples : MonoBehaviour
         {
             Debug.Log("Track published!");
         }
-        
+
         _rtcAudioSources.Add(rtcSource);
-        yield return rtcSource.PrepareAndStart();
+        rtcSource.Start();
     }
 
     public IEnumerator publishVideo()
@@ -277,7 +293,8 @@ public class LivekitSamples : MonoBehaviour
         trans.localScale = Vector3.one;
         trans.sizeDelta = new Vector2(180, 120);
         RawImage image = imgObject.AddComponent<RawImage>();
-        source.TextureReceived += (txt) => {
+        source.TextureReceived += (txt) =>
+        {
             image.texture = txt;
         };
         imgObject.transform.SetParent(layoutGroup.gameObject.transform, false);
@@ -285,12 +302,12 @@ public class LivekitSamples : MonoBehaviour
         var track = LocalVideoTrack.CreateVideoTrack("my-video-track", source, room);
 
         var options = new TrackPublishOptions();
-        options.VideoCodec = VideoCodec.H264;
+        options.VideoCodec = VideoCodec.H265;
         var videoCoding = new VideoEncoding();
         videoCoding.MaxBitrate = 512000;
         videoCoding.MaxFramerate = frameRate;
         options.VideoEncoding = videoCoding;
-        options.Simulcast = true;
+        options.Simulcast = false;
         options.Source = TrackSource.SourceCamera;
 
         var publish = room.LocalParticipant.PublishTrack(track, options);

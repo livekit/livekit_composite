@@ -35,6 +35,11 @@ import (
 	"github.com/livekit/livekit-cli/v2/pkg/util"
 	lkproto "github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
+	"github.com/livekit/server-sdk-go/v2/pkg/cloudagents"
+)
+
+const (
+	maxSecretFileSize = 1024 * 1024 // 1MB
 )
 
 var (
@@ -65,6 +70,12 @@ var (
 		Required: false,
 	}
 
+	secretsMountFlag = &cli.StringSliceFlag{
+		Name:     "secret-mount",
+		Usage:    "Local path to a secret file to be mounted on agent environment",
+		Required: false,
+	}
+
 	logTypeFlag = &cli.StringFlag{
 		Name:     "log-type",
 		Usage:    "Type of logs to retrieve. Valid values are 'deploy' and 'build'",
@@ -72,11 +83,10 @@ var (
 		Required: false,
 	}
 
-	regionFlag = &cli.StringSliceFlag{
-		Name:     "regions",
-		Usage:    "Region(s) to deploy the agent to. If unset, will deploy to the nearest region.",
+	regionFlag = &cli.StringFlag{
+		Name:     "region",
+		Usage:    "Region to deploy the agent to. If unset, will deploy to the nearest region.",
 		Required: false,
-		Hidden:   true,
 	}
 
 	skipSDKCheckFlag = &cli.BoolFlag{
@@ -92,9 +102,11 @@ var (
 			Usage:   "Manage LiveKit Cloud Agents",
 			Commands: []*cli.Command{
 				{
-					Name:   "init",
-					Usage:  "Initialize a new LiveKit Cloud agent project",
-					Before: createAgentClient,
+					Name:  "init",
+					Usage: "Initialize a new LiveKit Cloud agent project",
+					Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+						return createAgentClientWithOpts(ctx, cmd, confirmProject)
+					},
 					Action: initAgent,
 					MutuallyExclusiveFlags: []cli.MutuallyExclusiveFlags{{
 						Flags: [][]cli.Flag{{
@@ -128,7 +140,9 @@ var (
 							},
 						}},
 					}},
-					Flags:                     []cli.Flag{},
+					Flags: []cli.Flag{
+						regionFlag,
+					},
 					ArgsUsage:                 "[AGENT-NAME]",
 					DisableSliceFlagSeparator: true,
 				},
@@ -140,6 +154,7 @@ var (
 					Flags: []cli.Flag{
 						secretsFlag,
 						secretsFileFlag,
+						secretsMountFlag,
 						silentFlag,
 						regionFlag,
 						skipSDKCheckFlag,
@@ -183,6 +198,7 @@ var (
 					Flags: []cli.Flag{
 						secretsFlag,
 						secretsFileFlag,
+						secretsMountFlag,
 						skipSDKCheckFlag,
 					},
 					// NOTE: since secrets may contain commas, or indeed any special character we might want to treat as a flag separator,
@@ -208,6 +224,7 @@ var (
 					Flags: []cli.Flag{
 						secretsFlag,
 						secretsFileFlag,
+						secretsMountFlag,
 					},
 					// NOTE: since secrets may contain commas, or indeed any special character we might want to treat as a flag separator,
 					// we disable it entirely here and require multiple --secrets flags to be used.
@@ -300,6 +317,7 @@ var (
 					Flags: []cli.Flag{
 						secretsFlag,
 						secretsFileFlag,
+						secretsMountFlag,
 						idFlag(false),
 						&cli.BoolFlag{
 							Name:     "overwrite",
@@ -317,7 +335,7 @@ var (
 		},
 	}
 	subdomainPattern = regexp.MustCompile(`^(?:https?|wss?)://([^.]+)\.`)
-	agentsClient     *agentfs.Client
+	agentsClient     *cloudagents.Client
 	ignoredSecrets   = []string{
 		"LIVEKIT_API_KEY",
 		"LIVEKIT_API_SECRET",
@@ -326,9 +344,13 @@ var (
 )
 
 func createAgentClient(ctx context.Context, cmd *cli.Command) (context.Context, error) {
+	return createAgentClientWithOpts(ctx, cmd)
+}
+
+func createAgentClientWithOpts(ctx context.Context, cmd *cli.Command, opts ...loadOption) (context.Context, error) {
 	var err error
 
-	if _, err := requireProject(ctx, cmd); err != nil {
+	if _, err := requireProjectWithOpts(ctx, cmd, opts...); err != nil {
 		return ctx, err
 	}
 
@@ -353,7 +375,7 @@ func createAgentClient(ctx context.Context, cmd *cli.Command) (context.Context, 
 		}
 	}
 
-	agentsClient, err = agentfs.New(agentfs.WithProject(project.URL, project.APIKey, project.APISecret))
+	agentsClient, err = cloudagents.New(cloudagents.WithProject(project.URL, project.APIKey, project.APISecret))
 	if err != nil {
 		return ctx, err
 	}
@@ -459,8 +481,9 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 	if !cmd.IsSet("project") {
 		useProject := true
 		if err := huh.NewForm(huh.NewGroup(huh.NewConfirm().
-			Title(fmt.Sprintf("Use [%s] (%s) to create agent deployment?", project.Name, project.URL)).
+			Title(fmt.Sprintf("Use project [%s] (%s) to create agent deployment?", project.Name, project.URL)).
 			Value(&useProject).
+			Negative("Select another").
 			Inline(false).
 			WithTheme(util.Theme))).
 			Run(); err != nil {
@@ -472,7 +495,7 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 			}
 			var err error
 			// Recreate the client with the new project
-			agentsClient, err = agentfs.New(agentfs.WithProject(project.URL, project.APIKey, project.APISecret))
+			agentsClient, err = cloudagents.New(cloudagents.WithProject(project.URL, project.APIKey, project.APISecret))
 			if err != nil {
 				return err
 			}
@@ -514,7 +537,7 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	projectType, err := agentfs.DetectProjectType(workingDir)
+	projectType, err := agentfs.DetectProjectType(os.DirFS(workingDir))
 	fmt.Printf("Detected project type [%s]\n", util.Accented(string(projectType)))
 	if err != nil {
 		return fmt.Errorf("unable to determine project type: %w, please use a supported project type, or create your own Dockerfile in the current directory", err)
@@ -532,9 +555,33 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	regions := cmd.StringSlice("regions")
+	region := cmd.String("region")
+	if region == "" {
+		availableRegionsStr, ok := settingsMap["available_regions"]
+		if ok && availableRegionsStr != "" {
+			regionOptions := strings.Split(availableRegionsStr, ",")
+			for i, r := range regionOptions {
+				regionOptions[i] = strings.TrimSpace(r)
+			}
+
+			if err := huh.NewSelect[string]().
+				Title("Select region for agent deployment").
+				Options(huh.NewOptions(regionOptions...)...).
+				Value(&region).
+				WithTheme(util.Theme).
+				Run(); err != nil {
+				return err
+			}
+		} else {
+			// we shouldn't ever get here, but if we do, just default to us-east
+			logger.Debugw("no available regions found, defaulting to us-east. please contact LiveKit support if this is unexpected.")
+			region = "us-east"
+		}
+	}
+
+	regions := []string{region}
 	excludeFiles := []string{fmt.Sprintf("**/%s", config.LiveKitTOMLFile)}
-	resp, err := agentsClient.CreateAgent(ctx, workingDir, secrets, regions, excludeFiles)
+	resp, err := agentsClient.CreateAgent(ctx, os.DirFS(workingDir), secrets, regions, excludeFiles)
 	if err != nil {
 		if twerr, ok := err.(twirp.Error); ok {
 			return fmt.Errorf("unable to create agent: %s", twerr.Msg())
@@ -565,7 +612,7 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 			return err
 		} else if viewLogs {
 			fmt.Println("Tailing runtime logs...safe to exit at any time")
-			return agentsClient.StreamLogs(ctx, "deploy", lkConfig.Agent.ID, os.Stdout)
+			return agentsClient.StreamLogs(ctx, "deploy", lkConfig.Agent.ID, os.Stdout, resp.ServerRegions[0])
 		}
 	}
 	return nil
@@ -660,7 +707,7 @@ func deployAgent(ctx context.Context, cmd *cli.Command) error {
 		req.Secrets = secrets
 	}
 
-	projectType, err := agentfs.DetectProjectType(workingDir)
+	projectType, err := agentfs.DetectProjectType(os.DirFS(workingDir))
 	if err != nil {
 		return fmt.Errorf("unable to determine project type: %w, please use a supported project type, or create your own Dockerfile in the current directory", err)
 	}
@@ -679,7 +726,7 @@ func deployAgent(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	excludeFiles := []string{fmt.Sprintf("**/%s", config.LiveKitTOMLFile)}
-	if err := agentsClient.DeployAgent(ctx, agentId, workingDir, secrets, excludeFiles); err != nil {
+	if err := agentsClient.DeployAgent(ctx, agentId, os.DirFS(workingDir), secrets, excludeFiles); err != nil {
 		if twerr, ok := err.(twirp.Error); ok {
 			return fmt.Errorf("unable to deploy agent: %s", twerr.Msg())
 		}
@@ -852,7 +899,19 @@ func getLogs(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	return agentsClient.StreamLogs(ctx, cmd.String("log-type"), agentID, os.Stdout)
+
+	response, err := agentsClient.ListAgents(ctx, &lkproto.ListAgentsRequest{
+		AgentId: agentID,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(response.Agents) == 0 {
+		return fmt.Errorf("no agent deployments found")
+	}
+
+	return agentsClient.StreamLogs(ctx, cmd.String("log-type"), agentID, os.Stdout, response.Agents[0].AgentDeployments[0].ServerRegion)
 }
 
 func deleteAgent(ctx context.Context, cmd *cli.Command) error {
@@ -925,7 +984,7 @@ func listAgentVersions(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	table := util.CreateTable().
-		Headers("Version", "Current", "Created At", "Deployed At")
+		Headers("Version", "Current", "Status", "Created At", "Deployed At")
 
 	// Sort versions by created date descending
 	slices.SortFunc(versions.Versions, func(a, b *lkproto.AgentVersion) int {
@@ -935,6 +994,7 @@ func listAgentVersions(ctx context.Context, cmd *cli.Command) error {
 		table.Row(
 			version.Version,
 			fmt.Sprintf("%t", version.Current),
+			version.Status,
 			version.CreatedAt.AsTime().Format(time.RFC3339),
 			version.DeployedAt.AsTime().Format(time.RFC3339),
 		)
@@ -1022,6 +1082,7 @@ func listAgentSecrets(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("unable to list agent secrets: %w", err)
 	}
 
+	// TODO (steveyoon): show secret.Kind.String() once cloud-agents is released
 	table := util.CreateTable().
 		Headers("Name", "Created At", "Updated At")
 
@@ -1061,10 +1122,9 @@ func updateAgentSecrets(ctx context.Context, cmd *cli.Command) error {
 		).Run(); err != nil {
 			return err
 		}
-	}
-
-	if !confirmOverwrite {
-		return nil
+		if !confirmOverwrite {
+			return nil
+		}
 	}
 
 	req := &lkproto.UpdateAgentSecretsRequest{
@@ -1165,6 +1225,28 @@ func requireSecrets(_ context.Context, cmd *cli.Command, required, lazy bool) ([
 	silent := cmd.Bool("silent")
 	secrets := make(map[string]*lkproto.AgentSecret)
 
+	mountableSecretFiles := cmd.StringSlice("secret-mount")
+	for _, filePath := range mountableSecretFiles {
+		fileInfo, err := os.Stat(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get secret file: %w", err)
+		}
+		if fileInfo.Size() > maxSecretFileSize {
+			return nil, fmt.Errorf("secret file size is too large (must be under %d MB): %s", maxSecretFileSize/(1024*1024), filePath)
+		}
+		fileContent, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read secret file: %w", err)
+		}
+		name := fileInfo.Name()
+		agentSecret := &lkproto.AgentSecret{
+			Name:  name,
+			Value: []byte(fileContent),
+			Kind:  lkproto.AgentSecretKind_AGENT_SECRET_KIND_FILE,
+		}
+		secrets[name] = agentSecret
+	}
+
 	if values, err := parseKeyValuePairs(cmd, "secrets"); err != nil {
 		return nil, fmt.Errorf("failed to parse secrets: %w", err)
 	} else {
@@ -1172,10 +1254,10 @@ func requireSecrets(_ context.Context, cmd *cli.Command, required, lazy bool) ([
 			agentSecret := &lkproto.AgentSecret{
 				Name:  key,
 				Value: []byte(val),
+				Kind:  lkproto.AgentSecretKind_AGENT_SECRET_KIND_ENVIRONMENT,
 			}
 			secrets[key] = agentSecret
 		}
-
 	}
 
 	shouldReadFromDisk := cmd.IsSet("secrets-file") || !lazy || (required && len(secrets) == 0)
@@ -1196,6 +1278,7 @@ func requireSecrets(_ context.Context, cmd *cli.Command, required, lazy bool) ([
 			secret := &lkproto.AgentSecret{
 				Name:  k,
 				Value: []byte(v),
+				Kind:  lkproto.AgentSecretKind_AGENT_SECRET_KIND_ENVIRONMENT,
 			}
 			secrets[k] = secret
 		}
@@ -1228,6 +1311,11 @@ func requireDockerfile(ctx context.Context, cmd *cli.Command, workingDir string,
 		return err
 	}
 
+	dockerIgnoreExists, err := agentfs.HasDockerIgnore(workingDir)
+	if err != nil {
+		return err
+	}
+
 	if !dockerfileExists {
 		if !cmd.Bool("silent") {
 			err := util.Await(
@@ -1249,6 +1337,20 @@ func requireDockerfile(ctx context.Context, cmd *cli.Command, workingDir string,
 	} else {
 		if !cmd.Bool("silent") {
 			fmt.Println("Using existing Dockerfile")
+		}
+	}
+
+	if !dockerIgnoreExists {
+		if !cmd.Bool("silent") {
+			fmt.Println("Creating .dockerignore...")
+		}
+		if err := agentfs.CreateDockerIgnoreFile(workingDir, projectType); err != nil {
+			return err
+		}
+		fmt.Println("Created [" + util.Accented(".dockerignore") + "]")
+	} else {
+		if !cmd.Bool("silent") {
+			fmt.Println("Using existing .dockerignore")
 		}
 	}
 
@@ -1316,7 +1418,7 @@ func generateAgentDockerfile(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	projectType, err := agentfs.DetectProjectType(workingDir)
+	projectType, err := agentfs.DetectProjectType(os.DirFS(workingDir))
 	fmt.Printf("Detected project type [%s]\n", util.Accented(string(projectType)))
 	if err != nil {
 		return fmt.Errorf("unable to determine project type: %w, please use a supported project type, or create your own Dockerfile in the current directory", err)

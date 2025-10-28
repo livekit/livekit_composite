@@ -24,9 +24,9 @@ class Assistant(Agent):
 
 async def entrypoint(ctx: JobContext):
     session = AgentSession(
-        llm=openai.LLM(model="gpt-4o-mini"),
-        stt=deepgram.STT(model="nova-3", language="multi"),
-        tts=openai.TTS(voice="marin"),
+        stt="deepgram/nova-3",
+        llm="openai/gpt-4.1-mini",
+        tts="cartesia/sonic-2",
         vad=silero.VAD.load(),
     )
     

@@ -172,7 +172,8 @@ export function isFireFox(): boolean {
 }
 
 export function isChromiumBased(): boolean {
-  return getBrowser()?.name === 'Chrome';
+  const browser = getBrowser();
+  return !!browser && browser.name === 'Chrome' && browser.os !== 'iOS';
 }
 
 export function isSafari(): boolean {
@@ -425,6 +426,26 @@ export function getEmptyAudioStreamTrack() {
     emptyAudioStreamTrack.enabled = false;
   }
   return emptyAudioStreamTrack.clone();
+}
+
+export function getStereoAudioStreamTrack() {
+  const ctx = new AudioContext();
+  const oscLeft = ctx.createOscillator();
+  const oscRight = ctx.createOscillator();
+  oscLeft.frequency.value = 440;
+  oscRight.frequency.value = 220;
+  const merger = ctx.createChannelMerger(2);
+  oscLeft.connect(merger, 0, 0); // left channel
+  oscRight.connect(merger, 0, 1); // right channel
+  const dst = ctx.createMediaStreamDestination();
+  merger.connect(dst);
+  oscLeft.start();
+  oscRight.start();
+  const [stereoTrack] = dst.stream.getAudioTracks();
+  if (!stereoTrack) {
+    throw Error('Could not get stereo media stream audio track');
+  }
+  return stereoTrack;
 }
 
 export class Future<T> {
@@ -728,4 +749,15 @@ export function splitUtf8(s: string, n: number): Uint8Array[] {
     result.push(encoded);
   }
   return result;
+}
+
+export function extractMaxAgeFromRequestHeaders(headers: Headers): number | undefined {
+  const cacheControl = headers.get('Cache-Control');
+  if (cacheControl) {
+    const maxAge = cacheControl.match(/(?:^|[,\s])max-age=(\d+)/)?.[1];
+    if (maxAge) {
+      return parseInt(maxAge, 10);
+    }
+  }
+  return undefined;
 }

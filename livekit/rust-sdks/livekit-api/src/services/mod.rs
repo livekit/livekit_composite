@@ -1,4 +1,4 @@
-// Copyright 2023 LiveKit, Inc.
+// Copyright 2025 LiveKit, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ use crate::access_token::{AccessToken, AccessTokenError, SIPGrants, VideoGrants}
 
 pub use twirp_client::{TwirpError, TwirpErrorCode, TwirpResult};
 
+pub mod agent_dispatch;
 pub mod egress;
 pub mod ingress;
 pub mod room;

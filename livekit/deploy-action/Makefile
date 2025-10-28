@@ -1,5 +1,5 @@
 DOCKER_REPO=docker.io/livekit/cloud-agents-github-plugin
-VERSION=v0.0.203
+VERSION=v2.12.1
 
 all: build publish clean
 

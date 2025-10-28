@@ -24,13 +24,13 @@ jobs:
         working-directory: ./components-android
     steps:
     - name: checkout components-android
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         path: ./components-android
         submodules: recursive
 
     - name: set up JDK 17
-      uses: actions/setup-java@v3.12.0
+      uses: actions/setup-java@v5.0.0
       with:
         java-version: '17'
         distribution: 'adopt'

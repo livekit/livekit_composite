@@ -79,7 +79,9 @@ interface RpcManager {
      * @param method The method name to call.
      * @param payload The payload to pass to the method.
      * @param responseTimeout Timeout for receiving a response after initial connection.
-     *      Defaults to 10000. Max value of UInt.MAX_VALUE milliseconds.
+     *      If a value less than 8s is provided, it will be automatically clamped to 8s
+     *      to ensure sufficient time for round-trip latency buffering.
+     *      Defaults to 15 seconds.
      * @return The response payload.
      * @throws RpcError on failure. Details in [RpcError.message].
      */
@@ -87,6 +89,6 @@ interface RpcManager {
         destinationIdentity: Identity,
         method: String,
         payload: String,
-        responseTimeout: Duration = 10.seconds,
+        responseTimeout: Duration = 15.seconds,
     ): String
 }

@@ -1,4 +1,4 @@
-// Copyright 2023 LiveKit, Inc.
+// Copyright 2025 LiveKit, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ pub enum VideoCodec {
     H264,
     VP9,
     AV1,
+    H265,
 }
 
 impl VideoCodec {
@@ -32,6 +33,7 @@ impl VideoCodec {
             VideoCodec::H264 => "h264",
             VideoCodec::VP9 => "vp9",
             VideoCodec::AV1 => "av1",
+            VideoCodec::H265 => "h265",
         }
     }
 }

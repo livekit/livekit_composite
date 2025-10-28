@@ -1,4 +1,4 @@
-// Copyright 2023 LiveKit, Inc.
+// Copyright 2025 LiveKit, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -736,7 +736,11 @@ impl LocalParticipant {
     }
 
     pub async fn perform_rpc(&self, data: PerformRpcData) -> Result<String, RpcError> {
-        let max_round_trip_latency = Duration::from_millis(2000);
+        // Maximum amount of time it should ever take for an RPC request to reach the destination, and the ACK to come back
+        // This is set to 7 seconds to account for various relay timeouts and retries in LiveKit Cloud that occur in rare cases
+
+        let max_round_trip_latency = Duration::from_millis(7000);
+        let min_effective_timeout = Duration::from_millis(1000);
 
         if data.payload.len() > MAX_PAYLOAD_BYTES {
             return Err(RpcError::built_in(RpcErrorCode::RequestPayloadTooLarge, None));
@@ -757,6 +761,10 @@ impl LocalParticipant {
         let id = create_random_uuid();
         let (ack_tx, ack_rx) = oneshot::channel();
         let (response_tx, response_rx) = oneshot::channel();
+        let effective_timeout = std::cmp::max(
+            data.response_timeout.saturating_sub(max_round_trip_latency),
+            min_effective_timeout,
+        );
 
         match self
             .publish_rpc_request(RpcRequest {
@@ -764,7 +772,7 @@ impl LocalParticipant {
                 id: id.clone(),
                 method: data.method.clone(),
                 payload: data.payload.clone(),
-                response_timeout: data.response_timeout,
+                response_timeout: effective_timeout,
                 version: 1,
             })
             .await

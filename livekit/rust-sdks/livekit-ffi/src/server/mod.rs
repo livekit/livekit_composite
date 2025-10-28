@@ -1,4 +1,4 @@
-// Copyright 2023 LiveKit, Inc.
+// Copyright 2025 LiveKit, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -249,9 +249,7 @@ impl FfiServer {
     }
 
     pub fn send_panic(&self, err: Box<dyn Error>) {
-        let _ = self.send_event(proto::ffi_event::Message::Panic(proto::Panic {
-            message: err.as_ref().to_string(),
-        }));
+        let _ = self.send_event(proto::Panic { message: err.as_ref().to_string() }.into());
     }
 
     pub fn watch_panic<O>(&'static self, handle: JoinHandle<O>) -> JoinHandle<O>

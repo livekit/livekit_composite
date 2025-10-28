@@ -168,6 +168,8 @@ func (r *signalService) RelaySignal(stream psrpc.ServerStream[*rpc.RelaySignalRe
 			reqChan,
 			signalRequestMessageReader{},
 			r.config,
+			prometheus.RecordSignalRequestSuccess,
+			prometheus.RecordSignalRequestFailure,
 		)
 		l.Debugw("signal stream closed", "error", err)
 

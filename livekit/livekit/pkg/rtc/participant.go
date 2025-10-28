@@ -1168,7 +1168,12 @@ func (p *ParticipantImpl) updateRidsFromSDP(parsed *sdp.SessionDescription, unma
 			if ok {
 				n := min(len(rids), len(inRids))
 				for i := 0; i < n; i++ {
-					outRids[i] = rids[i]
+					// disabled layers will have a `~` prefix, remove it while determining actual rid
+					if len(rids[i]) != 0 && rids[i][0] == '~' {
+						outRids[i] = rids[i][1:]
+					} else {
+						outRids[i] = rids[i]
+					}
 				}
 				for i := n; i < len(inRids); i++ {
 					outRids[i] = ""
@@ -1253,7 +1258,7 @@ func (p *ParticipantImpl) HandleICETrickle(trickleRequest *livekit.TrickleReques
 
 // HandleOffer an offer from remote participant, used when clients make the initial connection
 func (p *ParticipantImpl) HandleOffer(sd *livekit.SessionDescription) error {
-	offer, offerId := protosignalling.FromProtoSessionDescription(sd)
+	offer, offerId, _ := protosignalling.FromProtoSessionDescription(sd)
 	lgr := p.pubLogger.WithUnlikelyValues(
 		"transport", livekit.SignalTarget_PUBLISHER,
 		"offer", offer,
@@ -1306,7 +1311,7 @@ func (p *ParticipantImpl) onPublisherSetRemoteDescription() {
 	p.updateRidsFromSDP(parsedOffer, unmatchVideos)
 }
 
-func (p *ParticipantImpl) onPublisherAnswer(answer webrtc.SessionDescription, answerId uint32) error {
+func (p *ParticipantImpl) onPublisherAnswer(answer webrtc.SessionDescription, answerId uint32, midToTrackID map[string]string) error {
 	if p.IsClosed() || p.IsDisconnected() {
 		return nil
 	}
@@ -1317,8 +1322,10 @@ func (p *ParticipantImpl) onPublisherAnswer(answer webrtc.SessionDescription, an
 		"transport", livekit.SignalTarget_PUBLISHER,
 		"answer", answer,
 		"answerId", answerId,
+		"midToTrackID", midToTrackID,
 	)
-	return p.sendSdpAnswer(answer, answerId)
+
+	return p.sendSdpAnswer(answer, answerId, midToTrackID)
 }
 
 func (p *ParticipantImpl) GetAnswer() (webrtc.SessionDescription, uint32, error) {
@@ -1344,7 +1351,7 @@ func (p *ParticipantImpl) GetAnswer() (webrtc.SessionDescription, uint32, error)
 // HandleAnswer handles a client answer response, with subscriber PC, server initiates the
 // offer and client answers
 func (p *ParticipantImpl) HandleAnswer(sd *livekit.SessionDescription) {
-	answer, answerId := protosignalling.FromProtoSessionDescription(sd)
+	answer, answerId, _ := protosignalling.FromProtoSessionDescription(sd)
 	p.subLogger.Debugw(
 		"received answer",
 		"transport", livekit.SignalTarget_SUBSCRIBER,
@@ -1948,8 +1955,8 @@ func (h PublisherTransportHandler) OnSetRemoteDescriptionOffer() {
 	h.p.onPublisherSetRemoteDescription()
 }
 
-func (h PublisherTransportHandler) OnAnswer(sd webrtc.SessionDescription, answerId uint32) error {
-	return h.p.onPublisherAnswer(sd, answerId)
+func (h PublisherTransportHandler) OnAnswer(sd webrtc.SessionDescription, answerId uint32, midToTrackID map[string]string) error {
+	return h.p.onPublisherAnswer(sd, answerId, midToTrackID)
 }
 
 func (h PublisherTransportHandler) OnTrack(track *webrtc.TrackRemote, rtpReceiver *webrtc.RTPReceiver) {
@@ -1982,8 +1989,8 @@ type SubscriberTransportHandler struct {
 	AnyTransportHandler
 }
 
-func (h SubscriberTransportHandler) OnOffer(sd webrtc.SessionDescription, offerId uint32) error {
-	return h.p.onSubscriberOffer(sd, offerId)
+func (h SubscriberTransportHandler) OnOffer(sd webrtc.SessionDescription, offerId uint32, midToTrackID map[string]string) error {
+	return h.p.onSubscriberOffer(sd, offerId, midToTrackID)
 }
 
 func (h SubscriberTransportHandler) OnStreamStateChange(update *streamallocator.StreamStateUpdate) error {
@@ -2256,14 +2263,15 @@ func (p *ParticipantImpl) setIsPublisher(isPublisher bool) {
 }
 
 // when the server has an offer for participant
-func (p *ParticipantImpl) onSubscriberOffer(offer webrtc.SessionDescription, offerId uint32) error {
+func (p *ParticipantImpl) onSubscriberOffer(offer webrtc.SessionDescription, offerId uint32, midToTrackID map[string]string) error {
 	p.subLogger.Debugw(
 		"sending offer",
 		"transport", livekit.SignalTarget_SUBSCRIBER,
 		"offer", offer,
 		"offerId", offerId,
+		"midToTrackID", midToTrackID,
 	)
-	return p.sendSdpOffer(offer, offerId)
+	return p.sendSdpOffer(offer, offerId, midToTrackID)
 }
 
 func (p *ParticipantImpl) removePublishedTrack(track types.MediaTrack) {
@@ -2914,6 +2922,9 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 		for _, l := range layers {
 			clonedLayers = append(clonedLayers, utils.CloneProto(l))
 		}
+		slices.SortFunc(clonedLayers, func(i, j *livekit.VideoLayer) int {
+			return int(i.Quality) - int(j.Quality)
+		})
 		return clonedLayers
 	}
 
@@ -3571,7 +3582,7 @@ func (p *ParticipantImpl) getPendingTrackPrimaryBySdpCid(sdpCid string) *pending
 func (p *ParticipantImpl) setTrackID(cid string, info *livekit.TrackInfo) {
 	var trackID string
 	// if already pending, use the same SID
-	// should not happen as this means multiple `AddTrack` requests have been called, but check anyway
+	// it is possible to have multiple AddTrackRequests for the same track
 	if pti := p.pendingTracks[cid]; pti != nil {
 		trackID = pti.trackInfos[0].Sid
 	}
@@ -3579,11 +3590,13 @@ func (p *ParticipantImpl) setTrackID(cid string, info *livekit.TrackInfo) {
 	// otherwise generate
 	if trackID == "" {
 		trackPrefix := utils.TrackPrefix
-		if info.Type == livekit.TrackType_VIDEO {
+		switch info.Type {
+		case livekit.TrackType_VIDEO:
 			trackPrefix += "V"
-		} else if info.Type == livekit.TrackType_AUDIO {
+		case livekit.TrackType_AUDIO:
 			trackPrefix += "A"
 		}
+
 		switch info.Source {
 		case livekit.TrackSource_CAMERA:
 			trackPrefix += "C"

@@ -1,4 +1,4 @@
-// Copyright 2023 LiveKit, Inc.
+// Copyright 2025 LiveKit, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -69,6 +69,14 @@ pub enum TrackSource {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct TrackDimension(pub u32, pub u32);
+
+/// Video quality for simulcasted tracks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum VideoQuality {
+    Low,
+    Medium,
+    High,
+}
 
 macro_rules! track_dispatch {
     ([$($variant:ident),+]) => {

@@ -602,7 +602,7 @@ func (w *WebRTCReceiver) GetLayeredBitrate() ([]int32, Bitrates) {
 	return w.streamTrackerManager.GetLayeredBitrate()
 }
 
-// OnCloseHandler method to be called on remote tracked removed
+// OnCloseHandler method to be called on remote track removed
 func (w *WebRTCReceiver) OnCloseHandler(fn func()) {
 	w.onCloseHandler = fn
 }
@@ -790,6 +790,7 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 		if err == io.EOF {
 			return
 		}
+		dequeuedAt := mono.UnixNano()
 
 		if pkt.Packet.PayloadType != uint8(w.codec.PayloadType) {
 			// drop packets as we don't support codec fallback directly
@@ -832,6 +833,8 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 					"high forwarding latency",
 					"latency", latency,
 					"writeCount", writeCount,
+					"queuingLatency", dequeuedAt-pkt.Arrival,
+					"isOutOfOrder", pkt.IsOutOfOrder,
 				)
 			}
 		}

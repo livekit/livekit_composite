@@ -89,7 +89,6 @@ jobs:
             dylib: liblivekit_ffi.so
             jar: libwebrtc.jar
             target: aarch64-linux-android
-            ndk_arch: aarch64-unknown-linux-musl
             name: ffi-android-arm64
             buildargs: --no-default-features --features "rustls-tls-webpki-roots"
           - os: ubuntu-latest
@@ -97,7 +96,6 @@ jobs:
             dylib: liblivekit_ffi.so
             jar: libwebrtc.jar
             target: armv7-linux-androideabi
-            ndk_arch: arm-unknown-linux-musleabihf
             name: ffi-android-armv7
             buildargs: --no-default-features --features "rustls-tls-webpki-roots"
           - os: ubuntu-latest
@@ -105,7 +103,6 @@ jobs:
             dylib: liblivekit_ffi.so
             jar: libwebrtc.jar
             target: x86_64-linux-android
-            ndk_arch: x86_64-unknown-linux-musl
             name: ffi-android-x86_64
             buildargs: --no-default-features --features "rustls-tls-webpki-roots"
 
@@ -119,6 +116,12 @@ jobs:
       - name: Install Rust toolchain.
         run: |
           rustup target add ${{ matrix.target }}
+
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v2
+        with:
+          version: "25.2"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up QEMU
         if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
@@ -151,6 +154,7 @@ jobs:
             export PATH=/root/.cargo/bin:\$PATH; \
             yum install llvm llvm-libs -y; \
             yum install clang -y; \
+            yum install protobuf-compiler -y; \
             yum groupinstall 'Development Tools' -y; \
             clang --version; \
             yum install openssl-devel libX11-devel mesa-libGL-devel libXext-devel libva-devel libdrm-devel -y; \
@@ -164,7 +168,6 @@ jobs:
         if: ${{ matrix.platform == 'android' }}
         run: |
           cd livekit-ffi/
-          ln -sf $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/lib/${{ matrix.ndk_arch }}/{libunwind.so,libc++abi.a} $ANDROID_NDK_ROOT/toolchains/llvm/prebuilt/linux-x86_64/lib/
           cargo install cargo-ndk
           cargo ndk --target ${{ matrix.target }} build --release ${{ matrix.buildargs }}
 
@@ -182,14 +185,14 @@ jobs:
       - name: Zip artifact (Unix)
         if: ${{ matrix.os != 'windows-latest' && matrix.platform != 'android'}}
         run: |
-          cp livekit-ffi/include/livekit_ffi.h target/${{ matrix.target }}/release/ 
+          cp livekit-ffi/include/livekit_ffi.h target/${{ matrix.target }}/release/
           cd target/${{ matrix.target }}/release/
           zip ${{ github.workspace }}/${{ matrix.name }}.zip ${{ matrix.dylib }} livekit_ffi.h LICENSE.md
 
       - name: Zip artifact (Unix for Android)
         if: ${{ matrix.os != 'windows-latest' && matrix.platform == 'android'}}
         run: |
-          cp livekit-ffi/include/livekit_ffi.h target/${{ matrix.target }}/release/ 
+          cp livekit-ffi/include/livekit_ffi.h target/${{ matrix.target }}/release/
           cd target/${{ matrix.target }}/release/
           zip ${{ github.workspace }}/${{ matrix.name }}.zip ${{ matrix.dylib }} ${{ matrix.jar }} livekit_ffi.h LICENSE.md
 

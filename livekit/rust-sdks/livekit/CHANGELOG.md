@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.24](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit@0.7.23...rust-sdks/livekit@0.7.24) - 2025-10-27
+
+### Other
+
+- Expose set video quality ([#759](https://github.com/livekit/rust-sdks/pull/759))
+
+## [0.7.23](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit@0.7.22...rust-sdks/livekit@0.7.23) - 2025-10-23
+
+### Other
+
+- add h265 codec support ([#762](https://github.com/livekit/rust-sdks/pull/762))
+
+## [0.7.22](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit@0.7.21...rust-sdks/livekit@0.7.22) - 2025-10-22
+
+### Other
+
+- License check ([#746](https://github.com/livekit/rust-sdks/pull/746))
+- Remove participant check for data packets ([#757](https://github.com/livekit/rust-sdks/pull/757))
+- clamp connection timeout and fixed the comment ([#748](https://github.com/livekit/rust-sdks/pull/748))
+- put examples in root Cargo workspace ([#731](https://github.com/livekit/rust-sdks/pull/731))
+
+## [0.7.21](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit@0.7.20...rust-sdks/livekit@0.7.21) - 2025-10-13
+
+### Added
+
+- *(e2ee)* add data channel encryption ([#708](https://github.com/livekit/rust-sdks/pull/708))
+
+### Fixed
+
+- fix some potential audio issues, clean up the code a bit, and suppress some warnings  ([#737](https://github.com/livekit/rust-sdks/pull/737))
+- do not log 'signal client closed: "stream closed"' on disconnect ([#727](https://github.com/livekit/rust-sdks/pull/727))
+
+### Other
+
+- Test participant disconnect ([#732](https://github.com/livekit/rust-sdks/pull/732))
+- Increase RPC max RT time to 7s ([#729](https://github.com/livekit/rust-sdks/pull/729))
+- E2E audio test ([#724](https://github.com/livekit/rust-sdks/pull/724))
+
 ## [0.7.20](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit@0.7.19...rust-sdks/livekit@0.7.20) - 2025-10-03
 
 ### Other

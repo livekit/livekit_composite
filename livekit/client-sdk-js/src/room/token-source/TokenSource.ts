@@ -11,7 +11,7 @@ import {
   TokenSourceFixed,
   type TokenSourceResponseObject,
 } from './types';
-import { decodeTokenPayload, isResponseExpired } from './utils';
+import { decodeTokenPayload, isResponseTokenValid } from './utils';
 
 /** A TokenSourceCached is a TokenSource which caches the last {@link TokenSourceResponseObject} value and returns it
  * until a) it expires or b) the {@link TokenSourceFetchOptions} provided to .fetch(...) change. */
@@ -56,7 +56,7 @@ abstract class TokenSourceCached extends TokenSourceConfigurable {
     if (!this.cachedResponse) {
       return false;
     }
-    if (isResponseExpired(this.cachedResponse)) {
+    if (!isResponseTokenValid(this.cachedResponse)) {
       return false;
     }
     if (this.isSameAsCachedFetchOptions(fetchOptions)) {
@@ -94,7 +94,7 @@ abstract class TokenSourceCached extends TokenSourceConfigurable {
 type LiteralOrFn =
   | TokenSourceResponseObject
   | (() => TokenSourceResponseObject | Promise<TokenSourceResponseObject>);
-export class TokenSourceLiteral extends TokenSourceFixed {
+class TokenSourceLiteral extends TokenSourceFixed {
   private literalOrFn: LiteralOrFn;
 
   constructor(literalOrFn: LiteralOrFn) {
@@ -114,7 +114,7 @@ export class TokenSourceLiteral extends TokenSourceFixed {
 type CustomFn = (
   options: TokenSourceFetchOptions,
 ) => TokenSourceResponseObject | Promise<TokenSourceResponseObject>;
-export class TokenSourceCustom extends TokenSourceCached {
+class TokenSourceCustom extends TokenSourceCached {
   private customFn: CustomFn;
 
   constructor(customFn: CustomFn) {
@@ -142,7 +142,7 @@ export class TokenSourceCustom extends TokenSourceCached {
 
 export type EndpointOptions = Omit<RequestInit, 'body'>;
 
-export class TokenSourceEndpoint extends TokenSourceCached {
+class TokenSourceEndpoint extends TokenSourceCached {
   private url: string;
 
   private endpointOptions: EndpointOptions;
@@ -231,7 +231,7 @@ export type SandboxTokenServerOptions = {
   baseUrl?: string;
 };
 
-export class TokenSourceSandboxTokenServer extends TokenSourceEndpoint {
+class TokenSourceSandboxTokenServer extends TokenSourceEndpoint {
   constructor(sandboxId: string, options: SandboxTokenServerOptions) {
     const { baseUrl = 'https://cloud-api.livekit.io', ...rest } = options;
 
@@ -243,6 +243,14 @@ export class TokenSourceSandboxTokenServer extends TokenSourceEndpoint {
     });
   }
 }
+
+export {
+  type TokenSourceLiteral,
+  type TokenSourceCustom,
+  type TokenSourceEndpoint,
+  type TokenSourceSandboxTokenServer,
+  decodeTokenPayload,
+};
 
 export const TokenSource = {
   /** TokenSource.literal contains a single, literal set of {@link TokenSourceResponseObject}

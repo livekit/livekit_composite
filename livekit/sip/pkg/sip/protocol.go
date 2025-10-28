@@ -120,7 +120,7 @@ type Signaling interface {
 	To() sip.Uri
 	ID() LocalTag
 	Tag() RemoteTag
-	CallID() string
+	SIPCallID() string
 	RemoteHeaders() Headers
 
 	WriteRequest(req *sip.Request) error
@@ -472,9 +472,24 @@ func (r ReasonHeader) IsNormal() bool {
 		return true // assume there's no specific reason
 	}
 	switch r.Type {
-	case "Q.850":
+	case "q.850":
 		switch r.Cause {
 		case 16: // Normal call clearing
+			return true
+		}
+	case "x.int":
+		switch r.Cause {
+		case 0x00:
+			return true
+		}
+	case "release_cause":
+		switch r.Cause {
+		case 1:
+			return true
+		}
+	case "sip":
+		switch r.Cause {
+		case 200:
 			return true
 		}
 	}
@@ -494,7 +509,9 @@ func ParseReasonHeader(header string) (ReasonHeader, error) {
 		return ReasonHeader{}, errors.New("no fields in the reason")
 	}
 	typ := strings.TrimSpace(list[0])
+	typ = strings.ToLower(typ)
 	r := ReasonHeader{Type: typ}
+	var reasonCode string
 	for _, line := range list[1:] {
 		line = strings.TrimSpace(line)
 		i := strings.Index(line, "=")
@@ -508,6 +525,23 @@ func ParseReasonHeader(header string) (ReasonHeader, error) {
 			r.Cause, _ = strconv.Atoi(val)
 		case "text":
 			r.Text, _ = strconv.Unquote(val)
+		case "reasoncode":
+			reasonCode = val
+		}
+	}
+	switch typ {
+	case "x.int":
+		if r.Cause == 0 {
+			if reasonCode != "" {
+				v, _ := strconv.ParseUint(reasonCode, 0, 64)
+				r.Cause = int(v)
+			} else if r.Text != "" {
+				v, err := strconv.ParseUint(r.Text, 0, 64)
+				r.Cause = int(v)
+				if err == nil {
+					r.Text = ""
+				}
+			}
 		}
 	}
 	return r, nil

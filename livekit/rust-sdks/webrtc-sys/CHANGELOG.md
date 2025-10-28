@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.16](https://github.com/livekit/rust-sdks/compare/rust-sdks/webrtc-sys@0.3.15...rust-sdks/webrtc-sys@0.3.16) - 2025-10-27
+
+### Fixed
+
+- fix unable to locate __arm_tpidr2_save for android ffi. ([#765](https://github.com/livekit/rust-sdks/pull/765))
+
+### Other
+
+- Linux hardware acceleration build fixes ([#753](https://github.com/livekit/rust-sdks/pull/753))
+
+## [0.3.15](https://github.com/livekit/rust-sdks/compare/rust-sdks/webrtc-sys@0.3.14...rust-sdks/webrtc-sys@0.3.15) - 2025-10-22
+
+### Other
+
+- License check ([#746](https://github.com/livekit/rust-sdks/pull/746))
+- put examples in root Cargo workspace ([#731](https://github.com/livekit/rust-sdks/pull/731))
+
+## [0.3.14](https://github.com/livekit/rust-sdks/compare/rust-sdks/webrtc-sys@0.3.13...rust-sdks/webrtc-sys@0.3.14) - 2025-10-13
+
+### Added
+
+- *(e2ee)* add data channel encryption ([#708](https://github.com/livekit/rust-sdks/pull/708))
+
+### Fixed
+
+- fix some potential audio issues, clean up the code a bit, and suppress some warnings  ([#737](https://github.com/livekit/rust-sdks/pull/737))
+- fix linux so link issue. ([#733](https://github.com/livekit/rust-sdks/pull/733))
+- change search_dirs to use cc --print-search-dirs instead of clang --print-search-dirs ([#697](https://github.com/livekit/rust-sdks/pull/697))
+
+### Other
+
+- bump libwebrtc libs version for webrtc-sys. ([#741](https://github.com/livekit/rust-sdks/pull/741))
+- Enable buffer scaling ([#473](https://github.com/livekit/rust-sdks/pull/473))
+
 ## [0.3.13](https://github.com/livekit/rust-sdks/compare/rust-sdks/webrtc-sys@0.3.12...rust-sdks/webrtc-sys@0.3.13) - 2025-10-03
 
 ### Other

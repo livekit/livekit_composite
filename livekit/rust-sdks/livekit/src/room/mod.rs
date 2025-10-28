@@ -1,4 +1,4 @@
-// Copyright 2023 LiveKit, Inc.
+// Copyright 2025 LiveKit, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1427,11 +1427,6 @@ impl RoomSession {
                 .as_ref()
                 .map(|sid| self.get_participant_by_sid(sid))
                 .unwrap_or(None);
-        }
-
-        if participant.is_none() && (participant_identity.is_some() || participant_sid.is_some()) {
-            // We received a data packet from a participant that is not in the participants list
-            return;
         }
 
         // Update participant's data encryption status for regular data messages

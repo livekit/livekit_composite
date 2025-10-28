@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.19](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.18...rust-sdks/libwebrtc@0.3.19) - 2025-10-27
+
+### Other
+
+- updated the following local packages: webrtc-sys
+
+## [0.3.18](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.17...rust-sdks/libwebrtc@0.3.18) - 2025-10-22
+
+### Other
+
+- License check ([#746](https://github.com/livekit/rust-sdks/pull/746))
+
+## [0.3.17](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.16...rust-sdks/libwebrtc@0.3.17) - 2025-10-13
+
+### Added
+
+- *(e2ee)* add data channel encryption ([#708](https://github.com/livekit/rust-sdks/pull/708))
+
+### Other
+
+- Enable buffer scaling ([#473](https://github.com/livekit/rust-sdks/pull/473))
+
 ## [0.3.16](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.15...rust-sdks/libwebrtc@0.3.16) - 2025-10-03
 
 ### Other

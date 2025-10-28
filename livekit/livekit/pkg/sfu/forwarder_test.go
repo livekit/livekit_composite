@@ -33,7 +33,13 @@ func disable(f *Forwarder) {
 }
 
 func newForwarder(codec webrtc.RTPCodecCapability, kind webrtc.RTPCodecType) *Forwarder {
-	f := NewForwarder(kind, logger.GetLogger(), true, nil)
+	f := NewForwarder(
+		kind,
+		logger.GetLogger(),
+		true, // skipReferenceTS
+		true, // disableOpportunisticAllocation
+		nil,
+	)
 	f.DetermineCodec(codec, nil, livekit.VideoLayer_MODE_UNUSED)
 	return f
 }
@@ -464,6 +470,9 @@ func TestForwarderProvisionalAllocate(t *testing.T) {
 	f.SetMaxPublishedLayer(buffer.DefaultMaxLayerSpatial)
 	f.SetMaxTemporalLayerSeen(buffer.DefaultMaxLayerTemporal)
 
+	// Reset to invalid layers for testing allocation from scratch
+	disable(f)
+
 	bitrates := Bitrates{
 		{1, 2, 3, 4},
 		{5, 6, 7, 8},
@@ -682,6 +691,9 @@ func TestForwarderProvisionalAllocateMute(t *testing.T) {
 	f.SetMaxSpatialLayer(buffer.DefaultMaxLayerSpatial)
 	f.SetMaxTemporalLayer(buffer.DefaultMaxLayerTemporal)
 
+	// Reset to invalid layers for testing muted state
+	disable(f)
+
 	bitrates := Bitrates{
 		{1, 2, 3, 4},
 		{5, 6, 7, 8},
@@ -722,6 +734,9 @@ func TestForwarderProvisionalAllocateGetCooperativeTransition(t *testing.T) {
 	f.SetMaxTemporalLayer(buffer.DefaultMaxLayerTemporal)
 	f.SetMaxPublishedLayer(buffer.DefaultMaxLayerSpatial)
 	f.SetMaxTemporalLayerSeen(buffer.DefaultMaxLayerTemporal)
+
+	// Reset to invalid layers for testing cooperative transition from scratch
+	disable(f)
 
 	availableLayers := []int32{0, 1, 2}
 	bitrates := Bitrates{

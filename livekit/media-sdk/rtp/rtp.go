@@ -19,12 +19,15 @@ import (
 	"math/rand/v2"
 	"slices"
 	"sync"
+	"sync/atomic"
 
 	"github.com/pion/interceptor"
 	"github.com/pion/rtp"
 
 	"github.com/livekit/media-sdk"
 )
+
+const rtpStreamTSResetFrames = 25 // 500ms @ ptime=20ms
 
 type BytesFrame interface {
 	~[]byte
@@ -125,13 +128,36 @@ type Event struct {
 }
 
 type SeqWriter struct {
-	mu sync.Mutex
-	w  Writer
-	h  Header
+	maxTS atomic.Uint32
+	mu    sync.Mutex
+	w     Writer
+	h     Header
 }
 
 func (s *SeqWriter) String() string {
 	return s.w.String()
+}
+
+// CurTS requests a timestamp from the stream, using ts as a reference.
+// The function may return timestamp as-is or may adjust it to catch up with other active streams.
+func (s *SeqWriter) CurTS(ts, inc uint32) uint32 {
+	for {
+		cur := s.maxTS.Load()
+		// TODO: Handle wrap-around. Not a concern for now, because all streams start at TS=0.
+		if cur > ts+rtpStreamTSResetFrames*inc {
+			// Previous timestamp on the stream was too long ago.
+			// Force a timestamp reset to the one from a more recent stream.
+			return cur
+		}
+		if cur >= ts {
+			// Timestamp is withing allowed range.
+			return ts
+		}
+		// Adjust the max timestamp, make sure other stream didn't update it before us.
+		if s.maxTS.CompareAndSwap(cur, ts) {
+			return ts
+		}
+	}
 }
 
 func (s *SeqWriter) WriteEvent(ev *Event) error {
@@ -163,6 +189,7 @@ type Stream struct {
 	packetDur uint32
 	mu        sync.Mutex
 	ev        Event
+	followup  bool
 }
 
 func (s *Stream) writePayload(inc bool, data []byte, marker bool) error {
@@ -170,11 +197,17 @@ func (s *Stream) writePayload(inc bool, data []byte, marker bool) error {
 	defer s.mu.Unlock()
 	s.ev.Payload = data
 	s.ev.Marker = marker
+	if !s.followup {
+		s.ev.Timestamp = s.s.CurTS(s.ev.Timestamp, s.packetDur)
+	}
 	if err := s.s.WriteEvent(&s.ev); err != nil {
 		return err
 	}
 	if inc {
+		s.followup = false
 		s.ev.Timestamp += s.packetDur
+	} else {
+		s.followup = true
 	}
 	return nil
 }
@@ -185,14 +218,27 @@ func (s *Stream) WritePayload(data []byte, marker bool) error {
 }
 
 // WritePayloadAtCurrent writes the payload to RTP at the current timestamp.
+// This allows to emit multiple different payloads with the same timestamp in this stream (e.g. DTMF).
+// The caller is expected to call Delay or DelayN at some point to advances the timestamp.
 func (s *Stream) WritePayloadAtCurrent(data []byte, marker bool) error {
 	return s.writePayload(false, data, marker)
 }
 
+// Delay advances the timestamp of the next frame. Typically used in combination with WritePayloadAtCurrent.
 func (s *Stream) Delay(dur uint32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.ev.Timestamp += dur
+	s.ev.Timestamp = s.s.CurTS(s.ev.Timestamp, s.packetDur)
+	s.followup = false
+}
+
+// DelayN is similar to Delay, but it increments time in multiples of the frame durations.
+func (s *Stream) DelayN(n int) {
+	if n < 0 {
+		panic("rtp: negative delay")
+	}
+	s.Delay(uint32(n) * s.packetDur)
 }
 
 func (s *Stream) ResetTimestamp(ts uint32) {
@@ -200,6 +246,7 @@ func (s *Stream) ResetTimestamp(ts uint32) {
 	defer s.mu.Unlock()
 
 	s.ev.Timestamp = ts
+	s.followup = false
 }
 
 func (s *Stream) GetCurrentTimestamp() uint32 {

@@ -21,6 +21,13 @@ import (
 	"github.com/livekit/protocol/livekit"
 )
 
+type Kind int
+
+const (
+	WHATSAPP Kind = iota
+	TWILIO
+)
+
 type ConnectorTokenParams struct {
 	APIKey                string
 	APISecret             string
@@ -30,6 +37,8 @@ type ConnectorTokenParams struct {
 	ParticipantMetadata   string
 	ParticipantAttributes map[string]string
 	Agents                []*livekit.RoomAgentDispatch
+	Hidden                bool
+	Kind                  Kind
 }
 
 func BuildConnectorToken(params ConnectorTokenParams) (string, error) {
@@ -42,6 +51,7 @@ func BuildConnectorToken(params ConnectorTokenParams) (string, error) {
 			CanPublish:           &t,
 			CanPublishData:       &t,
 			CanUpdateOwnMetadata: &t,
+			Hidden:               params.Hidden,
 		}).
 		SetAgents(params.Agents...).
 		SetIdentity(params.ParticipantIdentity).
@@ -49,8 +59,20 @@ func BuildConnectorToken(params ConnectorTokenParams) (string, error) {
 		SetMetadata(params.ParticipantMetadata).
 		SetAttributes(params.ParticipantAttributes).
 		SetKind(livekit.ParticipantInfo_CONNECTOR).
+		SetKindDetail(livekitKindDetailFromConnectorKind(params.Kind)).
 		SetValidFor(24 * time.Hour).
 		SetAllowSensitiveCredentials(true)
 
 	return at.ToJWT()
+}
+
+func livekitKindDetailFromConnectorKind(kind Kind) livekit.ParticipantInfo_KindDetail {
+	switch kind {
+	case WHATSAPP:
+		return livekit.ParticipantInfo_CONNECTOR_WHATSAPP
+	case TWILIO:
+		return livekit.ParticipantInfo_CONNECTOR_TWILIO
+	default:
+		return livekit.ParticipantInfo_CONNECTOR_WHATSAPP
+	}
 }

@@ -714,6 +714,21 @@ describe('RegionUrlProvider', () => {
       await expect(provider.fetchRegionSettings()).rejects.toThrow('Network timeout');
     });
 
+    it('wraps fetch throw as ConnectionError with ServerUnreachable reason', async () => {
+      const provider = new RegionUrlProvider('wss://test.livekit.cloud', 'token');
+
+      // Simulate fetch itself throwing an error (common in network failures)
+      fetchMock.mockRejectedValue(new TypeError('Failed to fetch'));
+
+      // Should throw a ConnectionError that can be handled
+      const error = await provider.fetchRegionSettings().catch((e) => e);
+
+      expect(error).toBeInstanceOf(ConnectionError);
+      expect(error.reason).toBe(ConnectionErrorReason.ServerUnreachable);
+      expect(error.status).toBe(500);
+      expect(error.message).toContain('Failed to fetch');
+    });
+
     it('handles concurrent getNextBestRegionUrl calls', async () => {
       const provider = new RegionUrlProvider('wss://test.livekit.cloud', 'token');
       const mockSettings = createMockRegionSettings([
@@ -811,6 +826,181 @@ describe('RegionUrlProvider', () => {
       // First region should be returned, second should be null since it has the same URL
       expect(region1).toBe('wss://us-west.livekit.cloud');
       expect(region2).toBeNull(); // Filtered out because same URL was already attempted
+    });
+  });
+
+  describe('connection tracking and auto-refetch cleanup', () => {
+    beforeEach(() => {
+      // Reset connection tracking maps
+      // @ts-ignore - accessing private static field for testing
+      RegionUrlProvider.connectionTrackers = new Map();
+    });
+
+    it('stops auto-refetch 30s after last connection disconnects', async () => {
+      const provider = new RegionUrlProvider('wss://test.livekit.cloud', 'token');
+      const mockSettings = createMockRegionSettings([
+        { region: 'us-west', url: 'wss://us-west.livekit.cloud' },
+      ]);
+
+      fetchMock.mockResolvedValue(
+        createMockResponse(200, mockSettings, { 'Cache-Control': 'max-age=100' }),
+      );
+
+      // Initial fetch to start auto-refetch
+      await provider.getNextBestRegionUrl();
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      const hostname = provider.getServerUrl().hostname;
+
+      // Simulate connection
+      provider.notifyConnected();
+
+      // Verify auto-refetch is running
+      const timersBeforeDisconnect = vi.getTimerCount();
+      expect(timersBeforeDisconnect).toBeGreaterThan(0);
+
+      // Simulate disconnect
+      provider.notifyDisconnected();
+
+      // Should schedule cleanup timeout (30s)
+      // Advance time by 29s - refetch should still be running
+      vi.advanceTimersByTime(29000);
+      expect(fetchMock).toHaveBeenCalledTimes(1); // No additional fetches
+
+      // Advance by 1 more second (total 30s) - cleanup should trigger
+      await vi.advanceTimersByTimeAsync(1000);
+
+      // Auto-refetch should be stopped, so no new timers for refetch
+      // @ts-ignore - accessing private static field for testing
+      const refetchTimeout = RegionUrlProvider.settingsTimeouts.get(hostname);
+      expect(refetchTimeout).toBeUndefined();
+    });
+
+    it('cancels cleanup when reconnecting before 30s delay', async () => {
+      const provider = new RegionUrlProvider('wss://test.livekit.cloud', 'token');
+      const mockSettings = createMockRegionSettings([
+        { region: 'us-west', url: 'wss://us-west.livekit.cloud' },
+      ]);
+
+      fetchMock.mockResolvedValue(
+        createMockResponse(200, mockSettings, { 'Cache-Control': 'max-age=100' }),
+      );
+
+      await provider.getNextBestRegionUrl();
+      const hostname = provider.getServerUrl().hostname;
+
+      // Connect and disconnect
+      provider.notifyConnected();
+      provider.notifyDisconnected();
+
+      // Advance time by 15s (less than 30s)
+      vi.advanceTimersByTime(15000);
+
+      // Reconnect before cleanup triggers
+      provider.notifyConnected();
+
+      // @ts-ignore - accessing private static field for testing
+      const tracker = RegionUrlProvider.connectionTrackers.get(hostname);
+      expect(tracker?.cleanupTimeout).toBeUndefined(); // Cleanup should be cancelled
+
+      // Advance past the original 30s mark
+      vi.advanceTimersByTime(20000);
+
+      // Auto-refetch should still be running
+      // @ts-ignore - accessing private static field for testing
+      const refetchTimeout = RegionUrlProvider.settingsTimeouts.get(hostname);
+      expect(refetchTimeout).toBeDefined();
+    });
+
+    it('tracks multiple connections correctly', async () => {
+      const provider = new RegionUrlProvider('wss://test.livekit.cloud', 'token');
+      const mockSettings = createMockRegionSettings([
+        { region: 'us-west', url: 'wss://us-west.livekit.cloud' },
+      ]);
+
+      fetchMock.mockResolvedValue(
+        createMockResponse(200, mockSettings, { 'Cache-Control': 'max-age=100' }),
+      );
+
+      await provider.getNextBestRegionUrl();
+      const hostname = provider.getServerUrl().hostname;
+
+      // Simulate 3 connections
+      provider.notifyConnected();
+      provider.notifyConnected();
+      provider.notifyConnected();
+
+      // @ts-ignore - accessing private static field for testing
+      const tracker = RegionUrlProvider.connectionTrackers.get(hostname);
+      expect(tracker?.connectionCount).toBe(3);
+
+      // Disconnect first connection
+      provider.notifyDisconnected();
+
+      // @ts-ignore - accessing private static field for testing
+      expect(tracker?.connectionCount).toBe(2);
+
+      // Should NOT schedule cleanup yet (still have active connections)
+      expect(tracker?.cleanupTimeout).toBeUndefined();
+
+      // Disconnect second connection
+      provider.notifyDisconnected();
+      // @ts-ignore - accessing private static field for testing
+      expect(tracker?.connectionCount).toBe(1);
+
+      // Disconnect last connection
+      provider.notifyDisconnected();
+      // @ts-ignore - accessing private static field for testing
+      expect(tracker?.connectionCount).toBe(0);
+
+      // NOW cleanup should be scheduled
+      expect(tracker?.cleanupTimeout).toBeDefined();
+    });
+
+    it('handles disconnect without prior connect gracefully', () => {
+      const provider = new RegionUrlProvider('wss://test.livekit.cloud', 'token');
+      const hostname = provider.getServerUrl().hostname;
+
+      // Disconnect without connect should not throw
+      expect(() => {
+        provider.notifyDisconnected();
+      }).not.toThrow();
+
+      // Should not create a tracker
+      // @ts-ignore - accessing private static field for testing
+      const tracker = RegionUrlProvider.connectionTrackers.get(hostname);
+      expect(tracker).toBeUndefined();
+    });
+
+    it('clears cleanup timeout when scheduling new cleanup', async () => {
+      const provider = new RegionUrlProvider('wss://test.livekit.cloud', 'token');
+      const mockSettings = createMockRegionSettings([
+        { region: 'us-west', url: 'wss://us-west.livekit.cloud' },
+      ]);
+
+      fetchMock.mockResolvedValue(
+        createMockResponse(200, mockSettings, { 'Cache-Control': 'max-age=100' }),
+      );
+
+      await provider.getNextBestRegionUrl();
+      const hostname = provider.getServerUrl().hostname;
+
+      // Connect and disconnect (schedules cleanup)
+      provider.notifyConnected();
+      provider.notifyDisconnected();
+
+      // @ts-ignore - accessing private static field for testing
+      const tracker = RegionUrlProvider.connectionTrackers.get(hostname);
+      const firstCleanupTimeout = tracker?.cleanupTimeout;
+      expect(firstCleanupTimeout).toBeDefined();
+
+      // Reconnect and disconnect again (should cancel first and schedule new)
+      provider.notifyConnected();
+      provider.notifyDisconnected();
+
+      const secondCleanupTimeout = tracker?.cleanupTimeout;
+      expect(secondCleanupTimeout).toBeDefined();
+      expect(secondCleanupTimeout).not.toBe(firstCleanupTimeout);
     });
   });
 });

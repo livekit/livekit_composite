@@ -1,0 +1,8 @@
+.cache/
+CMakeFiles/
+CMakeCache.txt
+.DS_Store
+Makefile
+cmake_install.cmake
+out
+build/

@@ -29,6 +29,8 @@ import {
   SIPDispatchRuleIndividual,
   SIPDispatchRuleInfo,
   SIPInboundTrunkInfo,
+  SIPMediaEncryption,
+  SIPOutboundConfig,
   SIPOutboundTrunkInfo,
   SIPParticipantInfo,
   SIPTransport,
@@ -38,6 +40,7 @@ import {
   UpdateSIPInboundTrunkRequest,
   UpdateSIPOutboundTrunkRequest,
 } from '@livekit/protocol';
+import type { ClientOptions } from './ClientOptions.js';
 import { ServiceBase } from './ServiceBase.js';
 import type { Rpc } from './TwirpRPC.js';
 import { TwirpRpc, livekitPackage } from './TwirpRPC.js';
@@ -77,6 +80,7 @@ export interface CreateSipInboundTrunkOptions {
   // Map SIP response headers from INVITE to sip.h.* participant attributes automatically.
   includeHeaders?: SIPHeaderOptions;
   krispEnabled?: boolean;
+  mediaEncryption?: SIPMediaEncryption;
 }
 export interface CreateSipOutboundTrunkOptions {
   metadata?: string;
@@ -92,6 +96,7 @@ export interface CreateSipOutboundTrunkOptions {
   headersToAttributes?: { [key: string]: string };
   // Map SIP response headers from INVITE to sip.h.* participant attributes automatically.
   includeHeaders?: SIPHeaderOptions;
+  mediaEncryption?: SIPMediaEncryption;
 }
 
 export interface SipDispatchRuleDirect {
@@ -187,6 +192,7 @@ export interface SipInboundTrunkUpdateOptions {
   authPassword?: string;
   name?: string;
   metadata?: string;
+  mediaEncryption?: SIPMediaEncryption;
 }
 
 export interface SipOutboundTrunkUpdateOptions {
@@ -198,6 +204,7 @@ export interface SipOutboundTrunkUpdateOptions {
   destinationCountry?: string;
   name?: string;
   metadata?: string;
+  mediaEncryption?: SIPMediaEncryption;
 }
 
 export interface TransferSipParticipantOptions {
@@ -215,10 +222,14 @@ export class SipClient extends ServiceBase {
    * @param host - hostname including protocol. i.e. 'https://<project>.livekit.cloud'
    * @param apiKey - API Key, can be set in env var LIVEKIT_API_KEY
    * @param secret - API Secret, can be set in env var LIVEKIT_API_SECRET
+   * @param options - client options
    */
-  constructor(host: string, apiKey?: string, secret?: string) {
+  constructor(host: string, apiKey?: string, secret?: string, options?: ClientOptions) {
     super(apiKey, secret);
-    this.rpc = new TwirpRpc(host, livekitPackage);
+    const rpcOptions = options?.requestTimeout
+      ? { requestTimeout: options.requestTimeout }
+      : undefined;
+    this.rpc = new TwirpRpc(host, livekitPackage, rpcOptions);
   }
 
   /**
@@ -300,6 +311,7 @@ export class SipClient extends ServiceBase {
         headersToAttributes: opts.headersToAttributes,
         includeHeaders: opts.includeHeaders,
         krispEnabled: opts.krispEnabled,
+        mediaEncryption: opts.mediaEncryption,
       }),
     }).toJson();
 
@@ -346,6 +358,7 @@ export class SipClient extends ServiceBase {
         headersToAttributes: opts.headersToAttributes,
         includeHeaders: opts.includeHeaders,
         destinationCountry: opts.destinationCountry,
+        mediaEncryption: opts.mediaEncryption,
       }),
     }).toJson();
 
@@ -698,6 +711,7 @@ export class SipClient extends ServiceBase {
    * @param number - number to dial
    * @param roomName - room to attach the call to
    * @param opts - CreateSipParticipantOptions
+   * @param outboundTrunkConfig - Optional outbound trunk configuration for sip participant.
    * @returns Created SIP participant
    */
   async createSipParticipant(
@@ -705,6 +719,7 @@ export class SipClient extends ServiceBase {
     number: string,
     roomName: string,
     opts?: CreateSipParticipantOptions,
+    outboundTrunkConfig?: SIPOutboundConfig,
   ): Promise<SIPParticipantInfo> {
     if (opts === undefined) {
       opts = {};
@@ -716,6 +731,7 @@ export class SipClient extends ServiceBase {
 
     const req = new CreateSIPParticipantRequest({
       sipTrunkId: sipTrunkId,
+      trunk: outboundTrunkConfig,
       sipCallTo: number,
       sipNumber: opts.fromNumber,
       roomName: roomName,

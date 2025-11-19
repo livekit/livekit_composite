@@ -17,6 +17,7 @@ package lksdk
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -32,6 +33,7 @@ import (
 	lkinterceptor "github.com/livekit/mediatransportutil/pkg/interceptor"
 	"github.com/livekit/mediatransportutil/pkg/pacer"
 	protoLogger "github.com/livekit/protocol/logger"
+	"github.com/livekit/protocol/logger/pionlogger"
 	lksdp "github.com/livekit/protocol/sdp"
 	sdkinterceptor "github.com/livekit/server-sdk-go/v2/pkg/interceptor"
 )
@@ -69,6 +71,7 @@ type PCTransport struct {
 
 type PCTransportParams struct {
 	Configuration webrtc.Configuration
+	Codecs        []webrtc.RTPCodecParameters
 
 	RetransmitBufferSize uint16
 	Pacer                pacer.Factory
@@ -132,7 +135,17 @@ func (t *PCTransport) registerDefaultInterceptors(params PCTransportParams, i *i
 
 func NewPCTransport(params PCTransportParams) (*PCTransport, error) {
 	m := &webrtc.MediaEngine{}
-	if err := m.RegisterDefaultCodecs(); err != nil {
+	if len(params.Codecs) > 0 {
+		for _, codec := range params.Codecs {
+			codecType := webrtc.RTPCodecTypeAudio
+			if strings.HasPrefix(codec.MimeType, "video/") {
+				codecType = webrtc.RTPCodecTypeVideo
+			}
+			if err := m.RegisterCodec(codec, codecType); err != nil {
+				return nil, err
+			}
+		}
+	} else if err := m.RegisterDefaultCodecs(); err != nil {
 		return nil, err
 	}
 	audioLevelExtension := webrtc.RTPHeaderExtensionCapability{URI: sdp.AudioLevelURI}
@@ -183,6 +196,10 @@ func NewPCTransport(params PCTransportParams) (*PCTransport, error) {
 	se.SetSRTPProtectionProfiles(dtls.SRTP_AEAD_AES_128_GCM, dtls.SRTP_AES128_CM_HMAC_SHA1_80)
 	se.SetDTLSRetransmissionInterval(dtlsRetransmissionInterval)
 	se.SetICETimeouts(iceDisconnectedTimeout, iceFailedTimeout, iceKeepaliveInterval)
+	lf := pionlogger.NewLoggerFactory(logger)
+	if lf != nil {
+		se.LoggerFactory = lf
+	}
 
 	api := webrtc.NewAPI(webrtc.WithMediaEngine(m), webrtc.WithSettingEngine(se), webrtc.WithInterceptorRegistry(i))
 	pc, err := api.NewPeerConnection(params.Configuration)

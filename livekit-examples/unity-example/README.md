@@ -11,27 +11,58 @@ Notice. This is still an unstable version and is only used for early testing.
 - Visual Studio 2022 for Windows
 - Xcode for macOS
 - Enable Android support in Unity Hub
+- Git LFS : required for downloading Unity SDK plugin binaries
 
-### Installation
+### Setup Instructions
 
-1. Clone the repo to your local machine.
+1. Install Git LFS (Required)
+    The LiveKit Unity SDK contains several large binary assets (e.g. Runtime/Plugins/Google.Protobuf.dll) that are stored using Git LFS.
+    You must install Git LFS before cloning the SDK.
 
+    Install Git LFS:
+    ```sh
+    brew install git-lfs         # macOS
+    sudo apt-get install git-lfs # Ubuntu/Debian
+    choco install git-lfs        # Windows (Chocolatey)
+    ```
+    Then initialize it:
+    ```sh
+    git lfs install
+    ```
+
+2. Clone the Repositories
+   Clone the example project
    ```sh
    git clone https://github.com/livekit-examples/unity-example.git
    ```
 
-   Clone unity sdk (draft for android support) to the same directory
-
+   Clone the LiveKit Unity SDK
     ```sh
     git clone https://github.com/livekit/client-sdk-unity.git
-    cd client-sdk-unity && python install.py
+    cd client-sdk-unity
+    python install.py
     ```
 
-2. Open the project with Unity 2022.3.20f1 and add the livekit unity sdk package.
+    (Optional) Verify LFS assets were downloaded correctly
+    
+    If any plugin files appear as tiny text pointer files instead of real binaries:
+    ```sh
+    git lfs pull
+    ```
 
-   Open Package Manager -> Add package from disk -> select the client-sdk-unity folder
+3. Open the project in Unity
 
-3. Test the sample app.
+    Use Unity 2022.3.20f1.
+
+    Then add the LiveKit Unity SDK as a package:
+
+        1. Open Package Manager
+
+        2. Select Add package from disk
+
+        3. Choose the client-sdk-unity folder you cloned earlier
+
+4. Test the sample app.
 
     Edit unity-example/LivekitUnitySampleApp/Assets/Scenes/LivekitSamples.cs
 

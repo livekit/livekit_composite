@@ -148,7 +148,7 @@ type TrackReceiver interface {
 }
 
 type REDTransformer interface {
-	ForwardRTP(pkt *buffer.ExtPacket, spatialLayer int32) int
+	ForwardRTP(pkt *buffer.ExtPacket, spatialLayer int32) int32
 	ForwardRTCPSenderReport(
 		payloadType webrtc.PayloadType,
 		layer int32,
@@ -471,6 +471,7 @@ func (w *WebRTCReceiver) AddUpTrack(track TrackRemote, buff *buffer.Buffer) erro
 	buff.SetPaused(w.streamTrackerManager.IsPaused())
 
 	go w.forwardRTP(layer, buff)
+	w.logger.Debugw("starting forwarder", "layer", layer)
 	return nil
 }
 
@@ -785,6 +786,7 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 	}
 
 	pktBuf := make([]byte, bucket.MaxPktSize)
+	w.logger.Debugw("starting forwarding", "layer", layer)
 	for {
 		pkt, err := buff.ReadExtended(pktBuf)
 		if err == io.EOF {
@@ -818,23 +820,25 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 			continue
 		}
 
-		writeCount := w.downTrackSpreader.Broadcast(func(dt TrackSender) {
-			_ = dt.WriteRTP(pkt, spatialLayer)
+		var writeCount atomic.Int32
+		w.downTrackSpreader.Broadcast(func(dt TrackSender) {
+			writeCount.Add(dt.WriteRTP(pkt, spatialLayer))
 		})
 
 		if rt := w.redTransformer.Load(); rt != nil {
-			writeCount += rt.(REDTransformer).ForwardRTP(pkt, spatialLayer)
+			writeCount.Add(rt.(REDTransformer).ForwardRTP(pkt, spatialLayer))
 		}
 
 		// track delay/jitter
-		if writeCount > 0 && w.forwardStats != nil {
+		if writeCount.Load() > 0 && w.forwardStats != nil && !pkt.IsBuffered {
 			if latency, isHigh := w.forwardStats.Update(pkt.Arrival, mono.UnixNano()); isHigh {
 				w.logger.Infow(
 					"high forwarding latency",
-					"latency", latency,
-					"writeCount", writeCount,
-					"queuingLatency", dequeuedAt-pkt.Arrival,
+					"latency", time.Duration(latency),
+					"queuingLatency", time.Duration(dequeuedAt-pkt.Arrival),
+					"writeCount", writeCount.Load(),
 					"isOutOfOrder", pkt.IsOutOfOrder,
+					"layer", layer,
 				)
 			}
 		}
@@ -863,6 +867,8 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 		}
 
 		numPacketsForwarded++
+
+		buff.ReleaseExtPacket(pkt)
 	}
 }
 

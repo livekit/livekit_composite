@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/livekit/egress/pkg/types"
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/logger/medialogutils"
 	"github.com/livekit/protocol/redis"
@@ -46,6 +47,7 @@ type BaseConfig struct {
 	EnableRoomCompositeSDKSource bool           `yaml:"enable_room_composite_sdk_source"` // attempt to render supported audio only room composite use cases using the SDK source instead of Chrome. This option will be removed when this becomes the default behavior eventually.
 	IOCreateTimeout              time.Duration  `yaml:"io_create_timeout"`                // timeout for CreateEgress calls
 	IOUpdateTimeout              time.Duration  `yaml:"io_update_timeout"`                // timeout for UpdateEgress calls
+	IOWorkers                    int            `yaml:"io_workers"`                       // number of IO update workers
 
 	SessionLimits          `yaml:"session_limits"` // session duration limits
 	StorageConfig          *StorageConfig          `yaml:"storage,omitempty"`          // storage config
@@ -56,11 +58,12 @@ type BaseConfig struct {
 	S3AssumeRoleExternalID string                  `yaml:"s3_assume_role_external_id"` // if set, this external ID is used by default for S3 uploads
 
 	// advanced
-	Insecure             bool                   `yaml:"insecure"`               // allow chrome to connect to an insecure websocket
-	Debug                DebugConfig            `yaml:"debug"`                  // create dot file on internal error
-	ChromeFlags          map[string]interface{} `yaml:"chrome_flags"`           // additional flags to pass to Chrome
-	Latency              LatencyConfig          `yaml:"latency"`                // gstreamer latencies, modifying these may break the service
-	AudioTempoController AudioTempoController   `yaml:"audio_tempo_controller"` // audio tempo controller
+	Insecure             bool                                `yaml:"insecure"`               // allow chrome to connect to an insecure websocket
+	Debug                DebugConfig                         `yaml:"debug"`                  // create dot file on internal error
+	ChromeFlags          map[string]interface{}              `yaml:"chrome_flags"`           // additional flags to pass to Chrome
+	Latency              LatencyConfig                       `yaml:"latency"`                // gstreamer latencies, modifying these may break the service
+	LatencyOverrides     map[types.RequestType]LatencyConfig `yaml:"latency_overrides"`      // latency overrides for different request types, experimental only, will be removed
+	AudioTempoController AudioTempoController                `yaml:"audio_tempo_controller"` // audio tempo controller
 }
 
 type SessionLimits struct {
@@ -131,4 +134,11 @@ func (c *BaseConfig) initLogger(values ...interface{}) error {
 	logger.SetLogger(l, "egress")
 	lksdk.SetLogger(medialogutils.NewOverrideLogger(nil))
 	return nil
+}
+
+func (c *BaseConfig) getLatencyConfig(requestType types.RequestType) LatencyConfig {
+	if override, ok := c.LatencyOverrides[requestType]; ok {
+		return override
+	}
+	return c.Latency
 }

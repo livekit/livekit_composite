@@ -1,16 +1,16 @@
 import logging
 
 from dotenv import load_dotenv
+from livekit import rtc
 from livekit.agents import (
     Agent,
+    AgentServer,
     AgentSession,
     JobContext,
     JobProcess,
-    MetricsCollectedEvent,
-    RoomInputOptions,
-    WorkerOptions,
     cli,
-    metrics,
+    inference,
+    room_io,
 )
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
@@ -47,11 +47,18 @@ class Assistant(Agent):
     #     return "sunny with a temperature of 70 degrees."
 
 
+server = AgentServer()
+
+
 def prewarm(proc: JobProcess):
     proc.userdata["vad"] = silero.VAD.load()
 
 
-async def entrypoint(ctx: JobContext):
+server.setup_fnc = prewarm
+
+
+@server.rtc_session()
+async def my_agent(ctx: JobContext):
     # Logging setup
     # Add any other context you want in all log entries here
     ctx.log_context_fields = {
@@ -62,13 +69,15 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         # Speech-to-text (STT) is your agent's ears, turning the user's speech into text that the LLM can understand
         # See all available models at https://docs.livekit.io/agents/models/stt/
-        stt="assemblyai/universal-streaming:en",
+        stt=inference.STT(model="assemblyai/universal-streaming", language="en"),
         # A Large Language Model (LLM) is your agent's brain, processing user input and generating a response
         # See all available models at https://docs.livekit.io/agents/models/llm/
-        llm="openai/gpt-4.1-mini",
+        llm=inference.LLM(model="openai/gpt-4.1-mini"),
         # Text-to-speech (TTS) is your agent's voice, turning the LLM's text into speech that the user can hear
         # See all available models as well as voice selections at https://docs.livekit.io/agents/models/tts/
-        tts="cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
+        tts=inference.TTS(
+            model="cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
+        ),
         # VAD and turn detection are used to determine when the user is speaking and when the agent should respond
         # See more at https://docs.livekit.io/agents/build/turns
         turn_detection=MultilingualModel(),
@@ -88,21 +97,6 @@ async def entrypoint(ctx: JobContext):
     #     llm=openai.realtime.RealtimeModel(voice="marin")
     # )
 
-    # Metrics collection, to measure pipeline performance
-    # For more information, see https://docs.livekit.io/agents/build/metrics/
-    usage_collector = metrics.UsageCollector()
-
-    @session.on("metrics_collected")
-    def _on_metrics_collected(ev: MetricsCollectedEvent):
-        metrics.log_metrics(ev.metrics)
-        usage_collector.collect(ev.metrics)
-
-    async def log_usage():
-        summary = usage_collector.get_summary()
-        logger.info(f"Usage: {summary}")
-
-    ctx.add_shutdown_callback(log_usage)
-
     # # Add a virtual avatar to the session, if desired
     # # For other providers, see https://docs.livekit.io/agents/models/avatar/
     # avatar = hedra.AvatarSession(
@@ -115,9 +109,12 @@ async def entrypoint(ctx: JobContext):
     await session.start(
         agent=Assistant(),
         room=ctx.room,
-        room_input_options=RoomInputOptions(
-            # For telephony applications, use `BVCTelephony` for best results
-            noise_cancellation=noise_cancellation.BVC(),
+        room_options=room_io.RoomOptions(
+            audio_input=room_io.AudioInputOptions(
+                noise_cancellation=lambda params: noise_cancellation.BVCTelephony()
+                if params.participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
+                else noise_cancellation.BVC(),
+            ),
         ),
     )
 
@@ -126,4 +123,4 @@ async def entrypoint(ctx: JobContext):
 
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, prewarm_fnc=prewarm))
+    cli.run_app(server)

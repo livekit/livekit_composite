@@ -118,7 +118,10 @@ class LLM(llm.LLM):
         super().__init__()
 
         if not is_given(reasoning_effort) and _supports_reasoning_effort(model):
-            reasoning_effort = "minimal"
+            if model == "gpt-5.1":
+                reasoning_effort = "none"
+            else:
+                reasoning_effort = "minimal"
 
         self._opts = _LLMOptions(
             model=model,
@@ -783,7 +786,7 @@ class LLM(llm.LLM):
     def with_letta(
         *,
         agent_id: str,
-        base_url: str = "https://api.letta.com/v1/voice-beta",
+        base_url: str = "https://api.letta.com/v1/chat/completions",
         api_key: str | None = None,
     ) -> LLM:
         """
@@ -791,7 +794,7 @@ class LLM(llm.LLM):
 
         Args:
             agent_id (str): The Letta agent ID (must be prefixed with 'agent-').
-            base_url (str): The URL of the Letta server (e.g., from ngrok or Letta Cloud).
+            base_url (str): The URL of the Letta server (e.g., http://localhost:8283/v1/chat/completions for local or https://api.letta.com/v1/chat/completions for cloud).
             api_key (str | None, optional): Optional API key for authentication, required if
                                             the Letta server enforces auth.
 
@@ -799,7 +802,6 @@ class LLM(llm.LLM):
             LLM: A configured LLM instance for interacting with the given Letta agent.
         """
 
-        base_url = f"{base_url}/{agent_id}"
         parsed = urlparse(base_url)
         if parsed.scheme not in {"http", "https"}:
             raise ValueError(f"Invalid URL scheme: '{parsed.scheme}'. Must be 'http' or 'https'.")
@@ -813,7 +815,7 @@ class LLM(llm.LLM):
             )
 
         return LLM(
-            model="letta-fast",
+            model=agent_id,
             api_key=api_key,
             base_url=base_url,
             client=None,

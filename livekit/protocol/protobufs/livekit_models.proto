@@ -22,6 +22,7 @@ option ruby_package = "LiveKit::Proto";
 import "google/protobuf/timestamp.proto";
 
 import "livekit_metrics.proto";
+import "logger/options.proto";
 
 message Pagination {
   string after_id = 1; // list entities which IDs are greater
@@ -50,7 +51,10 @@ message Room {
   int64 creation_time_ms = 15;
   string turn_password = 6;
   repeated Codec enabled_codecs = 7;
-  string metadata = 8;
+  string metadata = 8 [
+    (logger.redact) = true,
+    (logger.redact_format) = "<redacted ({{ .Size }} bytes)>"
+  ];
   uint32 num_participants = 9;
   uint32 num_publishers = 11;
   bool active_recording = 10;
@@ -155,12 +159,17 @@ message ParticipantInfo {
   enum KindDetail {
     CLOUD_AGENT = 0;
     FORWARDED = 1;
+    CONNECTOR_WHATSAPP = 2;
+    CONNECTOR_TWILIO = 3;
   }
   string sid = 1;
   string identity = 2;
   State state = 3;
   repeated TrackInfo tracks = 4;
-  string metadata = 5;
+  string metadata = 5 [
+    (logger.redact) = true,
+    (logger.redact_format) = "<redacted ({{ .Size }} bytes)>"
+  ];
   // timestamp when participant joined room, in seconds
   int64 joined_at = 6;
   // timestamp when participant joined room, in milliseconds

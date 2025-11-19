@@ -85,7 +85,8 @@ func TestGCP(t *testing.T) {
 }
 
 func TestLocal(t *testing.T) {
-	s := storage.NewLocal()
+	s, err := storage.NewLocal(&storage.LocalConfig{})
+	require.NoError(t, err)
 
 	testStorage(t, s)
 }

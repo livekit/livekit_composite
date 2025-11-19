@@ -1,10 +1,10 @@
 {
   "name": "@livekit/react-native",
-  "version": "2.9.3",
+  "version": "2.9.5",
   "description": "LiveKit for React Native",
   "main": "lib/commonjs/index",
   "module": "lib/module/index",
-  "types": "lib/typescript/src/index.d.ts",
+  "types": "lib/typescript/index.d.ts",
   "react-native": "src/index",
   "source": "src/index",
   "files": [

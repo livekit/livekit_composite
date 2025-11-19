@@ -1,0 +1,42 @@
+{
+  "name": "fleet-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@heroicons/react": "^2.2.0",
+    "@livekit/components-react": "^1.4.1",
+    "@react-three/drei": "^9.122.0",
+    "@react-three/fiber": "^8.18.0",
+    "@types/three": "^0.177.0",
+    "clsx": "^2.0.0",
+    "js-confetti": "^0.11.0",
+    "jsonwebtoken": "^9.0.2",
+    "livekit-client": "^1.15.2",
+    "livekit-server-sdk": "^1.2.7",
+    "next": "14.0.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "tailwind-merge": "^2.0.0",
+    "three": "^0.177.0",
+    "three-stdlib": "^2.36.0",
+    "urdf-loader": "^0.12.5"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.0.3",
+    "postcss": "^8",
+    "tailwindcss": "^3.3.0",
+    "typescript": "^5"
+  }
+}

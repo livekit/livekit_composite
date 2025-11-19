@@ -52,7 +52,7 @@ runs:
           -e INPUT_OPERATION="${{ inputs.OPERATION }}" \
           -e INPUT_WORKING_DIRECTORY="${{ inputs.WORKING_DIRECTORY }}" \
           -e INPUT_TIMEOUT="${{ inputs.TIMEOUT }}" \
-          -e INPUT_REGION="${{ inputs.REGION }}"
+          -e INPUT_REGION="${{ inputs.REGION }}" \
           -e SLACK_TOKEN="${{ inputs.SLACK_TOKEN }}" \
           -e SLACK_CHANNEL="${{ inputs.SLACK_CHANNEL }}" \
           -e LIVEKIT_URL="${{ env.LIVEKIT_URL }}" \

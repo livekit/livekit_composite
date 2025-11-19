@@ -276,6 +276,7 @@ var (
 					Action:  deleteAgent,
 					Aliases: []string{"destroy"},
 					Flags: []cli.Flag{
+						silentFlag,
 						idFlag(false),
 					},
 					ArgsUsage: "[working-dir]",
@@ -581,7 +582,7 @@ func createAgent(ctx context.Context, cmd *cli.Command) error {
 
 	regions := []string{region}
 	excludeFiles := []string{fmt.Sprintf("**/%s", config.LiveKitTOMLFile)}
-	resp, err := agentsClient.CreateAgent(ctx, os.DirFS(workingDir), secrets, regions, excludeFiles)
+	resp, err := agentsClient.CreateAgent(ctx, os.DirFS(workingDir), secrets, regions, excludeFiles, os.Stderr)
 	if err != nil {
 		if twerr, ok := err.(twirp.Error); ok {
 			return fmt.Errorf("unable to create agent: %s", twerr.Msg())
@@ -726,7 +727,7 @@ func deployAgent(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	excludeFiles := []string{fmt.Sprintf("**/%s", config.LiveKitTOMLFile)}
-	if err := agentsClient.DeployAgent(ctx, agentId, os.DirFS(workingDir), secrets, excludeFiles); err != nil {
+	if err := agentsClient.DeployAgent(ctx, agentId, os.DirFS(workingDir), secrets, excludeFiles, os.Stderr); err != nil {
 		if twerr, ok := err.(twirp.Error); ok {
 			return fmt.Errorf("unable to deploy agent: %s", twerr.Msg())
 		}
@@ -915,26 +916,29 @@ func getLogs(ctx context.Context, cmd *cli.Command) error {
 }
 
 func deleteAgent(ctx context.Context, cmd *cli.Command) error {
+	silent := cmd.Bool("silent")
 	agentID, err := getAgentID(ctx, cmd, workingDir, tomlFilename, false)
 	if err != nil {
 		return err
 	}
 
-	var confirmDelete bool
-	if err := huh.NewForm(
-		huh.NewGroup(
-			huh.NewConfirm().
-				Title(fmt.Sprintf("Are you sure you want to delete agent [%s]?", agentID)).
-				Value(&confirmDelete).
-				Inline(false).
-				WithTheme(util.Theme),
-		),
-	).Run(); err != nil {
-		return err
-	}
+	if !silent {
+		var confirmDelete bool
+		if err := huh.NewForm(
+			huh.NewGroup(
+				huh.NewConfirm().
+					Title(fmt.Sprintf("Are you sure you want to delete agent [%s]?", agentID)).
+					Value(&confirmDelete).
+					Inline(false).
+					WithTheme(util.Theme),
+			),
+		).Run(); err != nil {
+			return err
+		}
 
-	if !confirmDelete {
-		return nil
+		if !confirmDelete {
+			return nil
+		}
 	}
 
 	var res *lkproto.DeleteAgentResponse
@@ -1273,6 +1277,10 @@ func requireSecrets(_ context.Context, cmd *cli.Command, required, lazy bool) ([
 		for k, v := range env {
 			if _, exists := secrets[k]; exists {
 				continue
+			}
+
+			if v == "" {
+				return nil, fmt.Errorf("failed to parse secrets file: secret %s is empty, either remove it or provide a value", k)
 			}
 
 			secret := &lkproto.AgentSecret{

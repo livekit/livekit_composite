@@ -1,5 +1,55 @@
 # Change Log
 
+## 2.16.0
+
+### Minor Changes
+
+- Expose new encryption option field - [#1750](https://github.com/livekit/client-sdk-js/pull/1750) ([@lukasIO](https://github.com/lukasIO))
+
+### Patch Changes
+
+- Wait for dc buffer status low for all published packets - [#1691](https://github.com/livekit/client-sdk-js/pull/1691) ([@lukasIO](https://github.com/lukasIO))
+
+- Fix message loss during resuming/migration - [#1757](https://github.com/livekit/client-sdk-js/pull/1757) ([@cnderrauber](https://github.com/cnderrauber))
+
+- Cancel region refresh on invalid tokens - [#1755](https://github.com/livekit/client-sdk-js/pull/1755) ([@lukasIO](https://github.com/lukasIO))
+
+- Add connectionCount tracking and stop auto refetching after timeout - [#1756](https://github.com/livekit/client-sdk-js/pull/1756) ([@lukasIO](https://github.com/lukasIO))
+
+- Add explicit error types for future helper - [#1753](https://github.com/livekit/client-sdk-js/pull/1753) ([@lukasIO](https://github.com/lukasIO))
+
+- fix(LocalTrackAudio): prevent overwriting constraint flags - [#1744](https://github.com/livekit/client-sdk-js/pull/1744) ([@itamayo](https://github.com/itamayo))
+
+## 2.15.16
+
+### Patch Changes
+
+- Fix slow start on vp9 - [#1740](https://github.com/livekit/client-sdk-js/pull/1740) ([@lukasIO](https://github.com/lukasIO))
+
+- Keep text / byte stream handlers between room disconnects - [#1741](https://github.com/livekit/client-sdk-js/pull/1741) ([@1egoman](https://github.com/1egoman))
+
+- Export RoomEventCallbacks - [#1738](https://github.com/livekit/client-sdk-js/pull/1738) ([@haydenbr](https://github.com/haydenbr))
+
+- Speed up network switch recovery - [#1745](https://github.com/livekit/client-sdk-js/pull/1745) ([@lukasIO](https://github.com/lukasIO))
+
+- Ensure unexpected websocket disconnects trigger reconnect flow - [#1748](https://github.com/livekit/client-sdk-js/pull/1748) ([@lukasIO](https://github.com/lukasIO))
+
+## 2.15.15
+
+### Patch Changes
+
+- Add exponential backoff strategy in case of connection failures - [#1715](https://github.com/livekit/client-sdk-js/pull/1715) ([@lukasIO](https://github.com/lukasIO))
+
+- Add participant as an optional parameter to EncryptionError events emitted on room level - [#1723](https://github.com/livekit/client-sdk-js/pull/1723) ([@CSantosM](https://github.com/CSantosM))
+
+- fix(e2ee): propagate worker data decryption errors and reject corresponding promises - [#1729](https://github.com/livekit/client-sdk-js/pull/1729) ([@CSantosM](https://github.com/CSantosM))
+
+- Fix potential undefined access while disconnecting - [#1734](https://github.com/livekit/client-sdk-js/pull/1734) ([@lukasIO](https://github.com/lukasIO))
+
+- Add new areTokenSourceFetchOptionsEqual function - [#1733](https://github.com/livekit/client-sdk-js/pull/1733) ([@1egoman](https://github.com/1egoman))
+
+- Ensure publication isn't attempted after timeout rejected the promise - [#1725](https://github.com/livekit/client-sdk-js/pull/1725) ([@lukasIO](https://github.com/lukasIO))
+
 ## 2.15.14
 
 ### Patch Changes

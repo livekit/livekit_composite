@@ -15,10 +15,14 @@
 package sdp_test
 
 import (
+	"net"
+	"net/netip"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
+	prtp "github.com/pion/rtp"
 	"github.com/pion/sdp/v3"
 	"github.com/stretchr/testify/require"
 
@@ -28,6 +32,7 @@ import (
 	"github.com/livekit/media-sdk/rtp"
 	. "github.com/livekit/media-sdk/sdp"
 	"github.com/livekit/media-sdk/srtp"
+	"github.com/livekit/protocol/logger"
 )
 
 func getInline(s string) string {
@@ -504,6 +509,45 @@ a=rtcp-fb:* ccm tmmbr
 	})
 }
 
+// TestParseOfferLifetimeAndMKI verifies that lifetime and MKI are correctly parsed from an SDP offer
+func TestParseOfferLifetimeAndMKI(t *testing.T) {
+	// Create an SDP offer with lifetime and MKI in the crypto attribute
+	// Format: crypto:tag crypto-suite inline:base64-key-salt|lifetime|value:length
+	// lifetime: 2^48 (281474976710656)
+	// MKI: 66051:4 which decodes to [0x00, 0x01, 0x02, 0x03] in big-endian (66051 = 0x00010203)
+	const sdpData = `v=0 
+o=Test 1 1 IN IP4 127.0.0.1 
+s=Stream1 
+t=0 0 
+m=audio 5000 RTP/SAVP 0 101 
+c=IN IP4 127.0.0.1 
+a=rtpmap:0 PCMU/8000 
+a=rtpmap:101 telephone-event/8000 
+a=sendrecv 
+a=ptime:20 
+a=crypto:1 AES_CM_128_HMAC_SHA1_80 inline:pMIPxjzYIG5TQuIWfkjTnaACVrzohhFfOGhSMgV1|2^48|66051:4 
+`
+
+	offer, err := ParseOffer([]byte(sdpData))
+	require.NoError(t, err)
+	require.NotEmpty(t, offer.CryptoProfiles)
+
+	// Verify the first crypto profile has the correct lifetime and MKI
+	profile := offer.CryptoProfiles[0]
+	require.Equal(t, 1, profile.Index)
+	require.Equal(t, srtp.ProtectionProfile("AES_CM_128_HMAC_SHA1_80"), profile.Profile)
+
+	// Verify lifetime: 2^48 = 281474976710656
+	expectedLifetime := uint64(1 << 48)
+	require.Equal(t, expectedLifetime, profile.Lifetime, "Lifetime should be 2^48")
+
+	// Verify MKI: 66051:4 should decode to [0x00, 0x01, 0x02, 0x03] in big-endian
+	// 66051 = 0x00010203 in hex
+	expectedMKI := []byte{0x00, 0x01, 0x02, 0x03}
+	require.Equal(t, expectedMKI, profile.MKI, "MKI should be [0x00, 0x01, 0x02, 0x03]")
+	require.Equal(t, 4, len(profile.MKI), "MKI length should be 4 bytes")
+}
+
 // TestSelectCryptoSuiteTag ensures that when selecting a crypto suite from an offer/answer pair,
 // the answer uses the same crypto suite tag as the offer, per RFC 4568 section 5.1.2 and 5.1.3.
 func TestSelectCryptoSuiteTag(t *testing.T) {
@@ -552,4 +596,154 @@ func TestSelectCryptoSuiteTag(t *testing.T) {
 			require.Equal(t, *c.exp, *got)
 		})
 	}
+}
+
+// packetCaptureConn wraps a net.Conn to capture written packets
+type packetCaptureConn struct {
+	net.Conn
+	captured [][]byte
+	mu       sync.Mutex
+}
+
+func (c *packetCaptureConn) Write(b []byte) (int, error) {
+	copyData := make([]byte, len(b))
+	copy(copyData, b)
+	c.mu.Lock()
+	c.captured = append(c.captured, copyData)
+	c.mu.Unlock()
+	return c.Conn.Write(b)
+}
+
+func (c *packetCaptureConn) GetCaptured() [][]byte {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.captured
+}
+
+// extractMKIFromSRTPPacket extracts MKI from an SRTP packet.
+// SRTP packet format: [RTP header][encrypted payload][MKI][auth tag]
+// For AES_CM_128_HMAC_SHA1_80, auth tag is 10 bytes, so MKI is before the auth tag.
+func extractMKIFromSRTPPacket(packet []byte, mkiLength int, authTagSize int) []byte {
+	if len(packet) < mkiLength+authTagSize {
+		return nil
+	}
+	packet = packet[:len(packet)-authTagSize]
+	return packet[len(packet)-mkiLength:]
+}
+
+// Test actually using the MKI in an offer with outgoing RTP packets
+func TestSRTPIntegration(t *testing.T) {
+	log := logger.GetLogger()
+	stop := make(chan struct{})
+	defer close(stop)
+
+	// Generate offer
+	offer, err := NewOffer(netip.MustParseAddr("127.0.0.1"), 5000, EncryptionRequire)
+	require.NoError(t, err)
+	require.NotEmpty(t, offer.CryptoProfiles)
+
+	// Add MKI to offer's crypto profile
+	offerMKI := []byte{0x01, 0x02, 0x03, 0x04} // 4-byte MKI
+	offer.CryptoProfiles[0].MKI = offerMKI
+
+	// Generate answer
+	_, conf, err := offer.Answer(netip.MustParseAddr("127.0.0.1"), 5001, EncryptionRequire)
+	require.NoError(t, err)
+	require.NotNil(t, conf)
+	require.NotNil(t, conf.Crypto)
+	require.Empty(t, conf.Crypto.LocalOptions, "Answerer's LocalOptions should be empty (no MKI)")
+	require.NotEmpty(t, conf.Crypto.RemoteOptions, "Answerer's RemoteOptions should have MKI (from offerer)")
+
+	// Create bidirectional connection pair using net.Pipe
+	offerPipe, answerPipe := net.Pipe()
+	defer offerPipe.Close()
+	defer answerPipe.Close()
+	offerCapturePipe := &packetCaptureConn{Conn: offerPipe}
+	answerCapturePipe := &packetCaptureConn{Conn: answerPipe}
+
+	// Create offerer session
+	offererCrypto := *conf.Crypto
+	offererCrypto.Keys.LocalMasterKey, offererCrypto.Keys.RemoteMasterKey = offererCrypto.Keys.RemoteMasterKey, offererCrypto.Keys.LocalMasterKey
+	offererCrypto.Keys.LocalMasterSalt, offererCrypto.Keys.RemoteMasterSalt = offererCrypto.Keys.RemoteMasterSalt, offererCrypto.Keys.LocalMasterSalt
+	offererCrypto.LocalOptions, offererCrypto.RemoteOptions = offererCrypto.RemoteOptions, offererCrypto.LocalOptions
+	offerSession, err := srtp.NewSession(log, offerCapturePipe, &offererCrypto)
+	require.NoError(t, err)
+	defer offerSession.Close()
+
+	// Create answerer session
+	answererSession, err := srtp.NewSession(log, answerCapturePipe, conf.Crypto)
+	require.NoError(t, err)
+	defer answererSession.Close()
+
+	// Open write streams
+	offerStream, err := offerSession.OpenWriteStream()
+	require.NoError(t, err)
+	answerStream, err := answererSession.OpenWriteStream()
+	require.NoError(t, err)
+
+	const rtpHeaderSize = 12
+	const authTagSize = 10
+	const offerSSRC = uint32(0x12345678)
+	const answerSSRC = uint32(0x87654321)
+
+	readAndCompare := func(session rtp.Session, compareHeader *prtp.Header, comparePayload []byte, stop <-chan struct{}) {
+		readBuf := make([]byte, 1500)
+		readHeader := &prtp.Header{}
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			readStream, ssrc, err := session.AcceptStream()
+			if err != nil {
+				return
+			}
+			require.Equal(t, compareHeader.SSRC, ssrc)
+			readLen, err := readStream.ReadRTP(readHeader, readBuf)
+			require.NoError(t, err)
+			require.Equal(t, compareHeader.SSRC, readHeader.SSRC)
+			require.Equal(t, comparePayload, readBuf[:readLen])
+		}
+	}
+
+	// Send packet from offerer
+	offerHeader := &prtp.Header{
+		Version:        2,
+		PayloadType:    0,
+		SequenceNumber: 1,
+		Timestamp:      1000,
+		SSRC:           offerSSRC,
+	}
+	offerPayload := []byte{0x01, 0x02, 0x03, 0x04}
+
+	// Send packet from answerer
+	answerHeader := &prtp.Header{
+		Version:        2,
+		PayloadType:    0,
+		SequenceNumber: 1,
+		Timestamp:      2000,
+		SSRC:           answerSSRC,
+	}
+	answerPayload := []byte{0x05, 0x06, 0x07, 0x08, 0x09}
+
+	go readAndCompare(offerSession, answerHeader, answerPayload, stop)
+	go readAndCompare(answererSession, offerHeader, offerPayload, stop)
+
+	_, err = offerStream.WriteRTP(offerHeader, offerPayload)
+	require.NoError(t, err)
+	_, err = answerStream.WriteRTP(answerHeader, answerPayload)
+	require.NoError(t, err)
+
+	// Verify NO MKI in answerer's captured packet
+	answerCaptured := answerCapturePipe.GetCaptured()
+	require.Equal(t, len(answerCaptured), 1, "Answerer should have captured one packet")
+	require.Equal(t, len(answerCaptured[0]), rtpHeaderSize+len(answerPayload)+authTagSize, "Answerer packet size should be correct")
+
+	// Verify MKI in offerer's captured packet
+	offerCaptured := offerCapturePipe.GetCaptured()
+	require.Equal(t, len(offerCaptured), 1, "Offerer should have captured one packet")
+	require.Equal(t, len(offerCaptured[0]), rtpHeaderSize+len(offerPayload)+authTagSize+len(offerMKI), "Offerer packet size should be correct")
+	packetMKI := extractMKIFromSRTPPacket(offerCaptured[0], len(offerMKI), authTagSize)
+	require.Equal(t, offerMKI, packetMKI, "MKI %v does not match expected value %v", packetMKI, offerMKI)
 }

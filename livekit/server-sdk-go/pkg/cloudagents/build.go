@@ -34,7 +34,7 @@ func (c *Client) build(ctx context.Context, id string, writer io.Writer) error {
 	params := url.Values{}
 	params.Add("agent_id", id)
 	fullUrl := fmt.Sprintf("%s/build?%s", c.agentsURL, params.Encode())
-	req, err := c.newRequest("POST", fullUrl, nil)
+	req, err := c.newRequestWithContext(ctx, "POST", fullUrl, nil)
 	if err != nil {
 		return err
 	}
@@ -47,10 +47,15 @@ func (c *Client) build(ctx context.Context, id string, writer io.Writer) error {
 		return fmt.Errorf("failed to build agent: %s", resp.Status)
 	}
 
+	displayMode := progressui.AutoMode
+	if c.jsonLogStream {
+		displayMode = progressui.RawJSONMode
+	}
+
 	ch := make(chan *bkclient.SolveStatus)
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.Go(func() error {
-		display, err := progressui.NewDisplay(writer, "plain")
+		display, err := progressui.NewDisplay(writer, displayMode)
 		if err != nil {
 			return err
 		}

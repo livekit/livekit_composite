@@ -1,0 +1,11 @@
+syntax = "proto3";
+package logger;
+
+option go_package = "github.com/livekit/protocol/livekit/logger";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.FieldOptions {
+  bool redact = 50001;
+  string redact_format = 50002;
+}

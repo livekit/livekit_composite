@@ -89,14 +89,23 @@ func (p ProtectionProfile) Parse() (srtp.ProtectionProfile, error) {
 }
 
 type Profile struct {
-	Index   int
-	Profile ProtectionProfile
-	Key     []byte
-	Salt    []byte
+	Index    int
+	Profile  ProtectionProfile
+	Key      []byte
+	Salt     []byte
+	MKI      []byte // Master Key Identifier, nil if not present
+	Lifetime uint64 // TODO: This is just a placeholder for future use
 }
 
 type Config = srtp.Config
+type ContextOption = srtp.ContextOption
 type SessionKeys = srtp.SessionKeys
+
+// Expects a byte slice containing MKI value encoded in big-endian.
+// Will be appended to packets we send.
+func MasterKeyIndicator(mki []byte) ContextOption {
+	return srtp.MasterKeyIndicator(mki)
+}
 
 func NewSession(log logger.Logger, conn net.Conn, conf *Config) (rtp.Session, error) {
 	s, err := srtp.NewSessionSRTP(conn, conf)

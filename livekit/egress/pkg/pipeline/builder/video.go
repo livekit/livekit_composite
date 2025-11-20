@@ -46,14 +46,12 @@ type VideoBin struct {
 	names       map[string]string
 	selector    *gst.Element
 	rawVideoTee *gst.Element
-	probes      map[string]*vp9ParseProbe
 }
 
 func BuildVideoBin(pipeline *gstreamer.Pipeline, p *config.PipelineConfig) error {
 	b := &VideoBin{
-		bin:    pipeline.NewBin("video"),
-		conf:   p,
-		probes: make(map[string]*vp9ParseProbe),
+		bin:  pipeline.NewBin("video"),
+		conf: p,
 	}
 
 	switch p.SourceType {
@@ -141,10 +139,6 @@ func (b *VideoBin) onTrackRemoved(trackID string) {
 	}
 	delete(b.names, trackID)
 	delete(b.pads, name)
-	if probe, ok := b.probes[name]; ok {
-		probe.Close()
-		delete(b.probes, name)
-	}
 
 	if b.selectedPad == name {
 		if err := b.setSelectorPadLocked(videoTestSrcName); err != nil {
@@ -346,12 +340,12 @@ func (b *VideoBin) buildAppSrcBin(ts *config.TrackSource, name string) (*gstream
 		}
 
 		if !b.conf.VideoDecoding {
-			h264Parse, err := gst.NewElement("h264parse")
+			h264ParseFixer, err := newPTSFixer("h264parse", fmt.Sprintf("track:%s", ts.TrackID))
 			if err != nil {
-				return nil, errors.ErrGstPipelineError(err)
+				return nil, err
 			}
 
-			if err = appSrcBin.AddElement(h264Parse); err != nil {
+			if err = appSrcBin.AddElement(h264ParseFixer.Element); err != nil {
 				return nil, err
 			}
 
@@ -411,10 +405,11 @@ func (b *VideoBin) buildAppSrcBin(ts *config.TrackSource, name string) (*gstream
 		}
 
 		if !b.conf.VideoDecoding {
-			vp9Parse, err := gst.NewElement("vp9parse")
+			vp9ParseFixer, err := newPTSFixer("vp9parse", fmt.Sprintf("track:%s", ts.TrackID))
 			if err != nil {
-				return nil, errors.ErrGstPipelineError(err)
+				return nil, err
 			}
+			vp9Parse := vp9ParseFixer.Element
 
 			vp9Caps, err := gst.NewElement("capsfilter")
 			if err != nil {
@@ -429,14 +424,6 @@ func (b *VideoBin) buildAppSrcBin(ts *config.TrackSource, name string) (*gstream
 			if err = appSrcBin.AddElements(vp9Parse, vp9Caps); err != nil {
 				return nil, err
 			}
-
-			probe, err := newVP9ParseProbe(ts.TrackID, vp9Parse, ts.OnKeyframeRequired)
-			if err != nil {
-				return nil, err
-			}
-			b.mu.Lock()
-			b.probes[name] = probe
-			b.mu.Unlock()
 			return appSrcBin, nil
 		}
 
@@ -540,18 +527,26 @@ func (b *VideoBin) addEncoder() error {
 		}
 
 		x264Enc.SetArg("speed-preset", "veryfast")
+
+		var options []string
+		disabledSceneCut := false
+		// Streaming outputs always set KeyFrameInterval, so this effectively disables scenecut for RTMP/SRT.
 		if b.conf.KeyFrameInterval != 0 {
 			keyframeInterval := uint(b.conf.KeyFrameInterval * float64(b.conf.Framerate))
 			if err = x264Enc.SetProperty("key-int-max", keyframeInterval); err != nil {
 				return errors.ErrGstPipelineError(err)
 			}
+			options = append(options, "scenecut=0")
+			disabledSceneCut = true
 		}
 
-		var options []string
 		bufCapacity := uint(2000) // 2s
 		if b.conf.GetSegmentConfig() != nil {
 			// avoid key frames other than at segments boundaries as splitmuxsink can become inconsistent otherwise
-			options = append(options, "scenecut=0")
+			if !disabledSceneCut {
+				options = append(options, "scenecut=0")
+				disabledSceneCut = true
+			}
 			bufCapacity = uint(time.Duration(b.conf.GetSegmentConfig().SegmentDuration) * (time.Second / time.Millisecond))
 		}
 		if bufCapacity > 10000 {

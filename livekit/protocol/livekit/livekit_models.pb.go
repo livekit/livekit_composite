@@ -21,6 +21,7 @@
 package livekit
 
 import (
+	_ "github.com/livekit/protocol/livekit/logger"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -891,8 +892,10 @@ func (ParticipantInfo_Kind) EnumDescriptor() ([]byte, []int) {
 type ParticipantInfo_KindDetail int32
 
 const (
-	ParticipantInfo_CLOUD_AGENT ParticipantInfo_KindDetail = 0
-	ParticipantInfo_FORWARDED   ParticipantInfo_KindDetail = 1
+	ParticipantInfo_CLOUD_AGENT        ParticipantInfo_KindDetail = 0
+	ParticipantInfo_FORWARDED          ParticipantInfo_KindDetail = 1
+	ParticipantInfo_CONNECTOR_WHATSAPP ParticipantInfo_KindDetail = 2
+	ParticipantInfo_CONNECTOR_TWILIO   ParticipantInfo_KindDetail = 3
 )
 
 // Enum value maps for ParticipantInfo_KindDetail.
@@ -900,10 +903,14 @@ var (
 	ParticipantInfo_KindDetail_name = map[int32]string{
 		0: "CLOUD_AGENT",
 		1: "FORWARDED",
+		2: "CONNECTOR_WHATSAPP",
+		3: "CONNECTOR_TWILIO",
 	}
 	ParticipantInfo_KindDetail_value = map[string]int32{
-		"CLOUD_AGENT": 0,
-		"FORWARDED":   1,
+		"CLOUD_AGENT":        0,
+		"FORWARDED":          1,
+		"CONNECTOR_WHATSAPP": 2,
+		"CONNECTOR_TWILIO":   3,
 	}
 )
 
@@ -5765,7 +5772,7 @@ var File_livekit_models_proto protoreflect.FileDescriptor
 
 const file_livekit_models_proto_rawDesc = "" +
 	"\n" +
-	"\x14livekit_models.proto\x12\alivekit\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15livekit_metrics.proto\"=\n" +
+	"\x14livekit_models.proto\x12\alivekit\x1a\x1fgoogle/protobuf/timestamp.proto\x1a\x15livekit_metrics.proto\x1a\x14logger/options.proto\"=\n" +
 	"\n" +
 	"Pagination\x12\x19\n" +
 	"\bafter_id\x18\x01 \x01(\tR\aafterId\x12\x14\n" +
@@ -5777,7 +5784,7 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\x03set\x18\x01 \x03(\tR\x03set\x12\x10\n" +
 	"\x03add\x18\x02 \x03(\tR\x03add\x12\x16\n" +
 	"\x06remove\x18\x03 \x03(\tR\x06remove\x12\x14\n" +
-	"\x05clear\x18\x04 \x01(\bR\x05clear\"\x9e\x04\n" +
+	"\x05clear\x18\x04 \x01(\bR\x05clear\"\xc6\x04\n" +
 	"\x04Room\x12\x10\n" +
 	"\x03sid\x18\x01 \x01(\tR\x03sid\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12#\n" +
@@ -5787,8 +5794,8 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\rcreation_time\x18\x05 \x01(\x03R\fcreationTime\x12(\n" +
 	"\x10creation_time_ms\x18\x0f \x01(\x03R\x0ecreationTimeMs\x12#\n" +
 	"\rturn_password\x18\x06 \x01(\tR\fturnPassword\x125\n" +
-	"\x0eenabled_codecs\x18\a \x03(\v2\x0e.livekit.CodecR\renabledCodecs\x12\x1a\n" +
-	"\bmetadata\x18\b \x01(\tR\bmetadata\x12)\n" +
+	"\x0eenabled_codecs\x18\a \x03(\v2\x0e.livekit.CodecR\renabledCodecs\x12B\n" +
+	"\bmetadata\x18\b \x01(\tB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12)\n" +
 	"\x10num_participants\x18\t \x01(\rR\x0fnumParticipants\x12%\n" +
 	"\x0enum_publishers\x18\v \x01(\rR\rnumPublishers\x12)\n" +
 	"\x10active_recording\x18\n" +
@@ -5812,13 +5819,13 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\x13can_update_metadata\x18\n" +
 	" \x01(\bR\x11canUpdateMetadata\x12\x18\n" +
 	"\x05agent\x18\v \x01(\bB\x02\x18\x01R\x05agent\x122\n" +
-	"\x15can_subscribe_metrics\x18\f \x01(\bR\x13canSubscribeMetrics\"\xb1\a\n" +
+	"\x15can_subscribe_metrics\x18\f \x01(\bR\x13canSubscribeMetrics\"\x87\b\n" +
 	"\x0fParticipantInfo\x12\x10\n" +
 	"\x03sid\x18\x01 \x01(\tR\x03sid\x12\x1a\n" +
 	"\bidentity\x18\x02 \x01(\tR\bidentity\x124\n" +
 	"\x05state\x18\x03 \x01(\x0e2\x1e.livekit.ParticipantInfo.StateR\x05state\x12*\n" +
-	"\x06tracks\x18\x04 \x03(\v2\x12.livekit.TrackInfoR\x06tracks\x12\x1a\n" +
-	"\bmetadata\x18\x05 \x01(\tR\bmetadata\x12\x1b\n" +
+	"\x06tracks\x18\x04 \x03(\v2\x12.livekit.TrackInfoR\x06tracks\x12B\n" +
+	"\bmetadata\x18\x05 \x01(\tB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12\x1b\n" +
 	"\tjoined_at\x18\x06 \x01(\x03R\bjoinedAt\x12 \n" +
 	"\fjoined_at_ms\x18\x11 \x01(\x03R\n" +
 	"joinedAtMs\x12\x12\n" +
@@ -5853,11 +5860,13 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\x06EGRESS\x10\x02\x12\a\n" +
 	"\x03SIP\x10\x03\x12\t\n" +
 	"\x05AGENT\x10\x04\x12\r\n" +
-	"\tCONNECTOR\x10\a\",\n" +
+	"\tCONNECTOR\x10\a\"Z\n" +
 	"\n" +
 	"KindDetail\x12\x0f\n" +
 	"\vCLOUD_AGENT\x10\x00\x12\r\n" +
-	"\tFORWARDED\x10\x01\"3\n" +
+	"\tFORWARDED\x10\x01\x12\x16\n" +
+	"\x12CONNECTOR_WHATSAPP\x10\x02\x12\x14\n" +
+	"\x10CONNECTOR_TWILIO\x10\x03\"3\n" +
 	"\n" +
 	"Encryption\"%\n" +
 	"\x04Type\x12\b\n" +

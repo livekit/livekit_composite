@@ -1,5 +1,51 @@
 # client-sdk-android
 
+## 2.23.0
+
+### Minor Changes
+
+- Change TokenSource.fetch methods to return Result<TokenSourceResponse> to explicitly handle exceptions - [#802](https://github.com/livekit/client-sdk-android/pull/802) ([@davidliu](https://github.com/davidliu))
+
+- Add support for multiple listeners on AudioSwitchHandler - [#802](https://github.com/livekit/client-sdk-android/pull/802) ([@davidliu](https://github.com/davidliu))
+
+- Rename AgentState to AgentSdkState - [#802](https://github.com/livekit/client-sdk-android/pull/802) ([@davidliu](https://github.com/davidliu))
+
+- Deprecate Room.withPreconnectAudio method. - [#802](https://github.com/livekit/client-sdk-android/pull/802) ([@davidliu](https://github.com/davidliu))
+
+  - Set AudioTrackPublishDefaults.preconnect = true on the RoomOptions instead to use the preconnect buffer.
+
+- Expose agentAttributes as a value on Participant - [#802](https://github.com/livekit/client-sdk-android/pull/802) ([@davidliu](https://github.com/davidliu))
+
+- Expose the server info of the currently connected server on Room - [#802](https://github.com/livekit/client-sdk-android/pull/802) ([@davidliu](https://github.com/davidliu))
+
+### Patch Changes
+
+- Fix crash when cleaning up local participant - [#802](https://github.com/livekit/client-sdk-android/pull/802) ([@davidliu](https://github.com/davidliu))
+
+- Fix crash when creating audio track for communication mode workaround - [#805](https://github.com/livekit/client-sdk-android/pull/805) ([@davidliu](https://github.com/davidliu))
+
+## 2.22.1
+
+### Patch Changes
+
+- Fixed camera indicator remaining on after network disconnection by disposing orphaned tracks from failed reconnection attempts (#296) - [#798](https://github.com/livekit/client-sdk-android/pull/798) ([@adrian-niculescu](https://github.com/adrian-niculescu))
+
+## 2.22.0
+
+### Minor Changes
+
+- Extract CameraXProvider and expose it. - [#754](https://github.com/livekit/client-sdk-android/pull/754) ([@KasemJaffer](https://github.com/KasemJaffer))
+
+### Patch Changes
+
+- Fix camera lookup to check physicalId - [#792](https://github.com/livekit/client-sdk-android/pull/792) ([@KasemJaffer](https://github.com/KasemJaffer))
+
+## 2.21.1
+
+### Patch Changes
+
+- #721 Fixed publisher negotiation race condition causing ICE timeouts. - [#789](https://github.com/livekit/client-sdk-android/pull/789) ([@adrian-niculescu](https://github.com/adrian-niculescu))
+
 ## 2.21.0
 
 ### Minor Changes

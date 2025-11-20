@@ -20,6 +20,30 @@ import (
 	"github.com/Azure/azure-storage-blob-go/azblob"
 )
 
+type AliOSSConfig struct {
+	AccessKey string `yaml:"access_key,omitempty"`
+	Secret    string `yaml:"secret,omitempty"`
+	Endpoint  string `yaml:"endpoint,omitempty"`
+	Bucket    string `yaml:"bucket,omitempty"`
+}
+
+type AzureConfig struct {
+	AccountName     string                 `yaml:"account_name,omitempty"` // (env AZURE_STORAGE_ACCOUNT)
+	AccountKey      string                 `yaml:"account_key,omitempty"`  // (env AZURE_STORAGE_KEY)
+	ContainerName   string                 `yaml:"container_name,omitempty"`
+	TokenCredential azblob.TokenCredential `yaml:"-"` // required for presigned url generation
+}
+
+type GCPConfig struct {
+	CredentialsJSON string       `yaml:"credentials_json,omitempty"` // (env GOOGLE_APPLICATION_CREDENTIALS)
+	Bucket          string       `yaml:"bucket,omitempty"`
+	ProxyConfig     *ProxyConfig `yaml:"proxy_config,omitempty"`
+}
+
+type LocalConfig struct {
+	StorageDir string `yaml:"storage_dir,omitempty"`
+}
+
 type S3Config struct {
 	AccessKey            string       `yaml:"access_key,omitempty"`
 	Secret               string       `yaml:"secret,omitempty"`
@@ -39,26 +63,6 @@ type S3Config struct {
 	Metadata           map[string]string `yaml:"metadata,omitempty"`
 	Tagging            string            `yaml:"tagging,omitempty"`
 	ContentDisposition string            `yaml:"content_disposition,omitempty"`
-}
-
-type AzureConfig struct {
-	AccountName     string                 `yaml:"account_name,omitempty"` // (env AZURE_STORAGE_ACCOUNT)
-	AccountKey      string                 `yaml:"account_key,omitempty"`  // (env AZURE_STORAGE_KEY)
-	ContainerName   string                 `yaml:"container_name,omitempty"`
-	TokenCredential azblob.TokenCredential `yaml:"-"` // required for presigned url generation
-}
-
-type GCPConfig struct {
-	CredentialsJSON string       `yaml:"credentials_json,omitempty"` // (env GOOGLE_APPLICATION_CREDENTIALS)
-	Bucket          string       `yaml:"bucket,omitempty"`
-	ProxyConfig     *ProxyConfig `yaml:"proxy_config,omitempty"`
-}
-
-type AliOSSConfig struct {
-	AccessKey string `yaml:"access_key,omitempty"`
-	Secret    string `yaml:"secret,omitempty"`
-	Endpoint  string `yaml:"endpoint,omitempty"`
-	Bucket    string `yaml:"bucket,omitempty"`
 }
 
 type ProxyConfig struct {

@@ -91,6 +91,8 @@ export interface ErrorMessage extends BaseMessage {
   kind: 'error';
   data: {
     error: Error;
+    participantIdentity?: string;
+    uuid?: string; // Optional: used for async operation errors (decrypt/encrypt)
   };
 }
 

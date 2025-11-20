@@ -28,11 +28,11 @@ const (
 	Outgoing Direction = "outgoing"
 )
 
-type transmissionType string
+type TransmissionType string
 
 const (
-	transmissionInitial    transmissionType = "initial"
-	transmissionRetransmit transmissionType = "retransmit"
+	TransmissionInitial    TransmissionType = "initial"
+	TransmissionRetransmit TransmissionType = "retransmit"
 )
 
 var (
@@ -67,6 +67,7 @@ var (
 	promConnections           *prometheus.GaugeVec
 	promForwardLatency        prometheus.Gauge
 	promForwardJitter         prometheus.Gauge
+	promForwardLatencyHist    prometheus.Histogram
 
 	promPacketTotalIncomingInitial    prometheus.Counter
 	promPacketTotalIncomingRetransmit prometheus.Counter
@@ -140,7 +141,6 @@ func initPacketStats(nodeID string, nodeType livekit.NodeType) {
 		Subsystem:   "jitter",
 		Name:        "us",
 		ConstLabels: prometheus.Labels{"node_id": nodeID, "node_type": nodeType.String()},
-
 		// 1ms, 10ms, 30ms, 50ms, 70ms, 100ms, 300ms, 600ms, 1s
 		Buckets: []float64{1000, 10000, 30000, 50000, 70000, 100000, 300000, 600000, 1000000},
 	}, promStreamLabels)
@@ -175,6 +175,25 @@ func initPacketStats(nodeID string, nodeType livekit.NodeType) {
 		Name:        "jitter",
 		ConstLabels: prometheus.Labels{"node_id": nodeID, "node_type": nodeType.String()},
 	})
+	promForwardLatencyHist = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Namespace:   livekitNamespace,
+		Subsystem:   "forward_latency",
+		Name:        "ns",
+		ConstLabels: prometheus.Labels{"node_id": nodeID, "node_type": nodeType.String()},
+		// 50us, 100us, 250us, 500us, 1ms, 2ms, 3ms, 5ms, 10ms, 20ms
+		Buckets: []float64{
+			50 * 1000,
+			100 * 1000,
+			250 * 1000,
+			500 * 1000,
+			1 * 1000 * 1000,
+			2 * 1000 * 1000,
+			3 * 1000 * 1000,
+			5 * 1000 * 1000,
+			10 * 1000 * 1000,
+			20 * 1000 * 1000,
+		},
+	})
 
 	prometheus.MustRegister(promPacketTotal)
 	prometheus.MustRegister(promPacketBytes)
@@ -191,14 +210,15 @@ func initPacketStats(nodeID string, nodeType livekit.NodeType) {
 	prometheus.MustRegister(promConnections)
 	prometheus.MustRegister(promForwardLatency)
 	prometheus.MustRegister(promForwardJitter)
+	prometheus.MustRegister(promForwardLatencyHist)
 }
 
 func IncrementPackets(country string, direction Direction, count uint64, retransmit bool) {
-	var transmission transmissionType
+	var transmission TransmissionType
 	if retransmit {
-		transmission = transmissionRetransmit
+		transmission = TransmissionRetransmit
 	} else {
-		transmission = transmissionInitial
+		transmission = TransmissionInitial
 	}
 	promPacketTotal.WithLabelValues(string(direction), string(transmission), country).Add(float64(count))
 
@@ -213,11 +233,11 @@ func IncrementPackets(country string, direction Direction, count uint64, retrans
 }
 
 func IncrementBytes(country string, direction Direction, count uint64, retransmit bool) {
-	var transmission transmissionType
+	var transmission TransmissionType
 	if retransmit {
-		transmission = transmissionRetransmit
+		transmission = TransmissionRetransmit
 	} else {
-		transmission = transmissionInitial
+		transmission = TransmissionInitial
 	}
 	promPacketBytes.WithLabelValues(string(direction), string(transmission), country).Add(float64(count))
 
@@ -316,12 +336,16 @@ func SubConnection(direction Direction) {
 	promConnections.WithLabelValues(string(direction)).Sub(1)
 }
 
-func RecordForwardLatency(_, latencyAvg uint32) {
-	forwardLatency.Store(latencyAvg)
-	promForwardLatency.Set(float64(latencyAvg))
+func RecordForwardLatencySample(forwardLatency int64) {
+	promForwardLatencyHist.Observe(float64(forwardLatency))
 }
 
-func RecordForwardJitter(_, jitterAvg uint32) {
-	forwardJitter.Store(jitterAvg)
-	promForwardJitter.Set(float64(jitterAvg))
+func RecordForwardLatency(longTermLatencyAvg uint32) {
+	forwardLatency.Store(longTermLatencyAvg)
+	promForwardLatency.Set(float64(longTermLatencyAvg))
+}
+
+func RecordForwardJitter(longTermJitterAvg uint32) {
+	forwardJitter.Store(longTermJitterAvg)
+	promForwardJitter.Set(float64(longTermJitterAvg))
 }

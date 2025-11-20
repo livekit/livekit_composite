@@ -167,6 +167,9 @@ internal constructor(
     internal val serverVersion: Semver?
         get() = client.serverVersion
 
+    internal val serverInfo: ServerInfo?
+        get() = client.serverInfo
+
     private val publisherObserver = PublisherTransportObserver(this, client, rtcThreadToken)
     private val subscriberObserver = SubscriberTransportObserver(this, client, rtcThreadToken)
 
@@ -204,6 +207,12 @@ internal constructor(
      * this must be grabbed on the RTC thread to prevent deadlocks.
      */
     private var configurationLock = Mutex()
+
+    /**
+     * Prevents concurrent publisher negotiations which can cause ICE gathering
+     * race conditions and connection failures.
+     */
+    private val negotiatePublisherMutex = Mutex()
 
     init {
         client.listener = this
@@ -668,7 +677,15 @@ internal constructor(
         hasPublished = true
 
         coroutineScope.launch {
-            publisher?.negotiate?.invoke(getPublisherOfferConstraints())
+            if (negotiatePublisherMutex.tryLock()) {
+                try {
+                    publisher?.negotiate?.invoke(getPublisherOfferConstraints())
+                } finally {
+                    negotiatePublisherMutex.unlock()
+                }
+            } else {
+                LKLog.v { "negotiatePublisher: skipping, negotiation already in progress" }
+            }
         }
     }
 
@@ -1269,10 +1286,6 @@ internal constructor(
             null,
             -> {
                 LKLog.v { "invalid value for data packet" }
-            }
-
-            LivekitModels.DataPacket.ValueCase.ENCRYPTED_PACKET -> {
-                // TODO
             }
         }
     }

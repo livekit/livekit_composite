@@ -57,7 +57,7 @@ type TrackSender interface {
 	UpTrackMaxPublishedLayerChange(maxPublishedLayer int32)
 	UpTrackMaxTemporalLayerSeenChange(maxTemporalLayerSeen int32)
 	UpTrackBitrateReport(availableLayers []int32, bitrates Bitrates)
-	WriteRTP(p *buffer.ExtPacket, layer int32) error
+	WriteRTP(p *buffer.ExtPacket, layer int32) int32
 	Close()
 	IsClosed() bool
 	// ID is the globally unique identifier for this Track.
@@ -94,13 +94,13 @@ const (
 // -------------------------------------------------------------------
 
 var (
-	ErrUnknownKind                       = errors.New("unknown kind of codec")
-	ErrOutOfOrderSequenceNumberCacheMiss = errors.New("out-of-order sequence number not found in cache")
-	ErrPaddingOnlyPacket                 = errors.New("padding only packet that need not be forwarded")
-	ErrDuplicatePacket                   = errors.New("duplicate packet")
-	ErrPaddingNotOnFrameBoundary         = errors.New("padding cannot send on non-frame boundary")
-	ErrDownTrackAlreadyBound             = errors.New("already bound")
-	ErrPayloadOverflow                   = errors.New("payload overflow")
+	errUnknownKind                       = errors.New("unknown kind of codec")
+	errOutOfOrderSequenceNumberCacheMiss = errors.New("out-of-order sequence number not found in cache")
+	errPaddingOnlyPacket                 = errors.New("padding only packet that need not be forwarded")
+	errDuplicatePacket                   = errors.New("duplicate packet")
+	errPaddingNotOnFrameBoundary         = errors.New("padding cannot send on non-frame boundary")
+	errDownTrackAlreadyBound             = errors.New("already bound")
+	errPayloadOverflow                   = errors.New("payload overflow")
 )
 
 var (
@@ -452,7 +452,7 @@ func (d *DownTrack) Bind(t webrtc.TrackLocalContext) (webrtc.RTPCodecParameters,
 	d.bindLock.Lock()
 	if d.bindState.Load() != bindStateUnbound {
 		d.bindLock.Unlock()
-		return webrtc.RTPCodecParameters{}, ErrDownTrackAlreadyBound
+		return webrtc.RTPCodecParameters{}, errDownTrackAlreadyBound
 	}
 
 	// the TrackLocalContext's codec parameters will be set to the bound codec after Bind returns,
@@ -984,9 +984,9 @@ func (d *DownTrack) maxLayerNotifierWorker() {
 }
 
 // WriteRTP writes an RTP Packet to the DownTrack
-func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
+func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) int32 {
 	if !d.writable.Load() {
-		return nil
+		return 0
 	}
 
 	tp, err := d.forwarder.GetTranslationParams(extPkt, layer)
@@ -994,7 +994,7 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 		if err != nil {
 			d.params.Logger.Errorw("could not get translation params", err)
 		}
-		return err
+		return 0
 	}
 
 	poolEntity := PacketFactory.Get().(*[]byte)
@@ -1003,26 +1003,25 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 	n := copy(payload[len(tp.codecBytes):], extPkt.Packet.Payload[tp.incomingHeaderSize:])
 	if n != len(extPkt.Packet.Payload[tp.incomingHeaderSize:]) {
 		d.params.Logger.Errorw(
-			"payload overflow", nil,
+			"payload overflow", errPayloadOverflow,
 			"want", len(extPkt.Packet.Payload[tp.incomingHeaderSize:]),
 			"have", n,
 		)
 		PacketFactory.Put(poolEntity)
-		return ErrPayloadOverflow
+		return 0
 	}
 	payload = payload[:len(tp.codecBytes)+n]
 
 	// translate RTP header
-	hdr := &rtp.Header{
+	hdr := RTPHeaderFactory.Get().(*rtp.Header)
+	*hdr = rtp.Header{
 		Version:        extPkt.Packet.Version,
 		Padding:        extPkt.Packet.Padding,
+		Marker:         tp.marker,
 		PayloadType:    d.getTranslatedPayloadType(extPkt.Packet.PayloadType),
 		SequenceNumber: uint16(tp.rtp.extSequenceNumber),
 		Timestamp:      uint32(tp.rtp.extTimestamp),
 		SSRC:           d.ssrc,
-	}
-	if tp.marker {
-		hdr.Marker = tp.marker
 	}
 
 	// add extensions
@@ -1094,8 +1093,10 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 		0,
 		extPkt.IsOutOfOrder,
 	)
-	d.pacer.Enqueue(&pacer.Packet{
+	pacerPacket := pacer.PacketFactory.Get().(*pacer.Packet)
+	*pacerPacket = pacer.Packet{
 		Header:             hdr,
+		HeaderPool:         RTPHeaderFactory,
 		HeaderSize:         headerSize,
 		Payload:            payload,
 		ProbeClusterId:     ccutils.ProbeClusterId(d.probeClusterId.Load()),
@@ -1104,7 +1105,8 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 		WriteStream:        d.writeStream,
 		Pool:               PacketFactory,
 		PoolEntity:         poolEntity,
-	})
+	}
+	d.pacer.Enqueue(pacerPacket)
 
 	if extPkt.KeyFrame {
 		d.isNACKThrottled.Store(false)
@@ -1126,7 +1128,7 @@ func (d *DownTrack) WriteRTP(extPkt *buffer.ExtPacket, layer int32) error {
 			sal.OnResume(d)
 		}
 	}
-	return nil
+	return 1
 }
 
 // WritePaddingRTP tries to write as many padding only RTP packets as necessary
@@ -1197,7 +1199,8 @@ func (d *DownTrack) WritePaddingRTP(bytesToSend int, paddingOnMute bool, forceMa
 	bytesSent := 0
 	payloads := make([]byte, RTPPaddingMaxPayloadSize*len(snts))
 	for i := 0; i < len(snts); i++ {
-		hdr := &rtp.Header{
+		hdr := RTPHeaderFactory.Get().(*rtp.Header)
+		*hdr = rtp.Header{
 			Version:        2,
 			Padding:        true,
 			Marker:         false,
@@ -1225,8 +1228,10 @@ func (d *DownTrack) WritePaddingRTP(bytesToSend int, paddingOnMute bool, forceMa
 			false,
 		)
 
-		d.pacer.Enqueue(&pacer.Packet{
+		pacerPacket := pacer.PacketFactory.Get().(*pacer.Packet)
+		*pacerPacket = pacer.Packet{
 			Header:             hdr,
+			HeaderPool:         RTPHeaderFactory,
 			HeaderSize:         hdrSize,
 			Payload:            payload,
 			ProbeClusterId:     ccutils.ProbeClusterId(d.probeClusterId.Load()),
@@ -1234,7 +1239,8 @@ func (d *DownTrack) WritePaddingRTP(bytesToSend int, paddingOnMute bool, forceMa
 			AbsSendTimeExtID:   uint8(d.absSendTimeExtID),
 			TransportWideExtID: uint8(d.transportWideExtID),
 			WriteStream:        d.writeStream,
-		})
+		}
+		d.pacer.Enqueue(pacerPacket)
 
 		bytesSent += hdrSize + payloadSize
 	}
@@ -1748,7 +1754,8 @@ func (d *DownTrack) writeBlankFrameRTP(duration float32, generation uint32) chan
 					0,
 					false,
 				)
-				d.pacer.Enqueue(&pacer.Packet{
+				pacerPacket := pacer.PacketFactory.Get().(*pacer.Packet)
+				*pacerPacket = pacer.Packet{
 					Header:             hdr,
 					HeaderSize:         headerSize,
 					Payload:            payload,
@@ -1756,7 +1763,8 @@ func (d *DownTrack) writeBlankFrameRTP(duration float32, generation uint32) chan
 					AbsSendTimeExtID:   uint8(d.absSendTimeExtID),
 					TransportWideExtID: uint8(d.transportWideExtID),
 					WriteStream:        d.writeStream,
-				})
+				}
+				d.pacer.Enqueue(pacerPacket)
 
 				// only the first frame will need frameEndNeeded to close out the
 				// previous picture, rest are small key frames (for the video case)
@@ -2045,7 +2053,8 @@ func (d *DownTrack) retransmitPacket(epm *extPacketMeta, sourcePkt []byte, isPro
 		d.params.Logger.Errorw("could not unmarshal rtp packet to send via RTX", err)
 		return 0, err
 	}
-	hdr := &rtp.Header{
+	hdr := RTPHeaderFactory.Get().(*rtp.Header)
+	*hdr = rtp.Header{
 		Version:        pkt.Header.Version,
 		Padding:        pkt.Header.Padding,
 		Marker:         epm.marker,
@@ -2132,8 +2141,10 @@ func (d *DownTrack) retransmitPacket(epm *extPacketMeta, sourcePkt []byte, isPro
 			isOutOfOrder,
 		)
 	}
-	d.pacer.Enqueue(&pacer.Packet{
+	pacerPacket := pacer.PacketFactory.Get().(*pacer.Packet)
+	*pacerPacket = pacer.Packet{
 		Header:             hdr,
+		HeaderPool:         RTPHeaderFactory,
 		HeaderSize:         headerSize,
 		Payload:            payload,
 		ProbeClusterId:     ccutils.ProbeClusterId(d.probeClusterId.Load()),
@@ -2144,7 +2155,8 @@ func (d *DownTrack) retransmitPacket(epm *extPacketMeta, sourcePkt []byte, isPro
 		WriteStream:        d.writeStream,
 		Pool:               PacketFactory,
 		PoolEntity:         poolEntity,
-	})
+	}
+	d.pacer.Enqueue(pacerPacket)
 	return headerSize + len(payload), nil
 }
 
@@ -2224,7 +2236,8 @@ func (d *DownTrack) WriteProbePackets(bytesToSend int, usePadding bool) int {
 		payloads := make([]byte, RTPPaddingMaxPayloadSize*num)
 		for i := 0; i < num; i++ {
 			rtxExtSequenceNumber := d.rtxSequenceNumber.Inc()
-			hdr := &rtp.Header{
+			hdr := RTPHeaderFactory.Get().(*rtp.Header)
+			*hdr = rtp.Header{
 				Version:        2,
 				Padding:        true,
 				Marker:         false,
@@ -2251,8 +2264,10 @@ func (d *DownTrack) WriteProbePackets(bytesToSend int, usePadding bool) int {
 				payloadSize,
 				false,
 			)
-			d.pacer.Enqueue(&pacer.Packet{
+			pacerPacket := pacer.PacketFactory.Get().(*pacer.Packet)
+			*pacerPacket = pacer.Packet{
 				Header:             hdr,
+				HeaderPool:         RTPHeaderFactory,
 				HeaderSize:         hdrSize,
 				Payload:            payload,
 				ProbeClusterId:     ccutils.ProbeClusterId(d.probeClusterId.Load()),
@@ -2260,7 +2275,8 @@ func (d *DownTrack) WriteProbePackets(bytesToSend int, usePadding bool) int {
 				AbsSendTimeExtID:   uint8(d.absSendTimeExtID),
 				TransportWideExtID: uint8(d.transportWideExtID),
 				WriteStream:        d.writeStream,
-			})
+			}
+			d.pacer.Enqueue(pacerPacket)
 
 			bytesSent += hdrSize + payloadSize
 		}
@@ -2481,7 +2497,8 @@ func (d *DownTrack) sendSilentFrameOnMuteForOpus() {
 				len(payload), // although this is using empty frames, mark as padding as these are used to trigger Pion OnTrack only
 				false,
 			)
-			d.pacer.Enqueue(&pacer.Packet{
+			pacerPacket := pacer.PacketFactory.Get().(*pacer.Packet)
+			*pacerPacket = pacer.Packet{
 				Header:             hdr,
 				HeaderSize:         headerSize,
 				Payload:            payload,
@@ -2489,7 +2506,8 @@ func (d *DownTrack) sendSilentFrameOnMuteForOpus() {
 				AbsSendTimeExtID:   uint8(d.absSendTimeExtID),
 				TransportWideExtID: uint8(d.transportWideExtID),
 				WriteStream:        d.writeStream,
-			})
+			}
+			d.pacer.Enqueue(pacerPacket)
 		}
 
 		numFrames--

@@ -10,6 +10,7 @@ import {
   TokenSourceFixed,
   TokenSourceFetchOptions,
   RoomConnectOptions,
+  decodeTokenPayload,
 } from 'livekit-client';
 import { EventEmitter } from 'events';
 
@@ -18,7 +19,7 @@ import { AgentState, useAgent, useAgentTimeoutIdStore } from './useAgent';
 import { TrackReference } from '@livekit/components-core';
 import { useLocalParticipant } from './useLocalParticipant';
 
-/** @public */
+/** @beta */
 export enum SessionEvent {
   ConnectionStateChanged = 'connectionStateChanged',
   /**
@@ -34,14 +35,14 @@ export enum SessionEvent {
   EncryptionError = 'encryptionError',
 }
 
-/** @public */
+/** @beta */
 export type SessionCallbacks = {
   [SessionEvent.ConnectionStateChanged]: (newAgentConnectionState: ConnectionState) => void;
   [SessionEvent.MediaDevicesError]: (error: Error) => void;
   [SessionEvent.EncryptionError]: (error: Error) => void;
 };
 
-/** @public */
+/** @beta */
 export type SessionConnectOptions = {
   /** Optional abort signal which if triggered will terminate connecting even if it isn't complete */
   signal?: AbortSignal;
@@ -57,7 +58,7 @@ export type SessionConnectOptions = {
   roomConnectOptions?: RoomConnectOptions;
 };
 
-/** @public */
+/** @beta */
 export type SwitchActiveDeviceOptions = {
   /**
    *  If true, adds an `exact` constraint to the getUserMedia request.
@@ -76,6 +77,7 @@ type SessionStateCommon = {
     agentTimeoutFailureReason: string | null;
     startAgentTimeout: (agentConnectTimeoutMilliseconds?: number) => void;
     clearAgentTimeout: () => void;
+    clearAgentTimeoutFailureReason: () => void;
     updateAgentTimeoutState: (agentState: AgentState) => void;
     updateAgentTimeoutParticipantExists: (agentParticipantExists: boolean) => void;
   };
@@ -84,7 +86,6 @@ type SessionStateCommon = {
 type SessionStateConnecting = SessionStateCommon & {
   connectionState: ConnectionState.Connecting;
   isConnected: false;
-  isReconnecting: false;
 
   local: {
     cameraTrack: null;
@@ -98,7 +99,6 @@ type SessionStateConnected = SessionStateCommon & {
     | ConnectionState.Reconnecting
     | ConnectionState.SignalReconnecting;
   isConnected: true;
-  isReconnecting: boolean;
 
   local: {
     cameraTrack: TrackReference | null;
@@ -109,7 +109,6 @@ type SessionStateConnected = SessionStateCommon & {
 type SessionStateDisconnected = SessionStateCommon & {
   connectionState: ConnectionState.Disconnected;
   isConnected: false;
-  isReconnecting: false;
 
   local: {
     cameraTrack: null;
@@ -132,7 +131,7 @@ type SessionActions = {
   end: () => Promise<void>;
 };
 
-/** @public */
+/** @beta */
 export type UseSessionReturn = (
   | SessionStateConnecting
   | SessionStateConnected
@@ -154,16 +153,143 @@ type UseSessionConfigurableOptions = UseSessionCommonOptions & TokenSourceFetchO
 type UseSessionFixedOptions = UseSessionCommonOptions;
 
 /**
- * A Session represents a manages connection to a Room which can contain Agents.
- * @public
+ * Given two TokenSourceFetchOptions values, check to see if they are deep equal.
+ *
+ * FIXME: swap this for an import from livekit-client once
+ * https://github.com/livekit/client-sdk-js/pull/1733 is merged and published!
+ * */
+function areTokenSourceFetchOptionsEqual(a: TokenSourceFetchOptions, b: TokenSourceFetchOptions) {
+  const allKeysSet = new Set([...Object.keys(a), ...Object.keys(b)]) as Set<
+    keyof TokenSourceFetchOptions
+  >;
+
+  for (const key of allKeysSet) {
+    switch (key) {
+      case 'roomName':
+      case 'participantName':
+      case 'participantIdentity':
+      case 'participantMetadata':
+      case 'participantAttributes':
+      case 'agentName':
+      case 'agentMetadata':
+        if (a[key] !== b[key]) {
+          return false;
+        }
+        break;
+      default:
+        // ref: https://stackoverflow.com/a/58009992
+        const exhaustiveCheckedKey: never = key;
+        throw new Error(`Options key ${exhaustiveCheckedKey} not being checked for equality!`);
+    }
+  }
+
+  return true;
+}
+
+/** Internal hook used by useSession to manage creating a function which can be used to wait
+ * until the session is in a given state before resolving. */
+function useSessionWaitUntilConnectionState(
+  emitter: TypedEventEmitter<SessionCallbacks>,
+  connectionState: UseSessionReturn['connectionState'],
+) {
+  const connectionStateRef = React.useRef(connectionState);
+  React.useEffect(() => {
+    connectionStateRef.current = connectionState;
+  }, [connectionState]);
+
+  const waitUntilConnectionState = React.useCallback(
+    async (state: UseSessionReturn['connectionState'], signal?: AbortSignal) => {
+      if (connectionStateRef.current === state) {
+        return;
+      }
+
+      return new Promise<void>((resolve, reject) => {
+        const onceEventOccurred = (newState: UseSessionReturn['connectionState']) => {
+          if (newState !== state) {
+            return;
+          }
+          cleanup();
+          resolve();
+        };
+        const abortHandler = () => {
+          cleanup();
+          reject(
+            new Error(
+              `useSession(/* ... */).waitUntilConnectionState(${state}, /* signal */) - signal aborted`,
+            ),
+          );
+        };
+
+        const cleanup = () => {
+          emitter.off(SessionEvent.ConnectionStateChanged, onceEventOccurred);
+          signal?.removeEventListener('abort', abortHandler);
+        };
+
+        emitter.on(SessionEvent.ConnectionStateChanged, onceEventOccurred);
+        signal?.addEventListener('abort', abortHandler);
+      });
+    },
+    [emitter],
+  );
+
+  return waitUntilConnectionState;
+}
+
+/** Internal hook used by useSession to manage creating a function that properly invokes
+ * tokenSource.fetch(...) with any fetch options */
+function useSessionTokenSourceFetch(
+  tokenSource: TokenSourceConfigurable | TokenSourceFixed,
+  unstableRestOptions: Exclude<UseSessionConfigurableOptions, keyof UseSessionCommonOptions>,
+) {
+  const isConfigurable = tokenSource instanceof TokenSourceConfigurable;
+
+  const memoizedTokenFetchOptionsRef = React.useRef<TokenSourceFetchOptions | null>(
+    isConfigurable ? unstableRestOptions : null,
+  );
+
+  React.useEffect(() => {
+    if (!isConfigurable) {
+      memoizedTokenFetchOptionsRef.current = null;
+      return;
+    }
+
+    if (
+      memoizedTokenFetchOptionsRef.current !== null &&
+      areTokenSourceFetchOptionsEqual(memoizedTokenFetchOptionsRef.current, unstableRestOptions)
+    ) {
+      return;
+    }
+
+    memoizedTokenFetchOptionsRef.current = unstableRestOptions;
+  }, [isConfigurable, unstableRestOptions]);
+
+  const tokenSourceFetch = React.useCallback(async () => {
+    if (isConfigurable) {
+      if (!memoizedTokenFetchOptionsRef.current) {
+        throw new Error(
+          `AgentSession - memoized token fetch options are not set, but the passed tokenSource was an instance of TokenSourceConfigurable. If you are seeing this please make a new GitHub issue!`,
+        );
+      }
+      return tokenSource.fetch(memoizedTokenFetchOptionsRef.current);
+    } else {
+      return tokenSource.fetch();
+    }
+  }, [isConfigurable, tokenSource]);
+
+  return tokenSourceFetch;
+}
+
+/**
+ * A Session represents a managed connection to a Room which can contain Agents.
+ * @beta
  */
 export function useSession(
   tokenSource: TokenSourceConfigurable,
   options?: UseSessionConfigurableOptions,
 ): UseSessionReturn;
 /**
- * A Session represents a manages connection to a Room which can contain Agents.
- * @public
+ * A Session represents a managed connection to a Room which can contain Agents.
+ * @beta
  */
 export function useSession(
   tokenSource: TokenSourceFixed,
@@ -193,17 +319,9 @@ export function useSession(
           connectionState === ConnectionState.Connected ||
           connectionState === ConnectionState.Reconnecting ||
           connectionState === ConnectionState.SignalReconnecting,
-        isReconnecting:
-          connectionState === ConnectionState.Reconnecting ||
-          connectionState === ConnectionState.SignalReconnecting,
       }) as {
         isConnected: State extends
           | ConnectionState.Connected
-          | ConnectionState.Reconnecting
-          | ConnectionState.SignalReconnecting
-          ? true
-          : false;
-        isReconnecting: State extends
           | ConnectionState.Reconnecting
           | ConnectionState.SignalReconnecting
           ? true
@@ -274,6 +392,7 @@ export function useSession(
     agentTimeoutFailureReason,
     startAgentTimeout,
     clearAgentTimeout,
+    clearAgentTimeoutFailureReason,
     updateAgentTimeoutState,
     updateAgentTimeoutParticipantExists,
   } = useAgentTimeoutIdStore();
@@ -287,6 +406,7 @@ export function useSession(
       agentTimeoutFailureReason,
       startAgentTimeout,
       clearAgentTimeout,
+      clearAgentTimeoutFailureReason,
       updateAgentTimeoutState,
       updateAgentTimeoutParticipantExists,
     }),
@@ -297,6 +417,7 @@ export function useSession(
       agentTimeoutFailureReason,
       startAgentTimeout,
       clearAgentTimeout,
+      clearAgentTimeoutFailureReason,
       updateAgentTimeoutState,
       updateAgentTimeoutParticipantExists,
     ],
@@ -356,9 +477,7 @@ export function useSession(
   }, [
     sessionInternal,
     room,
-    emitter,
     roomConnectionState,
-    localParticipant,
     localCamera,
     localMicrophone,
     generateDerivedConnectionStateValues,
@@ -367,35 +486,9 @@ export function useSession(
     emitter.emit(SessionEvent.ConnectionStateChanged, conversationState.connectionState);
   }, [emitter, conversationState.connectionState]);
 
-  const waitUntilConnectionState = React.useCallback(
-    async (state: UseSessionReturn['connectionState'], signal?: AbortSignal) => {
-      if (conversationState.connectionState === state) {
-        return;
-      }
-
-      return new Promise<void>((resolve, reject) => {
-        const onceEventOccurred = (newState: UseSessionReturn['connectionState']) => {
-          if (newState !== state) {
-            return;
-          }
-          cleanup();
-          resolve();
-        };
-        const abortHandler = () => {
-          cleanup();
-          reject(new Error(`AgentSession.waitUntilRoomState(${state}, ...) - signal aborted`));
-        };
-
-        const cleanup = () => {
-          emitter.off(SessionEvent.ConnectionStateChanged, onceEventOccurred);
-          signal?.removeEventListener('abort', abortHandler);
-        };
-
-        emitter.on(SessionEvent.ConnectionStateChanged, onceEventOccurred);
-        signal?.addEventListener('abort', abortHandler);
-      });
-    },
-    [conversationState.connectionState, emitter],
+  const waitUntilConnectionState = useSessionWaitUntilConnectionState(
+    emitter,
+    conversationState.connectionState,
   );
 
   const waitUntilConnected = React.useCallback(
@@ -426,15 +519,7 @@ export function useSession(
     ),
   );
 
-  const tokenSourceFetch = React.useCallback(async () => {
-    const isConfigurable = tokenSource instanceof TokenSourceConfigurable;
-    if (isConfigurable) {
-      const tokenFetchOptions = restOptions as UseSessionConfigurableOptions;
-      return tokenSource.fetch(tokenFetchOptions);
-    } else {
-      return tokenSource.fetch();
-    }
-  }, [tokenSource, restOptions]);
+  const tokenSourceFetch = useSessionTokenSourceFetch(tokenSource, restOptions);
 
   const start = React.useCallback(
     async (connectOptions: SessionConnectOptions = {}) => {
@@ -451,12 +536,16 @@ export function useSession(
       };
       signal?.addEventListener('abort', onSignalAbort);
 
+      let tokenDispatchesAgent = false;
       await Promise.all([
-        // FIXME: swap the below line in once the new `livekit-client` changes are published
-        // room.connect(tokenSource, { tokenSourceOptions }),
-        tokenSourceFetch().then(({ serverUrl, participantToken }) =>
-          room.connect(serverUrl, participantToken, roomConnectOptions),
-        ),
+        tokenSourceFetch().then(({ serverUrl, participantToken }) => {
+          const participantTokenPayload = decodeTokenPayload(participantToken);
+          const participantTokenAgentDispatchCount =
+            participantTokenPayload.roomConfig?.agents?.length ?? 0;
+          tokenDispatchesAgent = participantTokenAgentDispatchCount > 0;
+
+          return room.connect(serverUrl, participantToken, roomConnectOptions);
+        }),
 
         // Start microphone (with preconnect buffer) by default
         tracks.microphone?.enabled
@@ -469,11 +558,13 @@ export function useSession(
       ]);
 
       await waitUntilConnected(signal);
-      await agent.waitUntilAvailable(signal);
+      if (tokenDispatchesAgent) {
+        await agent.waitUntilConnected(signal);
+      }
 
       signal?.removeEventListener('abort', onSignalAbort);
     },
-    [room, waitUntilDisconnected, tokenSourceFetch, waitUntilConnected, agent.waitUntilAvailable],
+    [room, waitUntilDisconnected, tokenSourceFetch, waitUntilConnected, agent.waitUntilConnected],
   );
 
   const end = React.useCallback(async () => {
@@ -482,8 +573,6 @@ export function useSession(
 
   const prepareConnection = React.useCallback(async () => {
     const credentials = await tokenSourceFetch();
-    // FIXME: swap the below line in once the new `livekit-client` changes are published
-    // room.prepareConnection(tokenSource, { tokenSourceOptions }),
     await room.prepareConnection(credentials.serverUrl, credentials.participantToken);
   }, [tokenSourceFetch, room]);
   React.useEffect(

@@ -84,6 +84,7 @@ import {
   sleep,
   supportsAddTrack,
   supportsTransceiver,
+  toHttpUrl,
 } from './utils';
 
 const lossyDataChannel = '_lossy';
@@ -91,6 +92,8 @@ const reliableDataChannel = '_reliable';
 const minReconnectWait = 2 * 1000;
 const leaveReconnect = 'leave-reconnect';
 const reliabeReceiveStateTTL = 30_000;
+const lossyDataChannelBufferThresholdMin = 8 * 1024;
+const lossyDataChannelBufferThresholdMax = 256 * 1024;
 
 enum PCState {
   New,
@@ -202,7 +205,18 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 
   private reliableReceivedState: TTLMap<string, number> = new TTLMap(reliabeReceiveStateTTL);
 
+  private lossyDataStatCurrentBytes: number = 0;
+
+  private lossyDataStatByterate: number = 0;
+
+  private lossyDataStatInterval: ReturnType<typeof setInterval> | undefined;
+
+  private lossyDataDropCount: number = 0;
+
   private midToTrackId: { [key: string]: string } = {};
+
+  /** used to indicate whether the browser is currently waiting to reconnect */
+  private isWaitingForNetworkReconnect: boolean = false;
 
   constructor(private options: InternalRoomOptions) {
     super();
@@ -308,6 +322,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       this.removeAllListeners();
       this.deregisterOnLineListener();
       this.clearPendingReconnect();
+      this.cleanupLossyDataStats();
       await this.cleanupPeerConnections();
       await this.cleanupClient();
     } finally {
@@ -341,6 +356,16 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     this.reliableMessageBuffer = new DataPacketBuffer();
     this.reliableDataSequence = 1;
     this.reliableReceivedState.clear();
+  }
+
+  cleanupLossyDataStats() {
+    this.lossyDataStatByterate = 0;
+    this.lossyDataStatCurrentBytes = 0;
+    if (this.lossyDataStatInterval) {
+      clearInterval(this.lossyDataStatInterval);
+      this.lossyDataStatInterval = undefined;
+    }
+    this.lossyDataDropCount = 0;
   }
 
   async cleanupClient() {
@@ -565,6 +590,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
 
     this.client.onTokenRefresh = (token: string) => {
       this.token = token;
+      this.regionUrlProvider?.updateToken(token);
     };
 
     this.client.onRemoteMuteChanged = (trackSid: string, muted: boolean) => {
@@ -708,6 +734,22 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     // handle buffer amount low events
     this.lossyDC.onbufferedamountlow = this.handleBufferedAmountLow;
     this.reliableDC.onbufferedamountlow = this.handleBufferedAmountLow;
+
+    this.cleanupLossyDataStats();
+    this.lossyDataStatInterval = setInterval(() => {
+      this.lossyDataStatByterate = this.lossyDataStatCurrentBytes;
+      this.lossyDataStatCurrentBytes = 0;
+
+      const dc = this.dataChannelForKind(DataPacket_Kind.LOSSY);
+      if (dc) {
+        // control buffered latency to ~100ms
+        const threshold = this.lossyDataStatByterate / 10;
+        dc.bufferedAmountLowThreshold = Math.min(
+          Math.max(threshold, lossyDataChannelBufferThresholdMin),
+          lossyDataChannelBufferThresholdMax,
+        );
+      }
+    }, 1000);
   }
 
   private handleDataChannel = async ({ channel }: RTCDataChannelEvent) => {
@@ -1247,7 +1289,6 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
         }),
       },
     });
-
     await this.sendDataPacket(packet, DataPacket_Kind.RELIABLE);
   }
 
@@ -1281,7 +1322,21 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     const dc = this.dataChannelForKind(kind);
     if (dc) {
       if (kind === DataPacket_Kind.RELIABLE) {
+        await this.waitForBufferStatusLow(kind);
         this.reliableMessageBuffer.push({ data: msg, sequence: packet.sequence });
+      } else {
+        // lossy channel, drop messages to reduce latency
+        if (!this.isBufferStatusLow(kind)) {
+          this.lossyDataDropCount += 1;
+          if (this.lossyDataDropCount % 100 === 0) {
+            this.log.warn(
+              `dropping lossy data channel messages, total dropped: ${this.lossyDataDropCount}`,
+              this.logContext,
+            );
+          }
+          return;
+        }
+        this.lossyDataStatCurrentBytes += msg.byteLength;
       }
 
       if (this.attemptingReconnect) {
@@ -1307,6 +1362,13 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
   }
 
   private updateAndEmitDCBufferStatus = (kind: DataPacket_Kind) => {
+    if (kind === DataPacket_Kind.RELIABLE) {
+      const dc = this.dataChannelForKind(kind);
+      if (dc) {
+        this.reliableMessageBuffer.alignBufferedAmount(dc.bufferedAmount);
+      }
+    }
+
     const status = this.isBufferStatusLow(kind);
     if (typeof status !== 'undefined' && status !== this.dcBufferStatus.get(kind)) {
       this.dcBufferStatus.set(kind, status);
@@ -1317,9 +1379,6 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
   private isBufferStatusLow = (kind: DataPacket_Kind): boolean | undefined => {
     const dc = this.dataChannelForKind(kind);
     if (dc) {
-      if (kind === DataPacket_Kind.RELIABLE) {
-        this.reliableMessageBuffer.alignBufferedAmount(dc.bufferedAmount);
-      }
       return dc.bufferedAmount <= dc.bufferedAmountLowThreshold;
     }
   };
@@ -1619,23 +1678,62 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     this.reconnectAttempts = 0;
   }
 
-  private handleBrowserOnLine = () => {
-    // in case the engine is currently reconnecting, attempt a reconnect immediately after the browser state has changed to 'onLine'
-    if (this.client.currentState === SignalConnectionState.RECONNECTING) {
+  private handleBrowserOnLine = async () => {
+    if (!this.url) {
+      return;
+    }
+    const hasNetworkConnection = await fetch(toHttpUrl(this.url!), { method: 'HEAD' })
+      .then((resp) => resp.ok)
+      .catch(() => false);
+
+    if (!hasNetworkConnection) {
+      return;
+    }
+    this.log.info('detected network reconnected');
+
+    if (
+      // in case the engine is currently reconnecting, attempt a reconnect immediately after the browser state has changed to 'onLine'
+      this.client.currentState === SignalConnectionState.RECONNECTING ||
+      // also if the browser went offline before and the engine still thinks it's in a connected state, treat it as a network interruption that we haven't noticed yet
+      (this.isWaitingForNetworkReconnect &&
+        this.client.currentState === SignalConnectionState.CONNECTED)
+    ) {
       this.clearReconnectTimeout();
       this.attemptReconnect(ReconnectReason.RR_SIGNAL_DISCONNECTED);
+      this.isWaitingForNetworkReconnect = false;
+    }
+  };
+
+  private handleBrowserOffline = async () => {
+    if (!this.url) {
+      return;
+    }
+    try {
+      await Promise.race([
+        fetch(toHttpUrl(this.url), { method: 'HEAD' }),
+        // if there's no internet connection the fetch rejects immediately, so we only use a short timeout here
+        sleep(4_000).then(() => Promise.reject()),
+      ]);
+    } catch (e) {
+      // only set if the browser still thinks it's offline after the request failed
+      if (window.navigator.onLine === false) {
+        this.log.info('detected network interruption');
+        this.isWaitingForNetworkReconnect = true;
+      }
     }
   };
 
   private registerOnLineListener() {
     if (isWeb()) {
       window.addEventListener('online', this.handleBrowserOnLine);
+      window.addEventListener('offline', this.handleBrowserOffline);
     }
   }
 
   private deregisterOnLineListener() {
     if (isWeb()) {
       window.removeEventListener('online', this.handleBrowserOnLine);
+      window.removeEventListener('offline', this.handleBrowserOffline);
     }
   }
 

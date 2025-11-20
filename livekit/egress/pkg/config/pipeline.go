@@ -426,6 +426,9 @@ func (p *PipelineConfig) Update(request *rpc.StartEgressRequest) error {
 		}
 	}
 
+	p.Latency = p.getLatencyConfig(p.RequestType)
+	applyLatencyDefaults(&p.Latency)
+
 	if p.RequestType != types.RequestTypeTrack {
 		err := p.validateAndUpdateOutputParams()
 		if err != nil {
@@ -589,13 +592,14 @@ func (p *PipelineConfig) getRoomCompositeRequestType(req *livekit.RoomCompositeE
 
 // used for sdk input source
 func (p *PipelineConfig) UpdateInfoFromSDK(identifier string, replacements map[string]string, w, h uint32) error {
+	var err error
 	for egressType, c := range p.Outputs {
 		if len(c) == 0 {
 			continue
 		}
 		switch egressType {
 		case types.EgressTypeFile:
-			return c[0].(*FileConfig).updateFilepath(p, identifier, replacements)
+			err = c[0].(*FileConfig).updateFilepath(p, identifier, replacements)
 
 		case types.EgressTypeSegments:
 			o := c[0].(*SegmentConfig)
@@ -632,7 +636,7 @@ func (p *PipelineConfig) UpdateInfoFromSDK(identifier string, replacements map[s
 		}
 	}
 
-	return nil
+	return err
 }
 
 func (p *PipelineConfig) GetEncodedOutputs() []OutputConfig {

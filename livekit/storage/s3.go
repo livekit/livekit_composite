@@ -102,6 +102,12 @@ func getConf(conf *S3Config, cp aws.CredentialsProvider) (*aws.Config, error) {
 			return retry.NewStandard(func(o *retry.StandardOptions) {
 				o.MaxAttempts = conf.MaxRetries
 				o.MaxBackoff = conf.MaxRetryDelay
+				o.Retryables = append(o.Retryables, retry.RetryableHTTPStatusCode{
+					Codes: map[int]struct{}{
+						http.StatusConflict:        {},
+						http.StatusTooManyRequests: {},
+					},
+				})
 			})
 		}
 

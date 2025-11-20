@@ -79,11 +79,12 @@ type (
 type ParticipantKind int
 
 const (
-	ParticipantStandard = ParticipantKind(livekit.ParticipantInfo_STANDARD)
-	ParticipantIngress  = ParticipantKind(livekit.ParticipantInfo_INGRESS)
-	ParticipantEgress   = ParticipantKind(livekit.ParticipantInfo_EGRESS)
-	ParticipantSIP      = ParticipantKind(livekit.ParticipantInfo_SIP)
-	ParticipantAgent    = ParticipantKind(livekit.ParticipantInfo_AGENT)
+	ParticipantStandard  = ParticipantKind(livekit.ParticipantInfo_STANDARD)
+	ParticipantIngress   = ParticipantKind(livekit.ParticipantInfo_INGRESS)
+	ParticipantEgress    = ParticipantKind(livekit.ParticipantInfo_EGRESS)
+	ParticipantSIP       = ParticipantKind(livekit.ParticipantInfo_SIP)
+	ParticipantAgent     = ParticipantKind(livekit.ParticipantInfo_AGENT)
+	ParticipantConnector = ParticipantKind(livekit.ParticipantInfo_CONNECTOR)
 )
 
 type ConnectInfo struct {
@@ -167,6 +168,13 @@ func WithExtraAttributes(attrs map[string]string) ConnectOption {
 	}
 }
 
+// for internal use to test codecs
+func withCodecs(codecs []webrtc.RTPCodecParameters) ConnectOption {
+	return func(p *signalling.ConnectParams) {
+		p.Codecs = codecs
+	}
+}
+
 type PLIWriter func(webrtc.SSRC)
 
 type Room struct {
@@ -184,6 +192,7 @@ type Room struct {
 	sidToIdentity      map[livekit.ParticipantID]livekit.ParticipantIdentity
 	sidDefers          map[livekit.ParticipantID]map[livekit.TrackID]func(p *RemoteParticipant)
 	metadata           string
+	activeRecording    bool
 	activeSpeakers     []Participant
 	serverInfo         *livekit.ServerInfo
 	regionURLProvider  *regionURLProvider
@@ -220,7 +229,7 @@ func NewRoom(callback *RoomCallback) *Room {
 	r.callback.Merge(callback)
 
 	r.engine = NewRTCEngine(r.useSinglePeerConnection, r, r.getLocalParticipantSID)
-	r.LocalParticipant = newLocalParticipant(r.engine, r.callback, r.serverInfo)
+	r.LocalParticipant = newLocalParticipant(r.engine, r.callback, r.serverInfo, r.log)
 	return r
 }
 
@@ -248,6 +257,12 @@ func ConnectToRoomWithToken(url, token string, callback *RoomCallback, opts ...C
 func (r *Room) SetLogger(l protoLogger.Logger) {
 	r.log = l
 	r.engine.SetLogger(l)
+	r.LocalParticipant.SetLogger(l)
+	r.lock.RLock()
+	for _, rp := range r.remoteParticipants {
+		rp.SetLogger(l)
+	}
+	r.lock.RUnlock()
 }
 
 func (r *Room) Name() string {
@@ -492,6 +507,13 @@ func (r *Room) Metadata() string {
 	return r.metadata
 }
 
+// IsRecording returns true if the room is currently being recorded.
+func (r *Room) IsRecording() bool {
+	r.lock.RLock()
+	defer r.lock.RUnlock()
+	return r.activeRecording
+}
+
 // ServerInfo returns information about the LiveKit server.
 func (r *Room) ServerInfo() *livekit.ServerInfo {
 	r.lock.RLock()
@@ -528,7 +550,7 @@ func (r *Room) addRemoteParticipant(pi *livekit.ParticipantInfo, updateExisting 
 		if subscriber, ok := r.engine.Subscriber(); ok {
 			_ = subscriber.pc.WriteRTCP(pli)
 		}
-	})
+	}, r.log.WithValues("participant", pi.Identity))
 	r.remoteParticipants[livekit.ParticipantIdentity(pi.Identity)] = rp
 	r.sidToIdentity[livekit.ParticipantID(pi.Sid)] = livekit.ParticipantIdentity(pi.Identity)
 	return rp
@@ -756,6 +778,7 @@ func (r *Room) OnRoomJoined(
 	r.lock.Lock()
 	r.name = room.Name
 	r.metadata = room.Metadata
+	r.activeRecording = room.ActiveRecording
 	r.serverInfo = serverInfo
 	r.connectionState = ConnectionStateConnected
 	r.sifTrailer = make([]byte, len(sifTrailer))
@@ -786,7 +809,7 @@ func (r *Room) OnRestarting() {
 	r.callback.OnReconnecting()
 
 	for _, rp := range r.GetRemoteParticipants() {
-		r.OnParticipantDisconnect(rp)
+		r.OnParticipantDisconnect(rp, livekit.DisconnectReason_UNKNOWN_REASON)
 	}
 }
 
@@ -855,7 +878,7 @@ func (r *Room) OnParticipantUpdate(participants []*livekit.ParticipantInfo) {
 		isNew := rp == nil
 
 		if pi.State == livekit.ParticipantInfo_DISCONNECTED {
-			r.OnParticipantDisconnect(rp)
+			r.OnParticipantDisconnect(rp, pi.GetDisconnectReason())
 		} else if isNew {
 			rp = r.addRemoteParticipant(pi, true)
 			r.clearParticipantDefers(livekit.ParticipantID(pi.Sid), pi)
@@ -884,7 +907,7 @@ func (r *Room) OnParticipantUpdate(participants []*livekit.ParticipantInfo) {
 	}
 }
 
-func (r *Room) OnParticipantDisconnect(rp *RemoteParticipant) {
+func (r *Room) OnParticipantDisconnect(rp *RemoteParticipant, reason livekit.DisconnectReason) {
 	if rp == nil {
 		return
 	}
@@ -897,6 +920,8 @@ func (r *Room) OnParticipantDisconnect(rp *RemoteParticipant) {
 
 	rp.unpublishAllTracks()
 	r.LocalParticipant.handleParticipantDisconnected(rp.Identity())
+
+	rp.info.DisconnectReason = reason
 	go r.callback.OnParticipantDisconnected(rp)
 }
 
@@ -954,15 +979,23 @@ func (r *Room) OnConnectionQuality(updates []*livekit.ConnectionQualityInfo) {
 
 func (r *Room) OnRoomUpdate(room *livekit.Room) {
 	metadataChanged := false
+	recordingChanged := false
 	r.lock.Lock()
 	if r.metadata != room.Metadata {
 		metadataChanged = true
 		r.metadata = room.Metadata
 	}
+	if r.activeRecording != room.ActiveRecording {
+		recordingChanged = true
+		r.activeRecording = room.ActiveRecording
+	}
 	r.lock.Unlock()
 	r.setSid(room.Sid, false)
 	if metadataChanged {
 		go r.callback.OnRoomMetadataChanged(room.Metadata)
+	}
+	if recordingChanged {
+		go r.callback.OnRecordingStatusChanged(room.ActiveRecording)
 	}
 }
 
@@ -971,7 +1004,7 @@ func (r *Room) OnRoomMoved(moved *livekit.RoomMovedResponse) {
 	r.OnRoomUpdate(moved.Room)
 
 	for _, rp := range r.GetRemoteParticipants() {
-		r.OnParticipantDisconnect(rp)
+		r.OnParticipantDisconnect(rp, livekit.DisconnectReason_MIGRATION)
 	}
 
 	go r.callback.OnRoomMoved(moved.Room.Name, moved.Token)
@@ -1032,36 +1065,11 @@ func (r *Room) OnLocalTrackSubscribed(trackSubscribed *livekit.TrackSubscribed) 
 }
 
 func (r *Room) OnSubscribedQualityUpdate(subscribedQualityUpdate *livekit.SubscribedQualityUpdate) {
-	trackPublication := r.LocalParticipant.getLocalPublication(subscribedQualityUpdate.TrackSid)
-	if trackPublication == nil {
-		r.log.Debugw("recieved subscribed quality update for unknown track", "trackID", subscribedQualityUpdate.TrackSid)
-		return
-	}
+	r.LocalParticipant.handleSubscribedQualityUpdate(subscribedQualityUpdate)
+}
 
-	r.log.Infow(
-		"handling subscribed quality update",
-		"trackID", trackPublication.SID(),
-		"mime", trackPublication.MimeType(),
-		"subscribedQualityUpdate", protoLogger.Proto(subscribedQualityUpdate),
-	)
-	for _, subscribedCodec := range subscribedQualityUpdate.SubscribedCodecs {
-		if !strings.HasSuffix(strings.ToLower(trackPublication.MimeType()), subscribedCodec.Codec) {
-			continue
-		}
-
-		for _, subscribedQuality := range subscribedCodec.Qualities {
-			track := trackPublication.GetSimulcastTrack(subscribedQuality.Quality)
-			if track != nil {
-				track.setMuted(!subscribedQuality.Enabled)
-				r.log.Infow(
-					"updating layer enable",
-					"trackID", trackPublication.SID(),
-					"quality", subscribedQuality.Quality,
-					"enabled", subscribedQuality.Enabled,
-				)
-			}
-		}
-	}
+func (r *Room) OnSubscribedAudioCodecUpdate(subscribedAudioCodecUpdate *livekit.SubscribedAudioCodecUpdate) {
+	r.LocalParticipant.handleSubscribedAudioCodecUpdate(subscribedAudioCodecUpdate)
 }
 
 func (r *Room) OnMediaSectionsRequirement(mediaSectionsRequirement *livekit.MediaSectionsRequirement) {

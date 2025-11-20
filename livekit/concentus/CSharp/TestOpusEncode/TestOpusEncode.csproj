@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+	<SignAssembly>True</SignAssembly>
+	<AssemblyOriginatorKeyFile>..\Concentus.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Concentus\Concentus.csproj" />
+  </ItemGroup>
+
+</Project>

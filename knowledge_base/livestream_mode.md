@@ -3,9 +3,9 @@
 When using LiveKit's livestream mode, the system optimizes for large rooms by controlling which participant information gets broadcasted to all users in the room.
 
 
-## How Participant Classes Work
+## Participant Types
 
-In livestream mode, participants are divided into two classes:
+In livestream mode, participants are divided into two types:
 
 
 ### Publishers
@@ -24,14 +24,7 @@ These participants do not have any metadata, attributes, or published tracks. Th
 
 ## Impact on Interactive Features
 
-You can still use participant features like raising hands and inviting to stage in livestream mode. Here's how it works:
-
-
-1. User initially joins as a viewer - their data is not sent to everyone
-2. User raises their hand and gets an attribute set - their data is now sent to everyone
-3. User can be invited to stage and participate normally
-4. After participation, you can unpublish tracks and clear attributes, but their data continues to be broadcasted during that session
-5. If the user refreshes their browser, they appear as a new participant session and will no longer be sent to the room (unless they become a publisher again)
+TBW
 
 
 ## Hook Behavior

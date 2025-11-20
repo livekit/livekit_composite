@@ -1,0 +1,178 @@
+{
+  "repo_notes": [
+    {
+      "content": "This repository aggregates many public LiveKit repositories under ./livekit/**. Prioritize documenting these top-level areas with clear links to their directories: SDKs (python-sdks, rust-sdks), Agents Framework (agents, agents-js), Client SDKs (list each client-sdk-*), Server-side (sip, server-sdk-go, list each server-sdk-*), and Examples (livekit/agents/examples and key subfolders). Use a concise hierarchy that stays within page limits and mirrors the logical structures diagram provided. For Python agents assume user is asking about python code unless otherwise specified."
+    }
+  ],
+  "pages": [
+    {
+      "title": "Architecture Overview",
+      "purpose": "High-level overview of the LiveKit ecosystem aggregated in this repository and how components fit together",
+      "page_notes": [
+        {
+          "content": "The 'LiveKit Logical Structures' diagram illustrates relationships among Room, Participants (User, Agent, SIP), and Tracks."
+        }
+      ]
+    },
+    {
+      "title": "SDKs",
+      "purpose": "Top-level SDK monorepos included in this composite",
+      "parent": "Architecture Overview",
+      "page_notes": [
+        {
+          "content": "Focus on ./livekit/python-sdks and ./livekit/rust-sdks."
+        }
+      ]
+    },
+    {
+      "title": "Python SDKs",
+      "purpose": "Document ./livekit/python-sdks content and structure",
+      "parent": "SDKs"
+    },
+    {
+      "title": "Rust SDKs",
+      "purpose": "Document ./livekit/rust-sdks content and structure",
+      "parent": "SDKs"
+    },
+    {
+      "title": "Agents Framework",
+      "purpose": "Python and Node.js frameworks for building realtime agents that participate in LiveKit rooms",
+      "parent": "Architecture Overview"
+    },
+    {
+      "title": "Agents (Python)",
+      "purpose": "Document ./livekit/agents structure, core abstractions, and usage",
+      "parent": "Agents Framework"
+    },
+    {
+      "title": "Agents (Node.js)",
+      "purpose": "Document ./livekit/agents-js structure, core abstractions, and usage",
+      "parent": "Agents Framework"
+    },
+    {
+      "title": "Client SDKs",
+      "purpose": "Multi-platform client SDKs used by applications to connect to LiveKit",
+      "parent": "Architecture Overview",
+      "page_notes": [
+        {
+          "content": "List each client SDK repository under ./livekit/."
+        }
+      ]
+    },
+    {
+      "title": "client-sdk-js",
+      "purpose": "JavaScript/TypeScript client SDK",
+      "parent": "Client SDKs"
+    },
+    {
+      "title": "client-sdk-react-native",
+      "purpose": "React Native client SDK",
+      "parent": "Client SDKs"
+    },
+    {
+      "title": "client-sdk-android",
+      "purpose": "Android/Kotlin client SDK",
+      "parent": "Client SDKs"
+    },
+    {
+      "title": "client-sdk-swift",
+      "purpose": "iOS/Swift client SDK",
+      "parent": "Client SDKs"
+    },
+    {
+      "title": "client-sdk-flutter",
+      "purpose": "Flutter/Dart client SDK",
+      "parent": "Client SDKs"
+    },
+    {
+      "title": "client-sdk-unity",
+      "purpose": "Unity client SDK",
+      "parent": "Client SDKs"
+    },
+    {
+      "title": "client-sdk-unity-web",
+      "purpose": "Unity WebGL client SDK",
+      "parent": "Client SDKs"
+    },
+    {
+      "title": "Server-side",
+      "purpose": "Server-side components and SDKs for backend operations and integrations",
+      "parent": "Architecture Overview"
+    },
+    {
+      "title": "sip",
+      "purpose": "SIP integration, trunks, and telephony",
+      "parent": "Server-side"
+    },
+    {
+      "title": "server-sdk-go",
+      "purpose": "Go server-side SDK",
+      "parent": "Server-side"
+    },
+    {
+      "title": "server-sdk-js",
+      "purpose": "JavaScript/TypeScript server-side SDK",
+      "parent": "Server-side"
+    },
+    {
+      "title": "server-sdk-kotlin",
+      "purpose": "Kotlin/Java server-side SDK",
+      "parent": "Server-side"
+    },
+    {
+      "title": "server-sdk-ruby",
+      "purpose": "Ruby server-side SDK",
+      "parent": "Server-side"
+    },
+    {
+      "title": "Examples",
+      "purpose": "Example applications and reference implementations",
+      "parent": "Architecture Overview",
+      "page_notes": [
+        {
+          "content": "Primary location: ./livekit/agents/examples. Organize by subfolders to stay within page limits."
+        }
+      ]
+    },
+    {
+      "title": "examples/voice_agents",
+      "purpose": "Voice agent examples (streaming LLMs, tools, VAD, turn-taking, etc.)",
+      "parent": "Examples"
+    },
+    {
+      "title": "examples/bank-ivr",
+      "purpose": "Bank IVR workflow examples",
+      "parent": "Examples"
+    },
+    {
+      "title": "examples/drive-thru",
+      "purpose": "Drive-through ordering example agent",
+      "parent": "Examples"
+    },
+    {
+      "title": "examples/avatar_agents",
+      "purpose": "Avatar agent integrations and workers",
+      "parent": "Examples"
+    },
+    {
+      "title": "examples/other",
+      "purpose": "Other categorized examples (transcription, TTS, translation, etc.)",
+      "parent": "Examples"
+    },
+    {
+      "title": "examples/survey",
+      "purpose": "Survey agent example",
+      "parent": "Examples"
+    },
+    {
+      "title": "examples/frontdesk",
+      "purpose": "Front desk agent example",
+      "parent": "Examples"
+    },
+    {
+      "title": "examples/dtmf",
+      "purpose": "DTMF agent example",
+      "parent": "Examples"
+    }
+  ]
+}

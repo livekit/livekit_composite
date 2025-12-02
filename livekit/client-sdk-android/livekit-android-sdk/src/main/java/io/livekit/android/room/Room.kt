@@ -1156,7 +1156,7 @@ constructor(
      * @suppress
      */
     override fun onAddTrack(receiver: RtpReceiver, track: MediaStreamTrack, streams: Array<out MediaStream>) {
-        if (streams.count() < 0) {
+        if (streams.isEmpty()) {
             LKLog.i { "add track with empty streams?" }
             return
         }
@@ -1266,7 +1266,7 @@ constructor(
     override fun onConnectionQuality(updates: List<LivekitRtc.ConnectionQualityInfo>) {
         updates.forEach { info ->
             val quality = ConnectionQuality.fromProto(info.quality)
-            val participant = getParticipantBySid(info.participantSid) ?: return
+            val participant = getParticipantBySid(info.participantSid) ?: return@forEach
             participant.connectionQuality = quality
             eventBus.postEvent(RoomEvent.ConnectionQualityChanged(this, participant, quality), coroutineScope)
         }

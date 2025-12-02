@@ -26,7 +26,7 @@ const (
 	jitterMaxLatency = 60 * time.Millisecond // should match mixer's target buffer size
 )
 
-func HandleJitter(h HandlerCloser) HandlerCloser {
+func HandleJitter(h HandlerCloser, opts ...jitter.Option) HandlerCloser {
 	handler := &jitterHandler{
 		h:   h,
 		err: make(chan error, 1),
@@ -37,7 +37,7 @@ func HandleJitter(h HandlerCloser) HandlerCloser {
 		for _, p := range packets {
 			handler.handleRTP(p.Packet)
 		}
-	})
+	}, opts...)
 	return handler
 }
 

@@ -141,7 +141,7 @@ func (s signal) String() string {
 type event struct {
 	*PCTransport
 	signal signal
-	data   interface{}
+	data   any
 }
 
 func (e event) String() string {
@@ -162,16 +162,16 @@ func (w wrappedICECandidatePairLogger) MarshalLogObject(e zapcore.ObjectEncoder)
 	if w.pair.Local != nil {
 		e.AddString("localProtocol", w.pair.Local.Protocol.String())
 		e.AddString("localCandidateType", w.pair.Local.Typ.String())
-		e.AddString("localAdddress", w.pair.Local.Address)
+		e.AddString("localAddress", w.pair.Local.Address)
 		e.AddUint16("localPort", w.pair.Local.Port)
 	}
 	if w.pair.Remote != nil {
 		e.AddString("remoteProtocol", w.pair.Remote.Protocol.String())
 		e.AddString("remoteCandidateType", w.pair.Remote.Typ.String())
-		e.AddString("remoteAdddress", MaybeTruncateIP(w.pair.Remote.Address))
+		e.AddString("remoteAddress", MaybeTruncateIP(w.pair.Remote.Address))
 		e.AddUint16("remotePort", w.pair.Remote.Port)
 		if w.pair.Remote.RelatedAddress != "" {
-			e.AddString("relatedAdddress", MaybeTruncateIP(w.pair.Remote.RelatedAddress))
+			e.AddString("relatedAddress", MaybeTruncateIP(w.pair.Remote.RelatedAddress))
 			e.AddUint16("relatedPort", w.pair.Remote.RelatedPort)
 		}
 	}
@@ -1443,6 +1443,7 @@ func (t *PCTransport) Close() {
 	if t.streamAllocator != nil {
 		t.streamAllocator.Stop()
 	}
+
 	if t.pacer != nil {
 		t.pacer.Stop()
 	}
@@ -1471,7 +1472,9 @@ func (t *PCTransport) Close() {
 	t.unlabeledDataChannels = nil
 	t.lock.Unlock()
 
-	_ = t.pc.Close()
+	if err := t.pc.Close(); err != nil {
+		t.params.Logger.Warnw("unclean close of peer connection", err)
+	}
 
 	t.outputAndClearICEStats()
 }
@@ -2873,7 +2876,7 @@ func (t *PCTransport) handleICERestart(_ event) error {
 }
 
 func (t *PCTransport) onNegotiationFailed(warning bool, reason string) {
-	logFields := []interface{}{
+	logFields := []any{
 		"reason", reason,
 		"localCurrent", t.pc.CurrentLocalDescription(),
 		"localPending", t.pc.PendingLocalDescription(),

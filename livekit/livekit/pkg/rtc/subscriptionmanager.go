@@ -106,6 +106,8 @@ func (m *SubscriptionManager) Close(isExpectedToResume bool) {
 
 	<-m.doneCh
 
+	prometheus.RecordTrackSubscribeCancels(int32(m.getNumCancellations()))
+
 	subTracks := m.GetSubscribedTracks()
 	downTracksToClose := make([]*sfu.DownTrack, 0, len(subTracks))
 	for _, st := range subTracks {
@@ -176,6 +178,10 @@ func (m *SubscriptionManager) UnsubscribeFromTrack(trackID livekit.TrackID) {
 		return
 	}
 
+	if sub.isCanceled() {
+		prometheus.RecordTrackSubscribeCancels(1)
+	}
+
 	sub.logger.Debugw("unsubscribing from track")
 	m.queueReconcile(trackID)
 }
@@ -189,11 +195,17 @@ func (m *SubscriptionManager) ClearAllSubscriptions() {
 		}
 	}
 
+	numCancellations := 0
 	m.lock.RLock()
 	for _, sub := range m.subscriptions {
+		if sub.isCanceled() {
+			numCancellations++
+		}
 		sub.setDesired(false)
 	}
 	m.lock.RUnlock()
+	prometheus.RecordTrackSubscribeCancels(int32(numCancellations))
+
 	m.ReconcileAll()
 }
 
@@ -747,6 +759,10 @@ func (m *SubscriptionManager) unsubscribeSynchronous(trackID livekit.TrackID) er
 
 	sub.logger.Debugw("executing unsubscribe synchronous")
 
+	if sub.isCanceled() {
+		prometheus.RecordTrackSubscribeCancels(1)
+	}
+
 	subTrack := sub.getSubscribedTrack()
 	if subTrack == nil {
 		// already unsubscribed
@@ -764,6 +780,9 @@ func (m *SubscriptionManager) handleSourceTrackRemoved(trackID livekit.TrackID) 
 	m.lock.Unlock()
 
 	if sub != nil {
+		if sub.isCanceled() {
+			prometheus.RecordTrackSubscribeCancels(1)
+		}
 		sub.handleSourceTrackRemoved()
 	}
 }
@@ -874,6 +893,19 @@ func (m *SubscriptionManager) handleSubscribedTrackClose(s *trackSubscription, i
 			m.queueReconcile(s.trackID)
 		}
 	}
+}
+
+func (m *SubscriptionManager) getNumCancellations() int {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	numCancellations := 0
+	for _, sub := range m.subscriptions {
+		if sub.isCanceled() {
+			numCancellations++
+		}
+	}
+	return numCancellations
 }
 
 // --------------------------------------------------------------------------------------
@@ -1156,6 +1188,10 @@ func (s *trackSubscription) maybeRecordSuccess(ts telemetry.TelemetryService, pI
 		Sid:      string(subTrack.PublisherID()),
 	}
 	ts.TrackSubscribed(context.Background(), pID, mediaTrack.ToProto(), pi, !eventSent)
+}
+
+func (s *trackSubscription) isCanceled() bool {
+	return !s.eventSent.Load() && s.isDesired()
 }
 
 func (s *trackSubscription) durationSinceStart() time.Duration {

@@ -12,6 +12,7 @@ from livekit import api
 from livekit.agents import (
     Agent,
     AgentSession,
+    AgentTask,
     JobContext,
     JobProcess,
     MetricsCollectedEvent,
@@ -139,13 +140,22 @@ class SurveyUserdata:
         return metadata
 
 
-class Assistant(Agent):
-    def __init__(self) -> None:
-        super().__init__(instructions=ASSISTANT_INSTRUCTIONS)
+class SurveyQuestionTask(AgentTask[None]):
+    def __init__(self, question: SurveyQuestion, *, is_last: bool) -> None:
+        self.question = question
+        self._is_last = is_last
+        super().__init__(
+            instructions=(
+                f"Conduct the survey for question_id '{question.id}'. "
+                "Ask it conversationally, listen for the caller's answer, then call "
+                f"`record_survey_response` with question_id '{question.id}' and a concise summary. "
+                "Do not move on to other topics or questions."
+            ),
+        )
 
     async def on_enter(self):
         await self.session.generate_reply(
-            instructions="Greet the user, then ask the first question.",
+            instructions=f"Ask this question: {self.question.prompt}"
         )
 
     @function_tool()
@@ -156,21 +166,42 @@ class Assistant(Agent):
         answer_summary: str,
     ) -> str:
         """Record a caller's answer to a survey question."""
-
         userdata = ctx.userdata
         if userdata is None:
             return "Survey context unavailable."
+
+        if question_id != self.question.id:
+            return f"Use the expected question_id '{self.question.id}'."
 
         try:
             completed = await userdata.record_response(question_id, answer_summary)
         except ValueError as exc:
             return str(exc)
 
-        if completed:
-            return "Recorded the final survey response. Wrap up the survey politely."
+        self.complete(None)
+        if completed and self._is_last:
+            return "Recorded the final answer. Thank the caller and end the survey."
 
-        remaining = len(SURVEY_QUESTIONS) - len(userdata.responses)
-        return f"Recorded response for {question_id}. {remaining} question(s) remaining."
+        return "Recorded the answer. Acknowledge and continue."
+
+
+class Assistant(Agent):
+    def __init__(self) -> None:
+        super().__init__(instructions=ASSISTANT_INSTRUCTIONS)
+
+    async def on_enter(self):
+        await self.session.generate_reply(
+            instructions="Greet the caller and explain you'll ask a short survey in order."
+        )
+
+        for idx, question in enumerate(SURVEY_QUESTIONS):
+            task = SurveyQuestionTask(question, is_last=idx == len(SURVEY_QUESTIONS) - 1)
+            await task
+
+        await self.session.generate_reply(
+            instructions="Thank the caller, confirm the survey is complete, and end the call."
+        )
+        self.session.shutdown()
 
 
 

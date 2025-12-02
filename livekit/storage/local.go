@@ -20,6 +20,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -92,20 +93,37 @@ func (u *localUploader) UploadData(data []byte, storagePath, _ string) (string, 
 
 func (u *localUploader) ListObjects(prefix string) ([]string, error) {
 	absPrefix := path.Join(u.StorageDir, prefix)
+	dir, filenamePrefix := path.Split(absPrefix)
 
 	var files []string
-	err := filepath.Walk(absPrefix, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if !info.IsDir() {
-			files = append(files, path)
-		}
-		return nil
-	})
+	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, nil
 	}
+
+	for _, entry := range entries {
+		if !strings.HasPrefix(entry.Name(), filenamePrefix) {
+			continue
+		}
+
+		entryPath := path.Join(dir, entry.Name())
+		if entry.IsDir() {
+			if err = filepath.Walk(entryPath, func(path string, info os.FileInfo, err error) error {
+				if err != nil {
+					return err
+				}
+				if !info.IsDir() {
+					files = append(files, path)
+				}
+				return nil
+			}); err != nil {
+				return nil, err
+			}
+		} else {
+			files = append(files, entryPath)
+		}
+	}
+
 	return files, nil
 }
 

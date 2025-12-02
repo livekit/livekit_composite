@@ -19,6 +19,9 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/frostbyte73/core"
@@ -45,6 +48,8 @@ import (
 const (
 	pipelineName = "pipeline"
 	eosTimeout   = time.Second * 30
+
+	streamRetryUpdateInterval = time.Minute
 )
 
 type Controller struct {
@@ -59,15 +64,18 @@ type Controller struct {
 	sinks     map[types.EgressType][]sink.Sink
 
 	// internal
-	mu          deadlock.Mutex
-	monitor     *stats.HandlerMonitor
-	limitTimer  *time.Timer
-	playing     core.Fuse
-	eosSent     core.Fuse
-	eosTimer    *time.Timer
-	eosReceived core.Fuse
-	stopped     core.Fuse
-	stats       controllerStats
+	mu                   deadlock.Mutex
+	monitor              *stats.HandlerMonitor
+	limitTimer           *time.Timer
+	storageMonitorCancel context.CancelFunc
+	paused               core.Fuse
+	playing              core.Fuse
+	eosSent              core.Fuse
+	eosTimer             *time.Timer
+	eosReceived          core.Fuse
+	stopped              core.Fuse
+	storageLimitOnce     sync.Once
+	stats                controllerStats
 }
 
 type controllerStats struct {
@@ -230,6 +238,8 @@ func (c *Controller) Run(ctx context.Context) *livekit.EgressInfo {
 		}
 	}
 
+	c.startOutputSizeMonitor()
+
 	err := c.p.Run()
 	if err != nil {
 		c.src.Close()
@@ -362,6 +372,21 @@ func (c *Controller) streamFailed(ctx context.Context, stream *config.Stream, st
 	return c.getStreamSink().RemoveStream(stream)
 }
 
+func (c *Controller) trackStreamRetry(ctx context.Context, stream *config.Stream) {
+	now := time.Now()
+	stream.StreamInfo.LastRetryAt = now.UnixNano()
+	stream.StreamInfo.Retries++
+	if !stream.ShouldSendRetryUpdate(now, streamRetryUpdateInterval) {
+		return
+	}
+	logger.Infow("retrying stream update",
+		"url", stream.RedactedUrl,
+		"retries", stream.StreamInfo.Retries,
+	)
+
+	c.streamUpdated(ctx)
+}
+
 func (c *Controller) onEOSSent() {
 	// for video-only track/track composite, EOS might have already
 	// made it through the pipeline by the time endRecording is closed
@@ -369,6 +394,13 @@ func (c *Controller) onEOSSent() {
 		// this will not actually send a second EOS, but will make sure everything is in the correct state
 		c.SendEOS(context.Background(), livekit.EndReasonSrcClosed)
 	}
+}
+
+func (c *Controller) onStorageLimitReached() {
+	c.storageLimitOnce.Do(func() {
+		c.Info.SetLimitReached()
+		c.SendEOS(context.Background(), livekit.EndReasonLimitReached)
+	})
 }
 
 func (c *Controller) SendEOS(ctx context.Context, reason string) {
@@ -458,6 +490,8 @@ func (c *Controller) OnError(err error) {
 }
 
 func (c *Controller) Close() {
+	c.stopOutputSizeMonitor()
+
 	if c.SourceType == types.SourceTypeSDK || !c.eosSent.IsBroken() {
 		// sdk source will use the timestamp of the last packet pushed to the pipeline
 		c.updateEndTime()
@@ -527,6 +561,153 @@ func (c *Controller) startSessionLimitTimer(ctx context.Context) {
 				c.p.Stop()
 			}
 		})
+	}
+}
+
+func (c *Controller) startOutputSizeMonitor() {
+	ctx, cancel := context.WithCancel(context.Background())
+	c.storageMonitorCancel = cancel
+
+	c.p.AddOnStop(func() error {
+		cancel()
+		return nil
+	})
+
+	go c.monitorOutputDirSize(ctx)
+}
+
+func (c *Controller) stopOutputSizeMonitor() {
+	if c.storageMonitorCancel != nil {
+		c.storageMonitorCancel()
+		c.storageMonitorCancel = nil
+	}
+}
+
+func (c *Controller) monitorOutputDirSize(ctx context.Context) {
+	thresholds := []int64{
+		1 << 30,  // 1GB
+		3 << 30,  // 3GB
+		5 << 30,  // 5GB
+		10 << 30, // 10GB
+		20 << 30, // 20GB
+		50 << 30, // 50GB
+	}
+
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	nextThreshold := 0
+	statErrorLogged := false
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+
+		size, files, err := c.getOutputDirStats()
+		if err != nil {
+			if !statErrorLogged {
+				logger.Debugw("failed to stat output directory", err, "dir", c.TmpDir)
+				statErrorLogged = true
+			}
+			continue
+		}
+		statErrorLogged = false
+
+		if c.FileOutputMaxSize > 0 && size >= c.FileOutputMaxSize {
+			c.logOutputFileSizes(files, 10)
+			logger.Warnw(
+				"output storage limit reached",
+				nil,
+				"dir", c.TmpDir,
+				"bytesWritten", size,
+				"limitBytes", c.FileOutputMaxSize,
+			)
+			c.onStorageLimitReached()
+			return
+		}
+
+		thresholdTriggered := false
+		for nextThreshold < len(thresholds) && size >= thresholds[nextThreshold] {
+			logger.Debugw(
+				"output size threshold exceeded",
+				"dir", c.TmpDir,
+				"bytesWritten", size,
+				"thresholdBytes", thresholds[nextThreshold],
+			)
+			thresholdTriggered = true
+			nextThreshold++
+		}
+		if thresholdTriggered {
+			c.logOutputFileSizes(files, 10)
+		}
+	}
+}
+
+type outputFileStat struct {
+	path string
+	size int64
+}
+
+func (c *Controller) getOutputDirStats() (int64, []outputFileStat, error) {
+	if c.TmpDir == "" {
+		return 0, nil, nil
+	}
+
+	var files []outputFileStat
+
+	var total int64
+
+	err := filepath.Walk(c.TmpDir, func(p string, info os.FileInfo, err error) error {
+		if err != nil {
+			if os.IsNotExist(err) {
+				return nil
+			}
+			return err
+		}
+
+		if info.IsDir() {
+			return nil
+		}
+
+		total += info.Size()
+
+		rel, relErr := filepath.Rel(c.TmpDir, p)
+		if relErr != nil {
+			rel = p
+		}
+
+		files = append(files, outputFileStat{
+			path: rel,
+			size: info.Size(),
+		})
+
+		return nil
+	})
+	if err != nil {
+		return 0, nil, err
+	}
+
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].size > files[j].size
+	})
+
+	return total, files, nil
+}
+
+func (c *Controller) logOutputFileSizes(files []outputFileStat, limit int) {
+	if files == nil {
+		return
+	}
+
+	if limit > 0 && len(files) > limit {
+		files = files[:limit]
+	}
+
+	for _, f := range files {
+		logger.Infow("output file size", "file", f.path, "bytes", f.size)
 	}
 }
 

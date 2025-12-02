@@ -1065,7 +1065,7 @@ npm install livekit-client @livekit/components-react @livekit/components-styles 
 
 The SDK is also available using `yarn` or `pnpm`.
 
-Check out the dedicated quickstarts for [React](https://docs.livekit.io/home/quickstarts/react.md) or [Next.js](https://docs.livekit.io/home/quickstarts/nextjs.md) if you're using one of those platforms.
+Also check out the dedicated quickstart for [React](https://docs.livekit.io/home/quickstarts/react.md).
 
 ---
 
@@ -5911,268 +5911,70 @@ _Content not available for /home/quickstarts/_
 
 ---
 
-## Next.js
-
-> ℹ️ **Note**
-> 
-> This guide is compatible with Next.js 13 or later. On an older version? Check out the [quickstart for Next.js 12](https://docs.livekit.io/home/quickstarts/nextjs-12.md).
-
-## Voice AI quickstart
-
-To build your first voice AI app for Next.js, use the following quickstart and the starter app. Otherwise follow the getting started guide below.
-
-- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
-
-- **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
-
-## Getting started guide
-
-This guide walks you through the steps to build a video-conferencing application using NextJS. It uses the [LiveKit React components library](https://docs.livekit.io/reference/components/react.md) to render the UI and communicate with LiveKit servers via WebRTC. By the end, you will have a basic video-conferencing application you can run with multiple participants.
-
-### Create a Next.js app
-
-If you're working with an existing app, skip to the next step.
-
-```shell
-npx create-next-app <your_app_name>
-
-```
-
-Change directory into your app directory:
-
-```shell
-cd <your_app_name>
-
-```
-
-### Install LiveKit SDK
-
-Install both frontend and backend LiveKit SDKs:
-
-**yarn**:
-
-```shell
-yarn add livekit-server-sdk @livekit/components-react @livekit/components-styles
-
-```
-
----
-
-**npm**:
-
-```shell
-npm install livekit-server-sdk @livekit/components-react @livekit/components-styles --save
-
-```
-
-### Keys and Configuration
-
-To start, your app needs an LiveKit API key and secret, as well as your LiveKit server URL.
-
-In your project root create the file `.env.local` with the following contents. Do not commit this file because it contains your secrets!
-
-```shell
-LIVEKIT_API_KEY=%{apiKey}%
-LIVEKIT_API_SECRET=%{apiSecret}%
-LIVEKIT_URL=%{wsURL}%
-
-```
-
-### Create token endpoint
-
-Create a new file at `/app/api/token/route.ts` with the following content:
-
-```tsx
-import { NextRequest, NextResponse } from 'next/server';
-import { AccessToken } from 'livekit-server-sdk';
-
-// Do not cache endpoint result
-export const revalidate = 0;
-
-export async function GET(req: NextRequest) {
-  const room = req.nextUrl.searchParams.get('room');
-  const username = req.nextUrl.searchParams.get('username');
-  if (!room) {
-    return NextResponse.json({ error: 'Missing "room" query parameter' }, { status: 400 });
-  } else if (!username) {
-    return NextResponse.json({ error: 'Missing "username" query parameter' }, { status: 400 });
-  }
-
-  const apiKey = process.env.LIVEKIT_API_KEY;
-  const apiSecret = process.env.LIVEKIT_API_SECRET;
-  const wsUrl = process.env.LIVEKIT_URL;
-
-  if (!apiKey || !apiSecret || !wsUrl) {
-    return NextResponse.json({ error: 'Server misconfigured' }, { status: 500 });
-  }
-
-  const at = new AccessToken(apiKey, apiSecret, { identity: username });
-  at.addGrant({ room, roomJoin: true, canPublish: true, canSubscribe: true });
-
-  return NextResponse.json(
-    { token: await at.toJwt() },
-    { headers: { "Cache-Control": "no-store" } },
-  );
-}
-
-```
-
-### Make a page in your web app
-
-Make a new file at `/app/room/page.tsx` with the following content:
-
-```tsx
-'use client';
-
-import {
-  ControlBar,
-  GridLayout,
-  ParticipantTile,
-  RoomAudioRenderer,
-  useTracks,
-  RoomContext,
-} from '@livekit/components-react';
-import { Room, Track } from 'livekit-client';
-import '@livekit/components-styles';
-import { useEffect, useState } from 'react';
-
-export default function Page() {
-  // TODO: get user input for room and name
-  const room = 'quickstart-room';
-  const name = 'quickstart-user';
-  const [roomInstance] = useState(() => new Room({
-    // Optimize video quality for each participant's screen
-    adaptiveStream: true,
-    // Enable automatic audio/video quality optimization
-    dynacast: true,
-  }));
-
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      try {
-        const resp = await fetch(`/api/token?room=${room}&username=${name}`);
-        const data = await resp.json();
-        if (!mounted) return;
-        if (data.token) {
-          await roomInstance.connect(process.env.NEXT_PUBLIC_LIVEKIT_URL, data.token);
-        }
-      } catch (e) {
-        console.error(e);
-      }
-    })();
-  
-    return () => {
-      mounted = false;
-      roomInstance.disconnect();
-    };
-  }, [roomInstance]);
-
-  if (token === '') {
-    return <div>Getting token...</div>;
-  }
-
-  return (
-    <RoomContext.Provider value={roomInstance}>
-      <div data-lk-theme="default" style={{ height: '100dvh' }}>
-        {/* Your custom component with basic video conferencing functionality. */}
-        <MyVideoConference />
-        {/* The RoomAudioRenderer takes care of room-wide audio for you. */}
-        <RoomAudioRenderer />
-        {/* Controls for the user to start/stop audio, video, and screen share tracks */}
-        <ControlBar />
-      </div>
-    </RoomContext.Provider>
-  );
-}
-
-function MyVideoConference() {
-  // `useTracks` returns all camera and screen share tracks. If a user
-  // joins without a published camera track, a placeholder track is returned.
-  const tracks = useTracks(
-    [
-      { source: Track.Source.Camera, withPlaceholder: true },
-      { source: Track.Source.ScreenShare, withPlaceholder: false },
-    ],
-    { onlySubscribed: false },
-  );
-  return (
-    <GridLayout tracks={tracks} style={{ height: 'calc(100vh - var(--lk-control-bar-height))' }}>
-      {/* The GridLayout accepts zero or one child. The child is used
-      as a template to render all passed in tracks. */}
-      <ParticipantTile />
-    </GridLayout>
-  );
-}
-
-```
-
-### Load the page and connect
-
-Start your server with:
-
-**yarn**:
-
-```shell
-yarn dev
-
-```
-
----
-
-**npm**:
-
-```shell
-npm run start
-
-```
-
-And then open `localhost:3000/room` in your browser.
-
-## Next steps
-
-The following resources are useful for getting started with LiveKit on Next.js.
-
-- **[Generating tokens](https://docs.livekit.io/home/server/generating-tokens.md)**: Guide to generating authentication tokens for your users.
-
-- **[Realtime media](https://docs.livekit.io/home/client/tracks.md)**: Complete documentation for live video and audio tracks.
-
-- **[Realtime data](https://docs.livekit.io/home/client/data.md)**: Send and receive realtime data between clients.
-
-- **[JavaScript SDK](https://github.com/livekit/client-sdk-js)**: LiveKit JavaScript SDK on GitHub.
-
-- **[React components](https://github.com/livekit/components-js)**: LiveKit React components on GitHub.
-
-- **[JavaScript SDK reference](https://docs.livekit.io/reference/client-sdk-js.md)**: LiveKit JavaScript SDK reference docs.
-
-- **[React components reference](https://docs.livekit.io/reference/components/react.md)**: LiveKit React components reference docs.
-
----
-
----
-
 ## React
 
-## Voice AI quickstart
+## Overview
 
-To build your first voice AI app for Next.js, use the following quickstart and the starter app. Otherwise follow the getting started guide below.
+This guide walks you through building a voice AI frontend using React and the LiveKit React components library. In less than 10 minutes, you'll have a working frontend that connects to your agent and allows users to have voice conversations through their browser.
 
-- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
+## Starter project
+
+The fastest way to get started with a full fledged agent experience is the React starter project. Click "Use this template" in the top right to create a new repo on GitHub, then follow the instructions in the project's README.
 
 - **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
 
-## Getting started guide
+## Requirements
 
-This guide walks you through the steps to build a video-conferencing application using React. It uses the [LiveKit React components library](https://docs.livekit.io/reference/components/react.md) to render the UI and communicate with LiveKit servers via WebRTC. By the end, you will have a basic video-conferencing application you can run with multiple participants.
+The following sections describe the minimum requirements to build a React frontend for your voice AI agent.
 
-### Install LiveKit SDK
+### LiveKit Cloud account
 
-Install the LiveKit SDK:
+This guide assumes you have signed up for a free [LiveKit Cloud](https://cloud.livekit.io/) account. Create a free project to get started with your voice AI application.
 
-**yarn**:
+### Agent backend
+
+You need a LiveKit agent running on the backend that is configured for your LiveKit Cloud project. Follow the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md) to create and deploy your agent.
+
+### Token server
+
+You need a token server to generate authentication tokens for your users. For development and testing purposes, this guide uses a sandbox token server for ease of use. You can create one for your cloud project [here](https://cloud.livekit.io/projects/p_/sandbox/templates/token-server)
+
+For production usage, you should set up a dedicated token server implementation. See the [generating tokens guide](https://docs.livekit.io/home/server/generating-tokens.md) for more details.
+
+## Setup
+
+Use the instructions in the following sections to set up your new React frontend project.
+
+### Create React project
+
+Create a new React project using your preferred method:
+
+**pnpm**:
 
 ```shell
-yarn add @livekit/components-react @livekit/components-styles livekit-client
+pnpm create vite@latest my-agent-app --template react-ts
+cd my-agent-app
+
+```
+
+---
+
+**npm**:
+
+```shell
+npm create vite@latest my-agent-app -- --template react-ts
+cd my-agent-app
+
+```
+
+### Install packages
+
+Install the LiveKit SDK and React components:
+
+**pnpm**:
+
+```shell
+pnpm add @livekit/components-react @livekit/components-styles livekit-client
 
 ```
 
@@ -6185,138 +5987,83 @@ npm install @livekit/components-react @livekit/components-styles livekit-client 
 
 ```
 
-### Join a room
+### Add agent frontend code
 
-Update the `serverUrl` and `token` values and copy and paste the following into your `src/App.tsx` file. To generate a token for this example, see [Creating a token](https://docs.livekit.io/home/get-started/authentication.md#creating-a-token).
+Replace the contents of your `src/App.tsx` file with the following code:
 
 > ℹ️ **Note**
 > 
-> This example hardcodes a token. In a real app, your server generates a token for you.
+> Update the `sandboxId` with your own sandbox token server ID, and set the `agentName` to match your deployed agent's name.
+
+** Filename: `src/App.tsx`**
 
 ```tsx
+'use client';
+import { useEffect, useRef } from 'react';
 import {
   ControlBar,
-  GridLayout,
-  ParticipantTile,
   RoomAudioRenderer,
-  useTracks,
-  RoomContext,
+  useSession,
+  SessionProvider,
+  useAgent,
+  BarVisualizer,
 } from '@livekit/components-react';
-import { Room, Track } from 'livekit-client';
+import { TokenSource, TokenSourceConfigurable, TokenSourceFetchOptions } from 'livekit-client';
 import '@livekit/components-styles';
-import { useState } from 'react';
-
-const serverUrl = '%{wsURL}%';
-const token = '%{token}%';
 
 export default function App() {
-  const [room] = useState(() => new Room({
-    // Optimize video quality for each participant's screen
-    adaptiveStream: true,
-    // Enable automatic audio/video quality optimization
-    dynacast: true,
-  }));
+  const tokenSource: TokenSourceConfigurable = useRef(
+    TokenSource.sandboxTokenServer('my-token-server-id'),
+  ).current;
+  const tokenOptions: TokenSourceFetchOptions = { agentName: 'my-agent-name' };
 
-  // Connect to room
+  const session = useSession(tokenSource, tokenOptions);
+
+  // Connect to session
   useEffect(() => {
-    let mounted = true;
-    
-    const connect = async () => {
-      if (mounted) {
-        await room.connect(serverUrl, token);
-      }
-    };
-    connect();
-
+    session.start();
     return () => {
-      mounted = false;
-      room.disconnect();
+      session.end();
     };
-  }, [room]);
+  }, []);
 
   return (
-    <RoomContext.Provider value={room}>
+    <SessionProvider session={session}>
       <div data-lk-theme="default" style={{ height: '100vh' }}>
-        {/* Your custom component with basic video conferencing functionality. */}
-        <MyVideoConference />
+        {/* Your custom component with basic video agent functionality. */}
+        <MyAgentView />
+        {/* Controls for the user to start/stop audio and disconnect from the session */}
+        <ControlBar controls={{ microphone: true, camera: false, screenShare: false }} />
         {/* The RoomAudioRenderer takes care of room-wide audio for you. */}
         <RoomAudioRenderer />
-        {/* Controls for the user to start/stop audio, video, and screen share tracks */}
-        <ControlBar />
       </div>
-    </RoomContext.Provider>
+    </SessionProvider>
   );
 }
 
-function MyVideoConference() {
-  // `useTracks` returns all camera and screen share tracks. If a user
-  // joins without a published camera track, a placeholder track is returned.
-  const tracks = useTracks(
-    [
-      { source: Track.Source.Camera, withPlaceholder: true },
-      { source: Track.Source.ScreenShare, withPlaceholder: false },
-    ],
-    { onlySubscribed: false },
-  );
+function MyAgentView() {
+  const agent = useAgent();
   return (
-    <GridLayout tracks={tracks} style={{ height: 'calc(100vh - var(--lk-control-bar-height))' }}>
-      {/* The GridLayout accepts zero or one child. The child is used
-      as a template to render all passed in tracks. */}
-      <ParticipantTile />
-    </GridLayout>
+    <div style={{ height: '350px' }}>
+      <p>Agent state: {agent.state}</p>
+      {/* Renders a visualizer for the agent's audio track */}
+      {agent.canListen && (
+        <BarVisualizer track={agent.microphoneTrack} state={agent.state} barCount={5} />
+      )}
+    </div>
   );
 }
 
 ```
 
-## Next steps
+## Run your application
 
-The following resources are useful for getting started with LiveKit on React.
+Start the development server:
 
-- **[Generating tokens](https://docs.livekit.io/home/server/generating-tokens.md)**: Guide to generating authentication tokens for your users.
-
-- **[Realtime media](https://docs.livekit.io/home/client/tracks.md)**: Complete documentation for live video and audio tracks.
-
-- **[Realtime data](https://docs.livekit.io/home/client/data.md)**: Send and receive realtime data between clients.
-
-- **[JavaScript SDK](https://github.com/livekit/client-sdk-js)**: LiveKit JavaScript SDK on GitHub.
-
-- **[React components](https://github.com/livekit/components-js)**: LiveKit React components on GitHub.
-
-- **[JavaScript SDK reference](https://docs.livekit.io/reference/client-sdk-js.md)**: LiveKit JavaScript SDK reference docs.
-
-- **[React components reference](https://docs.livekit.io/reference/components/react.md)**: LiveKit React components reference docs.
-
----
-
----
-
-## JavaScript
-
-> 💡 **Tip**
-> 
-> Check out the dedicated quickstarts for [React](https://docs.livekit.io/home/quickstarts/react.md) or [Next.js](https://docs.livekit.io/home/quickstarts/nextjs.md) if you're using one of those platforms.
-
-## Voice AI quickstart
-
-To build your first voice AI app for web, use the following quickstart and the starter app. Otherwise follow the getting started guide below.
-
-- **[Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md)**: Create a voice AI agent in less than 10 minutes.
-
-- **[Next.js Voice Agent](https://github.com/livekit-examples/agent-starter-react)**: A web voice AI assistant built with React and Next.js.
-
-## Getting started guide
-
-This guide covers the basics to connect to LiveKit from a JavaScript app.
-
-### Install LiveKit SDK
-
-Install the LiveKit SDK:
-
-**yarn**:
+**pnpm**:
 
 ```shell
-yarn add livekit-client
+pnpm dev
 
 ```
 
@@ -6325,32 +6072,15 @@ yarn add livekit-client
 **npm**:
 
 ```shell
-npm install livekit-client --save
+npm run dev
 
 ```
 
-### Join a room
-
-Note that this example hardcodes a token. In a real app, you’ll need your server to generate a token for you.
-
-```js
-import { Room } from 'livekit-client';
-
-const wsURL = '%{wsURL}%';
-const token = '%{token}%';
-
-const room = new Room();
-await room.connect(wsURL, token);
-console.log('connected to room', room.name);
-
-// Publish local camera and mic tracks
-await room.localParticipant.enableCameraAndMicrophone();
-
-```
+Open your browser to the URL shown in the terminal (typically `http://localhost:5173`). You should see your agent frontend with controls to enable your microphone and speak with your agent.
 
 ## Next steps
 
-The following resources are useful for getting started with LiveKit in a JavaScript app.
+The following resources are useful for getting started with LiveKit on React.
 
 - **[Generating tokens](https://docs.livekit.io/home/server/generating-tokens.md)**: Guide to generating authentication tokens for your users.
 
@@ -8356,7 +8086,6 @@ Create a frontend app that fetches a token from the server we just made, then us
 - [React Native](https://docs.livekit.io/home/quickstarts/react-native.md)
 - [React](https://docs.livekit.io/home/quickstarts/react.md)
 - [Unity (web)](https://docs.livekit.io/home/quickstarts/unity-web.md)
-- [JavaScript](https://docs.livekit.io/home/quickstarts/javascript.md)
 
 ---
 
@@ -10389,23 +10118,23 @@ These 2 sample command lines use the `audiotestsrc` and `videotestsrc` sources t
 
 ## Introduction
 
-LiveKit Egress gives you a powerful and consistent set of APIs to export any room or individual tracks from a LiveKit session.
+LiveKit Egress gives you a powerful and consistent set of APIs to export any room or individual tracks from a LiveKit session. It supports recording to an MP4 file or HLS segments, as well as exporting to livestreaming services like YouTube Live, Twitch, and Facebook via RTMP.
 
-It supports recording to a MP4 file or HLS segments, as well as exporting to livestreaming services like YouTube Live, Twitch, and Facebook via RTMP(s).
-
-For LiveKit Cloud customers, Egress is ready to use with your project without additional configuration. When self-hosting LiveKit, Egress is a separate component that needs to be [deployed](https://docs.livekit.io/home/self-hosting/egress.md).
+For LiveKit Cloud customers, Egress is available for your project without any additional configuration. If you're self-hosting LiveKit, Egress must be [deployed](https://docs.livekit.io/home/self-hosting/egress.md) separately.
 
 ## Egress types
 
+The egress service supports multiple types of exports for different use cases.
+
 ### Room composite egress
 
-Export an entire room's video and/or audio using a web layout rendered by Chrome. Room composites are tied to a room's lifecycle, and will stop automatically when the room ends. Composition templates are customizable web pages that can be hosted anywhere.
+Export an entire room's video and/or audio using a web layout rendered by Chrome. Room composites are tied to a room's lifecycle, and stop automatically when the room ends. Composition templates are customizable web pages that can be hosted anywhere.
 
 Example use case: recording a meeting for team members to watch later.
 
 ### Web egress
 
-Similar to Room Composite, but allows you to record and export any web page. Web Egress are not tied to LiveKit rooms, and can be used to record non-LiveKit content.
+Record and export any web page. Web egress is similar to room composite egress, but _isn't_ tied to a LiveKit room and can record non-LiveKit content.
 
 Example use case: restreaming content from a third-party source to YouTube and Twitch.
 
@@ -10417,21 +10146,33 @@ Example use case: record the teacher's video in an online class.
 
 ### Track composite egress
 
-Sync and export up to one audio and one video track. Will transcode and mux.
+Sync and export one audio and one video track together. Transcoding and multiplexing happen automatically.
 
-Example use case: exporting audio+video from many cameras at once during a production, for use in additional post-production.
+Example use case: exporting audio and video from many cameras at once during a production, for use in additional post-production.
 
 ### Track egress
 
-Export individual tracks directly. Video tracks are not transcoded.
+Export individual tracks directly. Video tracks aren't transcoded.
 
 Example use case: streaming an audio track to a captioning service via websocket.
 
 ## Service architecture
 
-Depending on your request type, the egress service will either launch a web template in Chrome and connect to the room (room composite requests), or it will use the sdk directly (track and track composite requests). It uses GStreamer to encode, and can output to a file or to one or more streams.
+Depending on your request type, the egress service either launches a web template in Chrome and connects to the room (for example, for room composite requests), or it uses the SDK directly (for track and track composite requests). It uses GStreamer to encode, and can output to a file or to one or more streams.
 
 ![Egress instance](/images/diagrams/egress-instance.svg)
+
+## Additional resources
+
+The following topics provide more in-depth information about the various egress types.
+
+- **[Room composite and web egress](https://docs.livekit.io/home/egress/composite-recording.md)**: Composite recording using a web-based recorder. Export an entire room or any web page.
+
+- **[Participant and track composite egress](https://docs.livekit.io/home/egress/participant.md)**: Record a participant's audio and video tracks. Use TrackComposite egress for fine-grained control over tracks.
+
+- **[Track egress](https://docs.livekit.io/home/egress/track.md)**: Export a single track without transcoding.
+
+- **[Output and stream types](https://docs.livekit.io/home/egress/outputs.md)**: Sync and export one audio and one video track together. Transcoding and multiplexing happen automatically.
 
 ---
 
@@ -10475,6 +10216,8 @@ Composite recordings can output to a wide variety of formats and destinations. T
 
 If your application is audio-only, you can export a mixed audio file containing audio from all participants in the room. To start an audio-only composite, pass `audio_only=true` when starting an Egress.
 
+When `audio_only` is true, you can also specify the [audio mixing mode](https://docs.livekit.io/home/egress/api.md#audiomixing) to use. Use dual channel recording to separate the agent's audio from the other participants' audio, or alternate dual channel recording to alternate between left and right channels for each new audio track. By default, all users are mixed together.
+
 ## Web Egress
 
 Web egress allows you to record or stream any website. Similar to room composite egress, it uses headless Chromium to render output. Unlike room composite egress, you can supply any url, and the lifecycle of web egress is not attached to a LiveKit room.
@@ -10503,11 +10246,9 @@ You can also record a participant’s screen share along with the screen share's
 
 ## TrackComposite Egress
 
-TrackComposite combines an audio and video track for output, as the name suggests.
+TrackComposite combines an audio and video track together for output. It allows for more precise control than participant egress because it allows you to specify which tracks to record using track IDs.
 
-It’s a more advanced version of Participant Egress, allowing you to specify which tracks to record — useful when precise control over track IDs is needed.
-
-One key difference with TrackComposite is that tracks must be published before starting the Egress. As a result, there may be a slight delay between when the track is published and when recording begins.
+A key difference between TrackComposite and Participant Egress is that tracks must be published _before_ starting the Egress. As a result, there may be a slight delay between when the track is published and when recording begins.
 
 ## Examples
 
@@ -10638,11 +10379,13 @@ Egress started. Egress ID: EG_XXXXXXXXXXXX
 
 ## Supported Outputs
 
+The following table shows the supported output types for each egress type.
+
 | Egress Type | Transcoded | Pass-through (mp4, webm, ogg) | HLS Segments | RTMP stream | SRT stream | WebSocket stream |
-| Room Composite | ✅ |  | ✅ | ✅ | ✅ |  |
+| Room composite | ✅ |  | ✅ | ✅ | ✅ |  |
 | Web | ✅ |  | ✅ | ✅ | ✅ |  |
 | Participant | ✅ |  | ✅ | ✅ | ✅ |  |
-| Track Composite | ✅ |  | ✅ | ✅ | ✅ |  |
+| Track composite | ✅ |  | ✅ | ✅ | ✅ |  |
 | Track |  | ✅ |  |  |  | ✅ (audio-only) |
 
 > ℹ️ **Note**
@@ -10653,7 +10396,7 @@ Egress started. Egress ID: EG_XXXXXXXXXXXX
 
 Since Composite and Participant Egress are transcoded, they can be output to a wide range of formats and destinations.
 
-Egress is optimized to transcode once while sending output to multiple destinations. For example, from the same Egress you may simultaneously:
+Egress is optimized to transcode once while sending output to multiple destinations. For example, from the same Egress you can simultaneously:
 
 - Stream to one or more RTMP endpoints.
 - Record as HLS.
@@ -10968,11 +10711,11 @@ Mux is LiveKit's preferred partner for HLS streaming. To start a [Mux](https://w
 When outputing to files, the `filepath` and `filename_prefix` fields support templated variables. The below templates can be used in request filename/filepath parameters:
 
 | Egress Type | {room_id} | {room_name} | {time} | {publisher_identity} | {track_id} | {track_type} | {track_source} |
-| Room Composite | ✔️ | ✔️ | ✔️ |  |  |  |  |
-| Web |  |  | ✔️ |  |  |  |  |
-| Participant | ✔️ | ✔️ | ✔️ | ✔️ |  |  |  |
-| Track Composite | ✔️ | ✔️ | ✔️ | ✔️ |  |  |  |
-| Track | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ | ✔️ |
+| Room Composite | ✅ | ✅ | ✅ |  |  |  |  |
+| Web |  |  | ✅ |  |  |  |  |
+| Participant | ✅ | ✅ | ✅ | ✅ |  |  |  |
+| Track Composite | ✅ | ✅ | ✅ | ✅ |  |  |  |
+| Track | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 
 - If no filename is provided with a request, one will be generated in the form of `"{room_name}-{time}"`.
 - If your filename ends with a `/`, a file will be generated in that directory.
@@ -11312,69 +11055,70 @@ For example:
 Starts a new [Composite Recording](https://docs.livekit.io/home/egress/room-composite.md) using a web browser as the rendering engine.
 
 | Parameter | Type | Required | Description |
-| room_name | string | yes | name of room to record |
-| layout | string |  | layout parameter that is passed to the template |
-| audio_only | bool |  | true if resulting output should only contain audio |
-| video_only | bool |  | true if resulting output should only contain video |
-| custom_base_url | string |  | URL to the page that would composite tracks, uses embedded templates if left blank |
-| file_outputs | [EncodedFileOutput](#EncodedFileOutput)[] |  | output to MP4 file. currently only supports a single entry |
-| segment_outputs | [SegmentedFileOutput](#SegmentedFileOutput)[] |  | output to HLS segments. currently only supports a single entry |
-| stream_outputs | [StreamOutput](#StreamOutput)[] |  | output to a stream. currently only supports a single entry, though it could includ multiple destination URLs |
-| image_outputs | [ImageOutput](#ImageOutput)[] |  | output to a succession of snapshot images taken at a given interval (thumbnails). Currently only supports a single entry. |
-| preset | [EncodingOptionsPreset](#EncodingOptionsPreset) |  | encoding preset to use. only one of preset or advanced could be set |
-| advanced | [EncodingOptions](#EncodingOptions) |  | advanced encoding options. only one of preset or advanced could be set |
-| webhooks | [WebhookConfig](#WebhookConfig)[] |  | extra webhooks to send on egress events for this request |
+| `room_name` | string | yes | name of room to record |
+| `layout` | string |  | layout parameter that is passed to the template |
+| `audio_only` | bool |  | true if resulting output should only contain audio |
+| `audio_mixing` | [AudioMixing](#audiomixing) |  | Audio mixing mode to use when `audio_only` is true. Defaults to DEFAULT_MIXING: All users are mixed together. |
+| `video_only` | bool |  | true if resulting output should only contain video |
+| `custom_base_url` | string |  | URL to the page that would composite tracks, uses embedded templates if left blank |
+| `file_outputs` | [EncodedFileOutput](#EncodedFileOutput)[] |  | output to MP4 file. currently only supports a single entry |
+| `segment_outputs` | [SegmentedFileOutput](#SegmentedFileOutput)[] |  | output to HLS segments. currently only supports a single entry |
+| `stream_outputs` | [StreamOutput](#StreamOutput)[] |  | output to a stream. currently only supports a single entry, though it could includ multiple destination URLs |
+| `image_outputs` | [ImageOutput](#ImageOutput)[] |  | output to a succession of snapshot images taken at a given interval (thumbnails). Currently only supports a single entry. |
+| `preset` | [EncodingOptionsPreset](#EncodingOptionsPreset) |  | encoding preset to use. only one of preset or advanced could be set |
+| `advanced` | [EncodingOptions](#EncodingOptions) |  | advanced encoding options. only one of preset or advanced could be set |
+| `webhooks` | [WebhookConfig](#WebhookConfig)[] |  | extra webhooks to send on egress events for this request |
 
 ### StartTrackCompositeEgress
 
 Starts a new [Track Composite](https://docs.livekit.io/home/egress/track-composite.md)
 
 | Parameter | Type | Required | Description |
-| room_name | string | yes | name of room to record |
-| audio_track_id | string |  | ID of audio track to composite |
-| video_track_id | string |  | ID of video track to composite |
-| file_outputs | [EncodedFileOutput](#EncodedFileOutput)[] |  | output to MP4 file. currently only supports a single entry |
-| segment_outputs | [SegmentedFileOutput](#SegmentedFileOutput)[] |  | output to HLS segments. currently only supports a single entry |
-| stream_outputs | [StreamOutput](#StreamOutput)[] |  | output to a stream. currently only supports a single entry, though it could includ multiple destination URLs |
-| image_outputs | [ImageOutput](#ImageOutput)[] |  | output to a succession of snapshot images taken at a given interval (thumbnails). Currently only supports a single entry. |
-| preset | [EncodingOptionsPreset](#EncodingOptionsPreset) |  | encoding preset to use. only one of preset or advanced could be set |
-| advanced | [EncodingOptions](#EncodingOptions) |  | advanced encoding options. only one of preset or advanced could be set |
-| webhooks | [WebhookConfig](#WebhookConfig)[] |  | extra webhooks to send on egress events for this request |
+| `room_name` | string | yes | name of room to record |
+| `audio_track_id` | string |  | ID of audio track to composite |
+| `video_track_id` | string |  | ID of video track to composite |
+| `file_outputs` | [EncodedFileOutput](#EncodedFileOutput)[] |  | output to MP4 file. currently only supports a single entry |
+| `segment_outputs` | [SegmentedFileOutput](#SegmentedFileOutput)[] |  | output to HLS segments. currently only supports a single entry |
+| `stream_outputs` | [StreamOutput](#StreamOutput)[] |  | output to a stream. currently only supports a single entry, though it could includ multiple destination URLs |
+| `image_outputs` | [ImageOutput](#ImageOutput)[] |  | output to a succession of snapshot images taken at a given interval (thumbnails). Currently only supports a single entry. |
+| `preset` | [EncodingOptionsPreset](#EncodingOptionsPreset) |  | encoding preset to use. only one of preset or advanced could be set |
+| `advanced` | [EncodingOptions](#EncodingOptions) |  | advanced encoding options. only one of preset or advanced could be set |
+| `webhooks` | [WebhookConfig](#WebhookConfig)[] |  | extra webhooks to send on egress events for this request |
 
 ### StartTrackEgress
 
 Starts a new [Track Egress](https://docs.livekit.io/home/egress/track.md)
 
 | Parameter | Type | Required | Description |
-| room_name | string | yes | name of room to record |
-| track_id | string |  | layout parameter that is passed to the template |
-| file | [DirectFileOutput](#DirectFileOutput) |  | only one of file or websocket_url can be set |
-| websocket_url | string |  | url to websocket to receive audio output. only one of file or websocket_url can be set |
-| webhooks | [WebhookConfig](#WebhookConfig)[] |  | extra webhooks to send on egress events for this request |
+| `room_name` | string | yes | name of room to record |
+| `track_id` | string |  | ID of track to record |
+| `file` | [DirectFileOutput](#DirectFileOutput) |  | only one of file or websocket_url can be set |
+| `websocket_url` | string |  | url to websocket to receive audio output. only one of file or websocket_url can be set |
+| `webhooks` | [WebhookConfig](#WebhookConfig)[] |  | extra webhooks to send on egress events for this request |
 
 ### StartWebEgress
 
 Starts a new [Web Egress](https://docs.livekit.io/home/egress/web.md)
 
 | Parameter | Type | Required | Description |
-| url | string | yes | URL of the web page to record |
-| audio_only | bool |  | true if resulting output should only contain audio |
-| video_only | bool |  | true if resulting output should only contain video |
-| file_outputs | [EncodedFileOutput](#EncodedFileOutput)[] |  | output to MP4 file. currently only supports a single entry |
-| segment_outputs | [SegmentedFileOutput](#SegmentedFileOutput)[] |  | output to HLS segments. currently only supports a single entry |
-| stream_outputs | [StreamOutput](#StreamOutput)[] |  | output to a stream. currently only supports a single entry, though it could includ multiple destination URLs |
-| image_outputs | [ImageOutput](#ImageOutput)[] |  | output to a succession of snapshot images taken at a given interval (thumbnails). Currently only supports a single entry. |
-| preset | [EncodingOptionsPreset](#EncodingOptionsPreset) |  | encoding preset to use. only one of preset or advanced could be set |
-| advanced | [EncodingOptions](#EncodingOptions) |  | advanced encoding options. only one of preset or advanced could be set |
-| webhooks | [WebhookConfig](#WebhookConfig)[] |  | extra webhooks to send on egress events for this request |
+| `url` | string | yes | URL of the web page to record |
+| `audio_only` | bool |  | true if resulting output should only contain audio |
+| `video_only` | bool |  | true if resulting output should only contain video |
+| `file_outputs` | [EncodedFileOutput](#EncodedFileOutput)[] |  | output to MP4 file. currently only supports a single entry |
+| `segment_outputs` | [SegmentedFileOutput](#SegmentedFileOutput)[] |  | output to HLS segments. currently only supports a single entry |
+| `stream_outputs` | [StreamOutput](#StreamOutput)[] |  | output to a stream. currently only supports a single entry, though it could includ multiple destination URLs |
+| `image_outputs` | [ImageOutput](#ImageOutput)[] |  | output to a succession of snapshot images taken at a given interval (thumbnails). Currently only supports a single entry. |
+| `preset` | [EncodingOptionsPreset](#EncodingOptionsPreset) |  | encoding preset to use. only one of preset or advanced could be set |
+| `advanced` | [EncodingOptions](#EncodingOptions) |  | advanced encoding options. only one of preset or advanced could be set |
+| `webhooks` | [WebhookConfig](#WebhookConfig)[] |  | extra webhooks to send on egress events for this request |
 
 ### UpdateLayout
 
 Used to change the web layout on an active RoomCompositeEgress.
 
 | Parameter | Type | Required | Description |
-| egress_id | string | yes | Egress ID to update |
-| layout | string | yes | layout to update to |
+| `egress_id` | string | yes | Egress ID to update |
+| `layout` | string | yes | layout to update to |
 
 **JavaScript**:
 
@@ -11433,9 +11177,9 @@ Used to add or remove stream urls from an active stream
 Note: you can only add outputs to an Egress that was started with `stream_outputs` set.
 
 | Parameter | Type | Required | Description |
-| egress_id | string | yes | Egress ID to update |
-| add_output_urls | string[] |  | URLs to add to the egress as output destinations |
-| remove_output_urls | string[] |  | URLs to remove from the egress |
+| `egress_id` | string | yes | Egress ID to update |
+| `add_output_urls` | string[] |  | URLs to add to the egress as output destinations |
+| `remove_output_urls` | string[] |  | URLs to remove from the egress |
 
 **JavaScript**:
 
@@ -11631,122 +11375,131 @@ lk egress stop --id <EGRESS_ID>
 
 ## Types
 
+### AudioMixing
+
+Enum, valid values are as follows:
+
+| Name | Value | Description |
+| `DEFAULT_MIXING` | 0 | all users are mixed together |
+| `DUAL_CHANNEL_AGENT` | 1 | agent audio in the left channel, all other audio in the right channel |
+| `DUAL_CHANNEL_ALTERNATE` | 2 | each new audio track alternates between left and right channels |
+
 ### EncodedFileOutput
 
 | Field | Type | Description |
-| filepath | string | default {room_name}-{time} |
-| disable_manifest | bool | by default, Egress outputs a {filepath}.json with metadata of the file |
-| s3 | [S3Upload](#S3Upload) | set if uploading to S3 compatible storage. only one storage output can be set |
-| gcp | [GCPUpload](#GCPUpload) | set if uploading to GCP |
-| azure | [AzureBlobUpload](#AzureBlobUpload) | set if uploading to Azure |
-| aliOSS | [AliOSSUpload](#AliOSSUpload) | set if uploading to AliOSS |
+| `filepath` | string | default {room_name}-{time} |
+| `disable_manifest` | bool | by default, Egress outputs a {filepath}.json with metadata of the file |
+| `s3` | [S3Upload](#S3Upload) | set if uploading to S3 compatible storage. only one storage output can be set |
+| `gcp` | [GCPUpload](#GCPUpload) | set if uploading to GCP |
+| `azure` | [AzureBlobUpload](#AzureBlobUpload) | set if uploading to Azure |
+| `aliOSS` | [AliOSSUpload](#AliOSSUpload) | set if uploading to AliOSS |
 
 ### DirectFileOutput
 
 | Field | Type | Description |
-| filepath | string | default {track_id}-{time} |
-| disable_manifest | bool | by default, Egress outputs a {filepath}.json with metadata of the file |
-| s3 | [S3Upload](#S3Upload) | set if uploading to S3 compatible storage. only one storage output can be set |
-| gcp | [GCPUpload](#GCPUpload) | set if uploading to GCP |
-| azure | [AzureBlobUpload](#AzureBlobUpload) | set if uploading to Azure |
-| aliOSS | [AliOSSUpload](#AliOSSUpload) | set if uploading to AliOSS |
+| `filepath` | string | default {track_id}-{time} |
+| `disable_manifest` | bool | by default, Egress outputs a {filepath}.json with metadata of the file |
+| `s3` | [S3Upload](#S3Upload) | set if uploading to S3 compatible storage. only one storage output can be set |
+| `gcp` | [GCPUpload](#GCPUpload) | set if uploading to GCP |
+| `azure` | [AzureBlobUpload](#AzureBlobUpload) | set if uploading to Azure |
+| `aliOSS` | [AliOSSUpload](#AliOSSUpload) | set if uploading to AliOSS |
 
 ### SegmentedFileOutput
 
 | Field | Type | Description |
-| filename_prefix | string | prefix used in each segment (include any paths here) |
-| playlist_name | string | name of the m3u8 playlist. when empty, matches filename_prefix |
-| segment_duration | uint32 | length of each segment (defaults to 4s) |
-| filename_suffix | SegmentedFileSuffix | INDEX (1, 2, 3) or TIMESTAMP (in UTC) |
-| disable_manifest | bool |  |
-| s3 | [S3Upload](#S3Upload) | set if uploading to S3 compatible storage. only one storage output can be set |
-| gcp | [GCPUpload](#GCPUpload) | set if uploading to GCP |
-| azure | [AzureBlobUpload](#AzureBlobUpload) | set if uploading to Azure |
-| aliOSS | [AliOSSUpload](#AliOSSUpload) | set if uploading to AliOSS |
+| `filename_prefix` | string | prefix used in each segment (include any paths here) |
+| `playlist_name` | string | name of the m3u8 playlist. when empty, matches filename_prefix |
+| `segment_duration` | uint32 | length of each segment (defaults to 4s) |
+| `filename_suffix` | SegmentedFileSuffix | INDEX (1, 2, 3) or TIMESTAMP (in UTC) |
+| `disable_manifest` | bool |  |
+| `s3` | [S3Upload](#S3Upload) | set if uploading to S3 compatible storage. only one storage output can be set |
+| `gcp` | [GCPUpload](#GCPUpload) | set if uploading to GCP |
+| `azure` | [AzureBlobUpload](#AzureBlobUpload) | set if uploading to Azure |
+| `aliOSS` | [AliOSSUpload](#AliOSSUpload) | set if uploading to AliOSS |
 
 ### StreamOutput
 
 | Field | Type | Description |
-| protocol | SreamProtocol | (optional) only RTMP is supported |
-| urls | string[] | list of URLs to send stream to |
+| `protocol` | SreamProtocol | (optional) only RTMP is supported |
+| `urls` | string[] | list of URLs to send stream to |
 
 ### ImageOutput
 
 | Field | Type | Description |
-| capture_interval | uint32 | time in seconds between each snapshot |
-| width | int32 | width of the snapshot images (optional, the original width will be used if not provided) |
-| height | int32 | height of the snapshot images (optional, the original width will be used if not provided) |
-| filename_prefix | string | prefix used in each image filename (include any paths here) |
-| filename_suffix | ImageFileSuffix | INDEX (1, 2, 3) or TIMESTAMP (in UTC) |
-| image_codec | ImageCodec | IC_DEFAULT or IC_JPEG (optional, both options will cause JPEGs to be generated currently) |
-| disable_manifest | bool | by default, Egress outputs a {filepath}.json with a list of exported snapshots |
-| s3 | [S3Upload](#S3Upload) | set if uploading to S3 compatible storage. only one storage output can be set |
-| gcp | [GCPUpload](#GCPUpload) | set if uploading to GCP |
-| azure | [AzureBlobUpload](#AzureBlobUpload) | set if uploading to Azure |
-| aliOSS | [AliOSSUpload](#AliOSSUpload) | set if uploading to AliOSS |
+| `capture_interval` | uint32 | time in seconds between each snapshot |
+| `width` | int32 | width of the snapshot images (optional, the original width will be used if not provided) |
+| `height` | int32 | height of the snapshot images (optional, the original width will be used if not provided) |
+| `filename_prefix` | string | prefix used in each image filename (include any paths here) |
+| `filename_suffix` | ImageFileSuffix | INDEX (1, 2, 3) or TIMESTAMP (in UTC) |
+| `image_codec` | ImageCodec | IC_DEFAULT or IC_JPEG (optional, both options will cause JPEGs to be generated currently) |
+| `disable_manifest` | bool | by default, Egress outputs a {filepath}.json with a list of exported snapshots |
+| `s3` | [S3Upload](#S3Upload) | set if uploading to S3 compatible storage. only one storage output can be set |
+| `gcp` | [GCPUpload](#GCPUpload) | set if uploading to GCP |
+| `azure` | [AzureBlobUpload](#AzureBlobUpload) | set if uploading to Azure |
+| `aliOSS` | [AliOSSUpload](#AliOSSUpload) | set if uploading to AliOSS |
 
 ### S3Upload
 
 | Field | Type | Description |
-| access_key | string |  |
-| secret | string | S3 secret key |
-| bucket | string | destination bucket |
-| region | string | region of the S3 bucket (optional) |
-| endpoint | string | URL to use for S3 (optional) |
-| force_path_style | bool | leave bucket in the path and never to sub-domain (optional) |
-| metadata | map<string, string> | metadata key/value pairs to store (optional) |
-| tagging | string | (optional) |
-| proxy | [ProxyConfig](#ProxyConfig) | Proxy server to use when uploading(optional) |
+| `access_key` | string |  |
+| `secret` | string | S3 secret key |
+| `bucket` | string | destination bucket |
+| `region` | string | region of the S3 bucket (optional) |
+| `endpoint` | string | URL to use for S3 (optional) |
+| `force_path_style` | bool | leave bucket in the path and never to sub-domain (optional) |
+| `metadata` | map<string, string> | metadata key/value pairs to store (optional) |
+| `tagging` | string | (optional) |
+| `proxy` | [ProxyConfig](#ProxyConfig) | Proxy server to use when uploading(optional) |
 
 ### GCPUpload
 
 | Field | Type | Description |
-| credentials | string | Contents of credentials.json |
-| bucket | string | destination bucket |
-| proxy | [ProxyConfig](#ProxyConfig) | Proxy server to use when uploading(optional) |
+| `credentials` | string | Contents of credentials.json |
+| `bucket` | string | destination bucket |
+| `proxy` | [ProxyConfig](#ProxyConfig) | Proxy server to use when uploading(optional) |
 
 ### AzureBlobUpload
 
 | Field | Type | Description |
-| account_name | string |  |
-| account_key | string |  |
-| container_name | string | destination container |
+| `account_name` | string |  |
+| `account_key` | string |  |
+| `container_name` | string | destination container |
 
 ### AliOSSUpload
 
 | Field | Type | Description |
-| access_key | string |  |
-| secret | string |  |
-| bucket | string |  |
-| region | string |  |
-| endpoint | string |  |
+| `access_key` | string |  |
+| `secret` | string |  |
+| `bucket` | string |  |
+| `region` | string |  |
+| `endpoint` | string |  |
 
 ### EncodingOptions
 
 | Field | Type | Description |
-| width | int32 |  |
-| height | int32 |  |
-| depth | int32 | default 24 |
-| framerate | int32 | default 30 |
-| audio_codec | AudioCodec | default AAC |
-| audio_bitrate | int32 | 128 |
-| audio_frequency | int32 | 44100 |
-| video_codec | VideoCodec | default H264_MAIN |
-| video_bitrate | int32 | default 4500 |
-| key_frame_interval | int32 | default 4s |
+| `width` | int32 |  |
+| `height` | int32 |  |
+| `depth` | int32 | default 24 |
+| `framerate` | int32 | default 30 |
+| `audio_codec` | AudioCodec | default AAC |
+| `audio_bitrate` | int32 | 128 |
+| `audio_frequency` | int32 | 44100 |
+| `video_codec` | VideoCodec | default H264_MAIN |
+| `video_bitrate` | int32 | default 4500 |
+| `key_frame_interval` | int32 | default 4s |
 
 ### EncodingOptionsPreset
 
 Enum, valid values:
 
-- H264_720P_30: 0
-- H264_720P_60: 1
-- H264_1080P_30: 2
-- H264_1080P_60: 3
-- PORTRAIT_H264_720P_30: 4
-- PORTRAIT_H264_720P_60: 5
-- PORTRAIT_H264_1080P_30: 6
-- PORTRAIT_H264_1080P_60: 7
+| `H264_720P_30` | 0 |
+| `H264_720P_60` | 1 |
+| `H264_1080P_30` | 2 |
+| `H264_1080P_60` | 3 |
+| `PORTRAIT_H264_720P_30` | 4 |
+| `PORTRAIT_H264_720P_60` | 5 |
+| `PORTRAIT_H264_1080P_30` | 6 |
+| `PORTRAIT_H264_1080P_60` | 7 |
 
 ### ProxyConfig
 
@@ -11755,17 +11508,17 @@ For S3 and GCP, you can specify a proxy server for Egress to use when uploading 
 This can be helpful to avoid network restrictions on the destination buckets.
 
 | Field | Type | Description |
-| url | string | URL of the proxy |
-| username | string | username for basic auth (optional) |
-| password | string | password for basic auth (optional) |
+| `url` | string | URL of the proxy |
+| `username` | string | username for basic auth (optional) |
+| `password` | string | password for basic auth (optional) |
 
 ### WebhookConfig
 
 Extra webhooks can be configured for a specific Egress request. These webhooks are called for Egress lifecycle events in addition to the project wide webhooks. To learn more, see [Webhooks](https://docs.livekit.io/home/server/webhooks.md).
 
 | Field | Type | Description |
-| url | string | URL of the webhook |
-| signing_key | string | API key to use to sign the request, must be defined for the project |
+| `url` | string | URL of the webhook |
+| `signing_key` | string | API key to use to sign the request, must be defined for the project |
 
 ---
 
@@ -13599,12 +13352,15 @@ Include the filter in the room input options when starting your agent session:
 
 ```python
 from livekit.plugins import noise_cancellation
+from livekit.agents.voice import room_io
 
 # ...
 await session.start(
     # ...,
-    room_input_options=room_io.RoomInputOptions(
-        noise_cancellation=noise_cancellation.BVC(),
+    room_options=room_io.RoomOptions(
+        audio_input=room_io.AudioInputOptions(
+            noise_cancellation=noise_cancellation.BVC(),
+        ),
     ),
 )
 # ...
@@ -16187,6 +15943,8 @@ The agent builder produces best-practice Python code using the LiveKit Agents SD
 
 Access the agent builder by selecting **Deploy new agent** in your project's [Agents dashboard](https://cloud.livekit.io/projects/p_/agents).
 
+[Video: LiveKit Agents Builder](https://www.youtube.com/watch?v=FerHhAVELto)
+
 ## Agent features
 
 The following provides a short overview of the features available to agents built in the agent builder.
@@ -16287,6 +16045,8 @@ The agent builder is subject to the same [quotas and limits](https://docs.liveki
 You can integrate LiveKit Agents with telephony systems using Session Initiation Protocol (SIP). You can choose to support inbound calls, outbound calls, or both. LiveKit also provides features including DTMF, SIP REFER, and more. For a full list of supported features, see the [SIP features](https://docs.livekit.io/sip.md#features).
 
 Telephony integration requires no significant changes to your existing agent code, as phone calls are simply bridged into LiveKit rooms using a special participant type.
+
+[Video: LiveKit Phone Numbers](https://www.youtube.com/watch?v=KJ1CgZ0iZbY)
 
 ## Getting started
 
@@ -17261,9 +17021,10 @@ The following example shows how to begin a simple single-agent session:
 **Python**:
 
 ```python
-from livekit.agents import AgentSession, Agent, RoomInputOptions, inference
+from livekit.agents import AgentSession, Agent, inference
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from livekit.agents.voice import room_io
 
 session = AgentSession(
     stt="assemblyai/universal-streaming:en",
@@ -17276,8 +17037,10 @@ session = AgentSession(
 await session.start(
     room=ctx.room,
     agent=Agent(instructions="You are a helpful voice AI assistant."),
-    room_input_options=RoomInputOptions(
-        noise_cancellation=noise_cancellation.BVC(),
+    room_options=room_io.RoomOptions(
+        audio_input=room_io.AudioInputOptions(
+            noise_cancellation=noise_cancellation.BVC(),
+        ),
     ),
 )
 
@@ -17419,74 +17182,120 @@ The following optional parameters are available when you define your entrypoint 
 
 Communication between agent and user participants happens using media streams, also known as tracks. For voice AI apps, this is primarily audio, but can include vision. By default, track management is handled by `RoomIO`, a utility class that serves as a bridge between the agent session and the LiveKit room. When an AgentSession is initiated, it automatically creates a `RoomIO` object that enables all room participants to subscribe to available audio tracks.
 
-When starting an `AgentSession`, you can configure how the session interacts with the LiveKit room by passing `room_input_options` and `room_output_options` to the `start()` method. These options control media track management, participant linking, and I/O behavior.
+When starting an `AgentSession`, you can configure how the session interacts with the LiveKit room by passing `room_options` to the `start()` method. These options control media track management, participant linking, and I/O behavior.
 
-### Room input options
+### Room options
 
-Configure how the agent receives input from room participants:
+Configure how the agent interacts with room participants using `RoomOptions`. The following sections describe available options for input and output configuration.
 
-#### Media configuration
+#### Text input options
 
-- `audio_enabled`: Whether to receive audio from the room. Default: `True`.
-- [`video_enabled`](https://docs.livekit.io/agents/build/vision.md#video): Whether to receive video from the room. Default: `False`.
-- [`text_enabled`](https://docs.livekit.io/agents/build/text.md#text-input): Whether to receive text input from the room. Default: `True`.
-- `audio_sample_rate`: Audio sample rate in Hz. Default: `24000`.
-- `audio_num_channels`: Number of audio channels. Default: `1`.
-- `noise_cancellation`: [Noise cancellation](https://docs.livekit.io/home/cloud/noise-cancellation.md) options to apply to incoming audio.
+Use the `text_input` option to configure text input from participants.
 
-#### Connection behavior
+- **`text_input`** _(TextInputOptions | bool)_ - Default: `True`: Configure options for text input. If `True`, text input is enabled. Use `TextInputOptions` to configure additional options.
 
-- `close_on_disconnect`: Whether to close the `AgentSession` if the linked participant disconnects. Default: `True`.
-- `delete_room_on_close`: Whether to delete the room when the `AgentSession` closes. Default: `True`.
+##### `TextInputOptions` parameters
 
-#### Callbacks
+`text_input_cb`: Callback function to handle text input from participants. Default behavior interrupts the agent and generates a reply. To learn more, see [Custom handling](https://docs.livekit.io/agents/build/text.md#custom-handling) of text input.
 
-`text_input_cb`: Callback function to handle text input from participants. To learn more, see [Custom handling](https://docs.livekit.io/agents/build/text.md#custom-handling) of text input.
+#### Audio input options
 
-### Room output options
+- **`audio_input`** _(AudioInputOptions | bool)_ - Default: `True`: Configure audio input options. If `True`, audio input is enabled. Use `AudioInputOptions` to configure additional options.
 
-Configure how the agent publishes output to the room:
+##### `AudioInputOptions` parameters
 
-#### Media configuration
+- `sample_rate`: Audio sample rate in Hz. Default: 24000.
+- `num_channels`: Number of audio channels. Default: 1.
+- `frame_size_ms`: Frame size in milliseconds for audio input. Default: 50.
+- `noise_cancellation`: [Noise cancellation](https://docs.livekit.io/home/cloud/noise-cancellation.md) options to apply to incoming audio. Can be a `NoiseCancellationOptions` instance or a selector function. Default: None.
+- `pre_connect_audio`: Whether pre-connect audio is enabled. Default: True.
+- `pre_connect_audio_timeout`: Time in seconds before pre-connect audio is ignored if not received. Default: 3.0.
 
-- `audio_enabled`: Whether to publish audio to the room. Default: `True`.
-- `transcription_enabled`: Whether to publish transcription to the room. Default: `True`.
-- `audio_sample_rate`: Audio sample rate in Hz. Default: `24000`.
-- `audio_num_channels`: Number of audio channels. Default: `1`.
+#### Video input options
 
-#### Audio publishing
+- **`video_input`** _(VideoInputOptions | bool)_ - Default: `False`: Video input options. If `True`, video input is enabled.
 
-- `audio_track_name`: The name of the audio track to publish. Default: `"roomio_audio"`.
-- `audio_publish_options`: Track publish options for the audio track (source, encryption, etc.).
+#### Audio output options
 
-#### Transcription synchronization
+- **`audio_output`** _(AudioOutputOptions | bool)_ - Default: `True`: Audio output options. If `True`, audio output is enabled. Use `AudioOutputOptions` to configure additional options.
 
-- `sync_transcription`: Whether to synchronize transcription with audio output. When `True`, transcription is emitted in sync with the audio. When `False`, transcription is emitted as quickly as available. Default: `True`.
+##### `AudioOutputOptions` parameters
+
+- `sample_rate`: Audio sample rate in Hz. Default: 24000.
+- `num_channels`: Number of audio channels. Default: 1.
+- `track_publish_options`: Track publish options (`rct.TrackPublishOptions`)for the audio track (source, encryption, etc.). By default, sets the `source` to `TrackSource.SOURCE_MICROPHONE`.
+- `track_name`: The name of the audio track to publish. Default: "roomio_audio".
+
+#### Text output options
+
+- **`text_output`** _(TextOutputOptions | bool)_ - Default: `True`: Configure transcription output options. If `True`, text output is enabled. Use `TextOutputOptions` to configure additional options.
+
+##### `TextOutputOptions` parameters
+
+- `sync_transcription`: Whether to synchronize transcription with audio output. When `True`, transcription is emitted in sync with the audio. When `False`, transcription is emitted as quickly as available.
 - `transcription_speed_factor`: Speed factor for transcription synchronization (only effective if `sync_transcription` is `True`). Default: `1.0`.
+
+#### Participant management
+
+- `participant_kinds`: List of [participant types](https://docs.livekit.io/home/get-started/api-primitives.md#types-of-participants) accepted for auto subscription. By default, accepts `SIP` and `STANDARD` participants.
+- `participant_identity`: The participant identity to link to. By default, links to the first participant. You can override this in the `RoomIO` constructor or by using `RoomIO.set_participant()`.
 
 ### Example usage
 
+**Python**:
+
 ```python
-from livekit.agents import voice, RoomInputOptions, RoomOutputOptions
+from livekit.agents import voice
+from livekit.agents.voice import room_io
 from livekit.plugins import noise_cancellation
 
-input_options = RoomInputOptions(
-    video_enabled=True,
-    noise_cancellation=noise_cancellation.BVC(),
-    participant_identity="user_123",
-)
 
-output_options = RoomOutputOptions(
-    sync_transcription=False,
-    audio_track_name="agent_voice",
+room_options=room_io.RoomOptions(
+    video_input=True,
+    audio_input=room_io.AudioInputOptions(
+        noise_cancellation=noise_cancellation.BVC(),
+    ),
+    text_output=room_io.TextOutputOptions(
+        sync_transcription=False,
+    ),
+    participant_identity="user_123",
 )
 
 await session.start(
     agent=my_agent,
     room=room,
-    room_input_options=input_options,
-    room_output_options=output_options,
+    room_options=room_options,
 )
+
+```
+
+---
+
+**Node.js**:
+
+In the Node.js Agents framework, room configuration uses separate `inputOptions` and `outputOptions` parameters instead of a unified `RoomOptions` object. For the complete interface definitions and default values, refer to the [RoomIO source code](https://github.com/livekit/agents-js/blob/main/agents/src/voice/room_io/room_io.ts).
+
+When calling `session.start()`, pass `inputOptions` and `outputOptions` as separate parameters:
+
+```typescript
+import { BackgroundVoiceCancellation } from '@livekit/noise-cancellation-node';
+
+// ... session and agentsetup
+
+await session.start({
+  room: ctx.room,
+  agent: myAgent,
+  inputOptions: {
+    textEnabled: true,
+    audioEnabled: true,
+    videoEnabled: true,
+    noiseCancellation: BackgroundVoiceCancellation(),
+    participantIdentity: "user_123",
+  },
+  outputOptions: {
+    syncTranscription: false,
+  },
+});
 
 ```
 
@@ -18605,10 +18414,6 @@ try {
 
 ## Preemptive speech generation
 
-Available in:
-- [ ] Node.js
-- [x] Python
-
 **Preemptive generation** allows the agent to begin generating a response before the user's end of turn is committed. The response is based on partial transcription or early signals from user input, helping reduce perceived response delay and improving conversational flow.
 
 When enabled, the agent starts generating a response as soon as the final transcript is available. If the chat context or tools change in the `on_user_turn_completed` [node](https://docs.livekit.io/agents/build/nodes.md#on_user_turn_completed), the preemptive response is canceled and replaced with a new one based on the final transcript.
@@ -18620,11 +18425,27 @@ This feature reduces latency when the following are true:
 
 You can enable this feature for STT-LLM-TTS pipeline agents using the `preemptive_generation` parameter for AgentSession:
 
+**Python**:
+
 ```python
 session = AgentSession(
    preemptive_generation=True,
    ... # STT, LLM, TTS, etc.
 )
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+const session = new voice.AgentSession({
+    // ... llm, stt, etc.
+    voiceOptions: {
+      preemptiveGeneration: true,
+    },  
+});
 
 ```
 
@@ -19241,15 +19062,13 @@ import { ReadableStream } from 'stream/web';
 
 ## Adding background audio
 
-Available in:
-- [ ] Node.js
-- [x] Python
-
 To add more realism to your agent, or add additional sound effects, publish background audio. This audio is played on a separate audio track. The `BackgroundAudioPlayer` class supports on-demand playback of custom audio as well as automatic ambient and thinking sounds synchronized to the agent lifecycle.
 
-For a complete example in Python, see the following recipe:
+For a complete example, see the following recipes:
 
-- **[Background Audio](https://github.com/livekit/agents/blob/main/examples/voice_agents/background_audio.py)**: A voice AI agent with background audio for thinking states and ambiance.
+- **[Background audio](https://github.com/livekit/agents/blob/main/examples/voice_agents/background_audio.py)**: A voice AI agent with background audio for thinking states and ambiance.
+
+- **[Background audio example in Node.js](https://github.com/livekit/agents-js/blob/main/examples/src/background_audio.ts)**: A voice AI agent with background audio for ambiance.
 
 ### Create the player
 
@@ -19257,9 +19076,11 @@ The `BackgroundAudioPlayer` class manages audio playback to a room. It can also 
 
 - **`ambient_sound`** _(AudioSource | AudioConfig | list[AudioConfig])_ (optional): Ambient sound plays on a loop in the background during the agent session. See [Supported audio sources](#audio-sources) and [Multiple audio clips](#multiple-audio-clips) for more details.
 
-- **`thinking_sound`** _(AudioSource | AudioConfig | list[AudioConfig])_ (optional): Thinking sound plays while the agent is in the "thinking" state. See [Supported audio sources](#audio-sources) and [Multiple audio clips](#multiple-audio-clips) for more details.
+- **`thinking_sound`** _(AudioSource | AudioConfig | list[AudioConfig])_ (optional): Thinking sound plays while the agent is in the "thinking" state. See [Supported audio sources](#audio-sources) and [Multiple audio clips](#multiple-audio-clips) for more details. This parameter is currently [only supported](#background-audio-limitations) in Python.
 
 Create the player within your entrypoint function:
+
+**Python**:
 
 ```python
 from livekit.agents import BackgroundAudioPlayer, AudioConfig, BuiltinAudioClip
@@ -19283,6 +19104,31 @@ background_audio = BackgroundAudioPlayer()
 
 ```
 
+---
+
+**Node.js**:
+
+```typescript
+import { voice } from '@livekit/agents';
+
+const backgroundAudio = new voice.BackgroundAudioPlayer({
+    ambientSound: { 
+            source: voice.BuiltinAudioClip.OFFICE_AMBIENCE,
+            volume: 0.8,
+    },
+    // Thinking sounds are not yet supported in Node.js
+});
+
+# An audio player with a custom ambient sound played on a loop
+backgroundAudio = new voice.BackgroundAudioPlayer({
+    ambientSound: "/path/to/my-custom-sound.mp3",
+})
+
+# An audio player for on-demand playback only
+backgroundAudio = new voice.BackgroundAudioPlayer()
+
+```
+
 ### Start and stop the player
 
 Call the `start` method after room connection and after starting the agent session. Ambient sounds, if any, begin playback immediately.
@@ -19290,15 +19136,37 @@ Call the `start` method after room connection and after starting the agent sessi
 - `room`: The room to publish the audio to.
 - `agent_session`: The agent session to publish the audio to.
 
+**Python**:
+
 ```python
 await background_audio.start(room=ctx.room, agent_session=session)
 
 ```
 
-To stop and dispose the player, call the `aclose` method. You must create a new player instance if you want to start again.
+---
+
+**Node.js**:
+
+```typescript
+await backgroundAudio.start({ room: ctx.room, agentSession: session });
+
+```
+
+To stop and clean up the player, call the `aclose` (or `close` in Node.js) method. You must create a new player instance if you want to start again.
+
+**Python**:
 
 ```python
 await background_audio.aclose()
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+await backgroundAudio.close();
 
 ```
 
@@ -19312,8 +19180,19 @@ You can play audio at any time, after starting the player, with the `play` metho
 
 For example, if you created `background_audio` in the [previous example](#publishing-background-audio), you can play an audio file like this:
 
+**Python**:
+
 ```python
 background_audio.play("/path/to/my-custom-sound.mp3")
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+backgroundAudio.play("/path/to/my-custom-sound.mp3");
 
 ```
 
@@ -19321,18 +19200,42 @@ The `play` method returns a `PlayHandle` which you can use to await or cancel th
 
 The following example uses the handle to await playback completion:
 
+**Python**:
+
 ```python
 # Wait for playback to complete
 await background_audio.play("/path/to/my-custom-sound.mp3")
 
 ```
 
+---
+
+**Node.js**:
+
+```typescript
+const handle = await backgroundAudio.play("/path/to/my-custom-sound.mp3");
+
+```
+
 The next example shows the handle's `stop` method, which stops playback early:
+
+**Python**:
 
 ```python
 handle = background_audio.play("/path/to/my-custom-sound.mp3")
 await(asyncio.sleep(1))
 handle.stop() # Stop playback early
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+const handle = backgroundAudio.play("/path/to/my-custom-sound.mp3");
+await new Promise(resolve => setTimeout(resolve, 1000));
+handle.stop(); // Stop playback early
 
 ```
 
@@ -19348,11 +19251,26 @@ You can pass a list of audio sources to any of `play`, `ambient_sound`, or `thin
 
 - **`probability`** _(float)_ (optional) - Default: `1`: The relative probability of selecting this audio source from the list.
 
+**Python**:
+
 ```python
 # Play the KEYBOARD_TYPING sound with an 80% probability and the KEYBOARD_TYPING2 sound with a 20% probability
 background_audio.play([
     AudioConfig(BuiltinAudioClip.KEYBOARD_TYPING, volume=0.8, probability=0.8),
     AudioConfig(BuiltinAudioClip.KEYBOARD_TYPING2, volume=0.7, probability=0.2),
+])
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+// Play the KEYBOARD_TYPING sound with an 80% probability and the KEYBOARD_TYPING2 sound with a 20% probability
+backgroundAudio.play([
+    { source: voice.BuiltinAudioClip.KEYBOARD_TYPING, volume: 0.8, probability: 0.8 },
+    { source: voice.BuiltinAudioClip.KEYBOARD_TYPING2, volume: 0.7, probability: 0.2 },
 ])
 
 ```
@@ -19381,6 +19299,10 @@ The following built-in audio clips are available by default for common sound eff
 
 Pass an `AsyncIterator[rtc.AudioFrame]` to play raw audio frames from any source.
 
+#### Limitations
+
+Thinking sounds are not yet supported in Node.js.
+
 ## Additional resources
 
 To learn more, see the following resources.
@@ -19391,7 +19313,9 @@ To learn more, see the following resources.
 
 - **[LiveKit SDK](https://docs.livekit.io/home/client/tracks/publish.md#publishing-audio-tracks)**: Learn how to use the LiveKit SDK to play audio tracks.
 
-- **[Background audio example](https://github.com/livekit/agents/blob/main/examples/voice_agents/background_audio.py)**: A Python example of using the `BackgroundAudioPlayer` class to play ambient office noise and thinking sounds.
+- **[Background audio](https://github.com/livekit/agents/blob/main/examples/voice_agents/background_audio.py)**: A voice AI agent with background audio for thinking states and ambiance.
+
+- **[Background audio example in Node.js](https://github.com/livekit/agents-js/blob/main/examples/src/background_audio.ts)**: A voice AI agent with background audio for ambiance.
 
 - **[Text-to-speech (TTS)](https://docs.livekit.io/agents/models/tts.md)**: TTS models for pipeline agents.
 
@@ -19864,8 +19788,8 @@ async def my_agent(ctx: JobContext):
     await session.start(
         agent=VideoAssistant(),
         room=ctx.room,
-        room_input_options=RoomInputOptions(
-            video_enabled=True,
+        room_options=room_io.RoomOptions(
+            video_input=True,
             # ... noise_cancellation, etc.
         ),
     )
@@ -19878,8 +19802,8 @@ async def my_agent(ctx: JobContext):
 from livekit.agents import (
     AgentServer,
     AgentSession,
-    RoomInputOptions,
 )
+from livekit.agents.voice import room_io
 from livekit.plugins import google
 
 ```
@@ -21596,7 +21520,7 @@ When both voice and transcription are enabled, the agent's speech is synchronize
 
 #### Disabling synchronization
 
-To send transcriptions to the client as soon as they become available, without synchronizing to the original speech, set `sync_transcription` to False in `RoomOutputOptions`.
+To send transcriptions to the client as soon as they become available, without synchronizing to the original speech, set `sync_transcription` to False in text output options.
 
 **Python**:
 
@@ -21604,7 +21528,11 @@ To send transcriptions to the client as soon as they become available, without s
 await session.start(
     agent=MyAgent(),
     room=ctx.room,
-    room_output_options=RoomOutputOptions(sync_transcription=False),
+    room_options=RoomOptions(
+        text_output=TextOutputOptions(
+            sync_transcription=False
+        ),
+    ),
 )
 
 ```
@@ -21677,7 +21605,7 @@ async def transcription_node(
 
 Your agent monitors the `lk.chat` text stream topic for incoming text messages from its linked participant. The agent interrupts its current speech, if any, to process the message and generate a new response.
 
-To disable text input, set `text_enabled=False` in `RoomInputOptions`.
+To disable text input, set `text_input=False` in `RoomOptions` (Python) or `textEnabled: false` in `RoomInputOptions` (Node.js).
 
 ### Sending from frontend
 
@@ -21709,21 +21637,20 @@ To insert text input and generate a response, use the `generate_reply` method of
 
 ### Custom handling
 
-Available in:
-- [x] Node.js
-- [x] Python
-
 You can customize how agents handle incoming text input, replacing the default behavior with custom logic, such as command processing, message filtering, or custom response generation.
 
-To implement custom text input handling, provide a `text_input_cb` parameter in `RoomInputOptions`.
+To implement custom text input handling, provide a text input callback function in room options:
 
 **Python**:
 
-```python
-from livekit.agents import AgentSession, RoomInputOptions
-from livekit.agents.voice.room_io import TextInputEvent
+In Python, use the `TextInputOptions` parameter for `text_input` in `RoomOptions` to provide a text input callback function:
 
-def custom_text_input_handler(session: AgentSession, event: TextInputEvent) -> None:
+```python
+from livekit.agents import AgentServer, AgentSession
+from livekit.agents.voice import room_io
+
+
+def custom_text_input_handler(session: AgentSession, event: room_io.TextInputEvent) -> None:
     # Access the incoming text message
     message = event.text
 
@@ -21745,12 +21672,25 @@ def custom_text_input_handler(session: AgentSession, event: TextInputEvent) -> N
     session.interrupt()
     session.generate_reply(user_input=message)
 
-session = AgentSession(
-    # ... stt, llm, tts, etc.
-    room_input_options=RoomInputOptions(
-        text_input_cb=custom_text_input_handler
+
+server = AgentServer()
+
+@server.rtc_session()
+async def my_agent(ctx: JobContext):
+    # Create the session
+    session = AgentSession(
+        # ... stt, llm, tts, etc.
     )
-)
+
+    # Start session with custom text input handler
+    session.start(
+        # other options...
+        room_options=room_io.RoomOptions(
+            text_input=room_io.TextInputOptions(
+                text_input_cb=custom_text_input_handler
+            )
+        )
+    )
 
 ```
 
@@ -21812,8 +21752,10 @@ To turn off audio input or output for the entire session, set `audio_enabled=Fal
 ```python
 session.start(
     # ... agent, room
-    room_input_options=RoomInputOptions(audio_enabled=False),
-    room_output_options=RoomOutputOptions(audio_enabled=False),
+    room_options=RoomOptions(
+      audio_input=False,
+      audio_output=False,
+    ),
 )
 
 ```
@@ -22909,7 +22851,7 @@ async def my_agent(ctx: agents.JobContext):
     await session.start(
         room=ctx.room,
         agent=Assistant(chat_ctx=initial_ctx),
-        # ... room_input_options, etc.
+        # ... room_options, etc.
     )
 
     await session.generate_reply(
@@ -24932,6 +24874,10 @@ session = AgentSession(
 ### Parameters
 
 This section describes some of the available parameters. See the [plugin reference](https://docs.livekit.io/reference/python/v1/livekit/plugins/assemblyai/stt.html.md) for a complete list of all available parameters.
+
+- **`model`** _(string)_ (optional) - Default: `universal-streaming`: STT model to use. Accepted options are `universal-streaming` and `universal-streaming-multilingual`. Use `universal-streaming-multilingual` for non-English languages.
+
+- **`language`** _(string)_ (optional) - Default: `en`: The language of the audio. For a full list of supported languages, see the [Supported languages](https://www.assemblyai.com/docs/pre-recorded-audio/supported-languages#supported-languages-for-universal) page.
 
 - **`format_turns`** _(bool)_ (optional) - Default: `True`: Whether to return formatted final transcripts. If enabled, formatted final transcripts are emitted shortly following an end-of-turn detection.
 
@@ -29043,7 +28989,7 @@ The LiveKit Agents framework also includes a variety of open source [plugins](ht
 | [Azure OpenAI](https://docs.livekit.io/agents/models/tts/plugins/azure-openai.md) | ✓ | — |
 | [Baseten](https://docs.livekit.io/agents/models/tts/plugins/baseten.md) | ✓ | — |
 | [Cartesia](https://docs.livekit.io/agents/models/tts/plugins/cartesia.md) | ✓ | ✓ |
-| [Deepgram](https://docs.livekit.io/agents/models/tts/plugins/deepgram.md) | ✓ | — |
+| [Deepgram](https://docs.livekit.io/agents/models/tts/plugins/deepgram.md) | ✓ | ✓ |
 | [ElevenLabs](https://docs.livekit.io/agents/models/tts/plugins/elevenlabs.md) | ✓ | ✓ |
 | [Gemini](https://docs.livekit.io/agents/models/tts/plugins/gemini.md) | ✓ | — |
 | [Google Cloud](https://docs.livekit.io/agents/models/tts/plugins/google.md) | ✓ | — |
@@ -30118,7 +30064,7 @@ The following resources provide more information about using Cartesia with LiveK
 ## Deepgram
 
 Available in:
-- [ ] Node.js
+- [x] Node.js
 - [x] Python
 
 ## Overview
@@ -30131,10 +30077,21 @@ This section provides a quick reference for the Deepgram TTS plugin. For more in
 
 ### Installation
 
-Install the plugin from PyPI:
+Install the plugin:
+
+**Python**:
 
 ```shell
 uv add "livekit-agents[deepgram]~=1.2"
+
+```
+
+---
+
+**Node.js**:
+
+```shell
+pnpm add @livekit/agents-plugin-deepgram@1.x
 
 ```
 
@@ -30148,6 +30105,8 @@ Set `DEEPGRAM_API_KEY` in your `.env` file.
 
 Use Deepgram TTS within an `AgentSession` or as a standalone speech generator. For example, you can use this TTS in the [Voice AI quickstart](https://docs.livekit.io/agents/start/voice-ai.md).
 
+**Python**:
+
 ```python
 from livekit.plugins import deepgram
 
@@ -30157,6 +30116,22 @@ session = AgentSession(
    )
    # ... llm, stt, etc.
 )
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+import * as deepgram from '@livekit/agents-plugin-deepgram';
+
+const session = new voice.AgentSession({
+    tts: deepgram.TTS(
+        model: "aura-asteria-en",
+    ),
+    // ... llm, stt, etc.
+});
 
 ```
 
@@ -32129,7 +32104,7 @@ This section describes some of the available parameters. For a complete referenc
 
 - **`turn_detection`** _(TurnDetection | None)_ (optional): Configuration for turn detection, see the section on [Turn detection](#turn-detection) for more information.
 
-- **`modalities`** _(list[str])_ (optional) - Default: `['text', 'audio']`: List of response modalities to use for the session. Set to `['text']` to use the model in text-only mode with a [separate TTS plugin](https://docs.livekit.io/llms.txt#separate-tts).
+- **`modalities`** _(list[str])_ (optional) - Default: `['text', 'audio']`: List of response modalities to use for the session. Set to `['text']` to use the model in text-only mode with a [separate TTS plugin](#separate-tts).
 
 ## Turn detection
 
@@ -36078,6 +36053,8 @@ Job crashes are written to agent server logs for monitoring. If a job process cr
 
 LiveKit Cloud includes a built-in observability stack optimized for voice agents. It includes transcripts, traces, and logs in a unified timeline with actual audio recordings for each of your agent sessions. This gives you access to comprehensive insights on your agent's behavior and user experience.
 
+[Video: LiveKit Agents Observability](https://www.youtube.com/watch?v=LAXpS14bzW4)
+
 ## Availability
 
 Agent observability is available on all LiveKit Cloud plans, and works for agents deployed to LiveKit Cloud and those with custom deployments. For complete information on pricing, see the [LiveKit Cloud pricing page](https://livekit.io/pricing).
@@ -36840,7 +36817,7 @@ This section describes some of the available parameters. For a complete referenc
 
 - **`turn_detection`** _(TurnDetection | None)_ (optional): Configuration for turn detection, see the section on [Turn detection](#turn-detection) for more information.
 
-- **`modalities`** _(list[str])_ (optional) - Default: `['text', 'audio']`: List of response modalities to use for the session. Set to `['text']` to use the model in text-only mode with a [separate TTS plugin](https://docs.livekit.io/llms.txt#separate-tts).
+- **`modalities`** _(list[str])_ (optional) - Default: `['text', 'audio']`: List of response modalities to use for the session. Set to `['text']` to use the model in text-only mode with a [separate TTS plugin](#separate-tts).
 
 ## Turn detection
 
@@ -40827,6 +40804,10 @@ The following regions are available for region pinning for SIP:
 
 LiveKit Phone Numbers lets you purchase and manage US phone numbers for voice applications. It provides the telephony infrastructure and phone number inventory, without requiring separate SIP trunk configuration. Buy local or toll-free numbers directly through LiveKit and assign them to voice agents using dispatch rules.
 
+> ℹ️ **Inbound calling only**
+> 
+> LiveKit Phone Numbers currently only supports inbound calling. Support for outbound calls is coming soon.
+
 - **Buy numbers directly**: Select local or toll-free US numbers for inbound calling with your preferred area code.
 - **Streamlined setup**: Purchase phone numbers and configure voice agents without SIP trunk complexity.
 - **High-definition (HD) voice**: Ensure clear, professional audio quality on all calls, from agent dialogue to hold music.
@@ -40923,7 +40904,7 @@ The following limitations and considerations apply to LiveKit Phone Numbers:
 - Available only in the US. Support for additional countries is coming in a future release.
 - Only inbound calling is supported. Support for outbound calling is coming in a future release.
 - Forwarding calls using the `TransferSipParticipant` API is not yet supported.
-- If you release a phone number before the end of the month, you are still billed for the entirety of the month. For details on pricing, see the [LiveKit Phone Numbers pricing page](https://livekit.io/pricing/phone-numbers).
+- If you release a phone number before the end of the month, you are still billed for the entirety of the month. For details on pricing, see [LiveKit Telephony pricing](https://livekit.io/pricing#telephony).
 
 ## CLI reference
 
@@ -45503,7 +45484,7 @@ lk sip participant create sip-participant.json
 **Node.js**:
 
 ```typescript
-import { SipClient } from 'livekit-server-sdk';
+import { SipClient, TwirpError } from 'livekit-server-sdk';
 
 const sipClient = new SipClient(process.env.LIVEKIT_URL,
                                 process.env.LIVEKIT_API_KEY,
@@ -45537,6 +45518,10 @@ async function main() {
     console.log('Participant created:', participant);
   } catch (error) {
     console.error('Error creating SIP participant:', error);
+    if (error instanceof TwirpError) {
+      console.error("SIP error code: ", error.metadata?.['sip_status_code']);
+      console.error("SIP error message: ", error.metadata?.['sip_status']);
+    }
   }
 }
 
@@ -45572,6 +45557,10 @@ async def main():
         print(f"Successfully created {participant}")
     except Exception as e:
         print(f"Error creating SIP participant: {e}")
+        # sip_status_code contains the status code from upstream carrier
+        print(f"SIP error code: {e.metadata.get('sip_status_code')}")
+        # sip_status contains the status message from upstream carrier
+        print(f"SIP error message: {e.metadata.get('sip_status')}")
     finally:
         await livekit_api.aclose()
 
@@ -45660,6 +45649,83 @@ func main() {
 ```
 
 Once the user picks up, they will be connected to `my-sip-room`.
+
+## Custom caller ID
+
+You can set a custom caller ID for outbound calls using the `display_name` field in the`CreateSIPParticipant` request. By default, if this field isn't included in the request, the phone number is used as the display name. If this field is set to an empty string, most SIP trunking providers issue a Caller ID Name (CNAM) lookup and use the result as the display name.
+
+> ℹ️ **SIP provider support**
+> 
+> Your SIP provider must support custom caller ID for the `display_name` value to be used. Confirm with your specific provider to verify support.
+
+**LiveKit CLI**:
+
+```json
+{
+  "sip_trunk_id": "<your-trunk-id>",
+  "sip_call_to": "<phone-number-to-dial>",
+  "room_name": "my-sip-room",
+  "participant_identity": "sip-test",
+  "participant_name": "Test Caller",
+  "display_name": "My Custom Display Name"
+}
+
+```
+
+---
+
+**Node.js**:
+
+```typescript
+const sipParticipantOptions = {
+  participantIdentity: 'sip-test',
+  participantName: 'Test Caller',
+  displayName: 'My Custom Display Name'
+};
+
+```
+
+---
+
+**Python**:
+
+```python
+  request = CreateSIPParticipantRequest(
+    sip_trunk_id = "<trunk_id>",
+    sip_call_to = "<phone_number>",
+    room_name = "my-sip-room",
+    participant_identity = "sip-test",
+    participant_name = "Test Caller",
+    display_name = "My Custom Display Name"
+  )
+
+```
+
+---
+
+**Ruby**:
+
+Custom display name is not yet supported in Ruby.
+
+---
+
+**Go**:
+
+```go
+displayName := "My Custom Display Name"
+
+request := &livekit.CreateSIPParticipantRequest {
+  SipTrunkId: trunkId,
+  SipCallTo: phoneNumber,
+  RoomName: roomName,
+  ParticipantIdentity: participantIdentity,
+  ParticipantName: participantName,
+  KrispEnabled: true,
+  WaitUntilAnswered: true,
+  DisplayName: &displayName,
+}
+
+```
 
 ## Making a call with extension codes (DTMF)
 
@@ -46079,8 +46145,17 @@ async function transferParticipant(participant) {
 
   const transferTo = "tel:+15105550100";
 
-  await sipClient.transferSipParticipant('open-room', participant.identity, transferTo, sipTransferOptions);
-  console.log('transfer participant');
+  try {
+    await sipClient.transferSipParticipant('open-room', participant.identity, transferTo, sipTransferOptions);
+    console.log("SIP participant transferred successfully");
+  } catch (error) {
+    if (error instanceof TwirpError && error.metadata != null) {
+      console.error("SIP error code: ", error.metadata?.['sip_status_code']);
+      console.error("SIP error message: ", error.metadata?.['sip_status']);
+    } else {
+      console.error("Error transferring SIP participant: ", error);
+    }
+  }
 }
 
 ```
@@ -46103,19 +46178,29 @@ logger.setLevel(logging.INFO)
 async def transfer_call(participant_identity: str, room_name: str) -> None:
   async with api.LiveKitAPI() as livekit_api:
     transfer_to = 'tel:+14155550100'
-    
-    # Create transfer request
-    transfer_request = TransferSIPParticipantRequest(
-        participant_identity=participant_identity,
-        room_name=room_name,
-        transfer_to=transfer_to,
-        play_dialtone=False
-    )
-    logger.debug(f"Transfer request: {transfer_request}")
 
-    # Transfer caller
-    await livekit_api.sip.transfer_sip_participant(transfer_request)
-    logger.info(f"Successfully transferred participant {participant_identity} to {transfer_to}")
+    try:
+      # Create transfer request
+      transfer_request = TransferSIPParticipantRequest(
+          participant_identity=participant_identity,
+          room_name=room_name,
+          transfer_to=transfer_to,
+          play_dialtone=False
+      )
+      logger.debug(f"Transfer request: {transfer_request}")
+          
+      # Transfer caller
+      await livekit_api.sip.transfer_sip_participant(transfer_request)
+      print("SIP participant transferred successfully")
+          
+    except Exception as error:
+        # Check if it's a Twirp error with metadata
+        if hasattr(error, 'metadata') and error.metadata:
+            print(f"SIP error code: {error.metadata.get('sip_status_code')}")
+            print(f"SIP error message: {error.metadata.get('sip_status')}")
+        else:
+            print(f"Error transferring SIP participant:")
+            print(f"{error.status} - {error.code} - {error.message}")
 
 ```
 
@@ -46141,12 +46226,18 @@ def transferParticipant(room_name, participant_identity)
 
   transfer_to = 'tel:+14155550100'
 
-  sip_service.transfer_sip_participant(
-      room_name,
-      participant_identity,
-      transfer_to,
-      play_dialtone: false
-  )
+    response = sip_service.transfer_sip_participant(
+        room_name,
+        participant_identity,
+        transfer_to,
+        play_dialtone: false
+    )
+
+     if response.error then
+        puts "Error: #{response.error}"
+    else
+        puts "SIP participant transferred successfully"
+    end
 
 end
 
@@ -46158,36 +46249,42 @@ end
 
 ```go
 import (
-  "context"
-  "fmt"
-  "os"
+	"context"
+	"fmt"
+	"os"
 
-  lksdk "github.com/livekit/server-sdk-go/v2"
-  "github.com/livekit/protocol/livekit"
+	"github.com/livekit/protocol/livekit"
+	lksdk "github.com/livekit/server-sdk-go/v2"
 )
 
 func transferParticipant(ctx context.Context, participantIdentity string) {
+	fmt.Println("Starting SIP participant transfer...")
 
-  roomName := "open-room"
-  transferTo := "tel:+14155550100'
+	roomName := "open-room"
+	transferTo := "tel:+14155550100"
 
-  // Create a transfer request
-  transferRequest := &livekit.TransferSIPParticipantRequest{
-    RoomName: roomName,
-    ParticipantIdentity: participantIdentity,
-    TransferTo: transferTo,
-    PlayDialtone: false,
-  }
+	// Create a transfer request
+	transferRequest := &livekit.TransferSIPParticipantRequest{
+		RoomName:            roomName,
+		ParticipantIdentity: participantIdentity,
+		TransferTo:          transferTo,
+		PlayDialtone:        false,
+	}
 
-  sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
-                                  os.Getenv("LIVEKIT_API_KEY"),
-                                  os.Getenv("LIVEKIT_API_SECRET"))
+	fmt.Println("Creating SIP client...")
+	sipClient := lksdk.NewSIPClient(os.Getenv("LIVEKIT_URL"),
+		os.Getenv("LIVEKIT_API_KEY"),
+		os.Getenv("LIVEKIT_API_SECRET"))
 
-  // Execute transfer request
-  _, err := sipClient.TransferSIPParticipant(ctx, transferRequest)
-  if err != nil {
-    fmt.Println(err)
-  }
+	// Execute transfer request
+	fmt.Println("Executing transfer request...")
+	_, err := sipClient.TransferSIPParticipant(ctx, transferRequest)
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+
+	fmt.Println("SIP participant transferred successfully")
 }
 
 ```
@@ -47302,7 +47399,7 @@ Returns [SIPParticipantInfo](#sipparticipantinfo)
 | krisp_enabled | bool |  | True to enable [Krisp noise cancellation](https://docs.livekit.io/sip.md#noise-cancellation-for-calls) for the callee. |
 | media_encryption | [SIPMediaEncryption](#sipmediaencryption) |  | Whether or not to encrypt media. |
 | wait_until_answered | bool |  | If true, return after the call is answered — including if it goes to voicemail. |
-| display_name | string |  | Optional display name for the caller's number. If empty, results in a CNAM lookup by destination carrier. If ommitted, defaults to caller's number. |
+| display_name | string |  | Optional display name for the caller's number. If empty, results in a CNAM lookup by destination carrier. If ommitted, defaults to caller's number. For more information, see [Custom caller ID](https://docs.livekit.io/sip/outbound-calls.md#custom-caller-id). |
 
 ### DeleteSIPDispatchRule
 
@@ -47608,7 +47705,7 @@ Enum. Valid values are as follows:
 
 ## Overview
 
-LiveKit provides Phone Numbers APIs that let you search for, purchase, and manage phone numbers for your SIP apps. These APIs are available with LiveKit server SDKs and CLI:
+LiveKit provides Phone Numbers APIs that let you search for, purchase, and manage [phone numbers](https://docs.livekit.io/sip/cloud/phone-numbers.md) for your telephony apps. These APIs are available with LiveKit server SDKs and CLI:
 
 - [Go SIP client](https://pkg.go.dev/github.com/livekit/server-sdk-go/v2#SIPClient)
 - [JS SIP client](https://docs.livekit.io/server-sdk-js/classes/SipClient.html.md)
@@ -47616,10 +47713,6 @@ LiveKit provides Phone Numbers APIs that let you search for, purchase, and manag
 - [Python SIP client](https://docs.livekit.io/reference/python/v1/livekit/api/sip_service.html.md)
 - [Java SIP client](https://github.com/livekit/server-sdk-kotlin/blob/main/src/main/kotlin/io/livekit/server/SipServiceClient.kt)
 - [CLI](https://github.com/livekit/livekit-cli/blob/main/cmd/lk/sip.go)
-
-> ❗ **Important**
-> 
-> Requests to the Phone Number API require the SIP `admin` permission unless otherwise noted. To create a token with the appropriate grant, see [SIP grant](https://docs.livekit.io/home/get-started/authentication.md#sip-grant).
 
 To learn more about additional APIs, see [SIP APIs](https://docs.livekit.io/sip/api.md) and [Server APIs](https://docs.livekit.io/reference/server/server-apis.md).
 
@@ -47858,6 +47951,10 @@ Enum. Valid values are as follows:
 
 The following sections cover some of the common issues and solutions for LiveKit SIP integrations.
 
+> 💡 **Provider documentation**
+> 
+> Consult your SIP trunking provider's documentation. Your provider might include additional documentation for specific errors and have their own recommended troubleshooting steps.
+
 ## General issues
 
 The following issues can apply to both incoming and outgoing calls.
@@ -47953,6 +48050,10 @@ For example, the SIP endpoint for Telnyx is `sip.telnyx.com`. If you include a s
 
 Check with your SIP trunking provider and verify you're using the correct SIP endpoint in the `address` field for your outbound trunk. To learn more, see [Create an outbound trunk](https://docs.livekit.io/sip/trunk-outbound.md#create).
 
+## Additional resources
+
+For SIP errors not covered in this topic, see [List of SIP response codes](https://en.wikipedia.org/wiki/List_of_SIP_response_codes).
+
 ---
 
 ## Recipes
@@ -47981,7 +48082,9 @@ Check with your SIP trunking provider and verify you're using the correct SIP en
 
 - **[Push-to-Talk Agent](https://github.com/livekit/agents/blob/main/examples/voice_agents/push_to_talk.py)**: A voice AI agent that uses push-to-talk for controlled multi-participant conversations, only enabling audio input when explicitly triggered.
 
-- **[Background Audio](https://github.com/livekit/agents/blob/main/examples/voice_agents/background_audio.py)**: A voice AI agent with background audio for thinking states and ambiance.
+- **[Background audio](https://github.com/livekit/agents/blob/main/examples/voice_agents/background_audio.py)**: A voice AI agent with background audio for thinking states and ambiance.
+
+- **[Background audio example in Node.js](https://github.com/livekit/agents-js/blob/main/examples/src/background_audio.ts)**: A voice AI agent with background audio for ambiance.
 
 - **[Uninterruptable Agent](https://github.com/livekit-examples/python-agents-examples/tree/main/basics/uninterruptable.py)**: An agent that continues speaking without being interrupted.
 
@@ -48089,5 +48192,5 @@ Check with your SIP trunking provider and verify you're using the correct SIP en
 
 ---
 
-This document was rendered at 2025-11-19T17:56:09.745Z.
+This document was rendered at 2025-12-02T19:23:34.669Z.
 For the latest version of this document, see [https://docs.livekit.io/llms-full.txt](https://docs.livekit.io/llms-full.txt).

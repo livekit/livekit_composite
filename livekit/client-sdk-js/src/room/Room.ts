@@ -31,8 +31,8 @@ import {
   protoInt64,
 } from '@livekit/protocol';
 import { EventEmitter } from 'events';
-import type TypedEmitter from 'typed-emitter';
 import 'webrtc-adapter';
+import type TypedEmitter from 'typed-emitter';
 import { EncryptionEvent } from '../e2ee';
 import { type BaseE2EEManager, E2EEManager } from '../e2ee/E2eeManager';
 import log, { LoggerNames, getLogger } from '../logger';
@@ -686,7 +686,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
       try {
         await BackOffStrategy.getInstance().getBackOffPromise(url);
         if (abortController.signal.aborted) {
-          throw new ConnectionError('Connection attempt aborted', ConnectionErrorReason.Cancelled);
+          throw ConnectionError.cancelled('Connection attempt aborted');
         }
         await this.attemptConnection(regionUrl ?? url, token, opts, abortController);
         this.abortController = undefined;
@@ -894,12 +894,11 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
     } catch (err) {
       await this.engine.close();
       this.recreateEngine();
-      const resultingError = new ConnectionError(
-        `could not establish signal connection`,
-        abortController.signal.aborted
-          ? ConnectionErrorReason.Cancelled
-          : ConnectionErrorReason.ServerUnreachable,
-      );
+
+      const resultingError = abortController.signal.aborted
+        ? ConnectionError.cancelled('Signal connection aborted')
+        : ConnectionError.serverUnreachable('could not establish signal connection');
+
       if (err instanceof Error) {
         resultingError.message = `${resultingError.message}: ${err.message}`;
       }
@@ -917,7 +916,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
     if (abortController.signal.aborted) {
       await this.engine.close();
       this.recreateEngine();
-      throw new ConnectionError(`Connection attempt aborted`, ConnectionErrorReason.Cancelled);
+      throw ConnectionError.cancelled(`Connection attempt aborted`);
     }
 
     try {
@@ -938,7 +937,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
       window.addEventListener('beforeunload', this.onPageLeave);
     }
     if (isWeb()) {
-      document.addEventListener('freeze', this.onPageLeave);
+      window.addEventListener('freeze', this.onPageLeave);
     }
     this.setAndEmitConnectionState(ConnectionState.Connected);
     this.emit(RoomEvent.Connected);
@@ -974,9 +973,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
         this.log.warn(msg, this.logContext);
         this.abortController?.abort(msg);
         // in case the abort controller didn't manage to cancel the connection attempt, reject the connect promise explicitly
-        this.connectFuture?.reject?.(
-          new ConnectionError('Client initiated disconnect', ConnectionErrorReason.Cancelled),
-        );
+        this.connectFuture?.reject?.(ConnectionError.cancelled('Client initiated disconnect'));
         this.connectFuture = undefined;
       }
 

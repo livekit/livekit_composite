@@ -164,6 +164,10 @@ func (s *PCM16Sample) WriteSample(data PCM16Sample) error {
 	return nil
 }
 
+func (s PCM16Sample) Close() error {
+	return nil
+}
+
 type PCM16Writer = WriteCloser[PCM16Sample]
 
 type MediaSampleWriter interface {

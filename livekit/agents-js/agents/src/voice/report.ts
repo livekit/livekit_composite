@@ -12,7 +12,10 @@ export interface SessionReport {
   options: VoiceOptions;
   events: AgentEvent[];
   chatHistory: ChatContext;
-  enableUserDataTraining: boolean;
+  enableRecording: boolean;
+  /** Timestamp when the session started (milliseconds) */
+  startedAt: number;
+  /** Timestamp when the session report was created (milliseconds), typically at the end of the session */
   timestamp: number;
 }
 
@@ -24,6 +27,9 @@ export interface SessionReportOptions {
   events: AgentEvent[];
   chatHistory: ChatContext;
   enableUserDataTraining?: boolean;
+  /** Timestamp when the session started (milliseconds) */
+  startedAt?: number;
+  /** Timestamp when the session report was created (milliseconds) */
   timestamp?: number;
 }
 
@@ -35,12 +41,12 @@ export function createSessionReport(opts: SessionReportOptions): SessionReport {
     options: opts.options,
     events: opts.events,
     chatHistory: opts.chatHistory,
-    enableUserDataTraining: opts.enableUserDataTraining ?? false,
+    enableRecording: opts.enableUserDataTraining ?? false,
+    startedAt: opts.startedAt ?? Date.now(),
     timestamp: opts.timestamp ?? Date.now(),
   };
 }
 
-// TODO(brian): PR5 - Add uploadSessionReport() function that creates multipart form with:
 //   - header: protobuf MetricsRecordingHeader (room_id, duration, start_time)
 //   - chat_history: JSON serialized chat history (use sessionReportToJSON)
 //   - audio: audio recording file if available (ogg format)
@@ -71,7 +77,7 @@ export function sessionReportToJSON(report: SessionReport): Record<string, unkno
       max_tool_steps: report.options.maxToolSteps,
     },
     chat_history: report.chatHistory.toJSON({ excludeTimestamp: false }),
-    enable_user_data_training: report.enableUserDataTraining,
+    enable_user_data_training: report.enableRecording,
     timestamp: report.timestamp,
   };
 }

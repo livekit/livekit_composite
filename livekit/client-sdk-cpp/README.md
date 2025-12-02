@@ -9,6 +9,9 @@ This SDK enables native C++ applications to connect to LiveKit servers for real-
 - **Rust / Cargo** (latest stable toolchain)  
 - **Protobuf** compiler (`protoc`)  
 - **macOS** users: System frameworks (CoreAudio, AudioToolbox, etc.) are automatically linked via CMake.
+- **Git LFS** (required for examples)
+  Some example data files (e.g., audio assets) are stored using Git LFS.
+  You must install Git LFS before cloning or pulling the repo if you want to run the examples.
 
 
 ## 🧩 Clone the Repository
@@ -51,7 +54,6 @@ export LIVEKIT_TOKEN=<jwt-token>
 
 Press Ctrl-C to exit the example.
 
-
 ##  🧰 Recommended Setup
 ### macOS
 ```bash
@@ -68,6 +70,7 @@ curl https://sh.rustup.rs -sSf | sh
 ## 🛠️ Development Tips
 ###  Update Rust version
 ```bash
+cd client-sdk-cpp
 git fetch origin
 git switch -c try-rust-main origin/main
 
@@ -76,6 +79,7 @@ git submodule sync --recursive
 git submodule update --init --recursive --checkout
 
 # Now, in case the nested submodule under yuv-sys didn’t materialize, force it explicitly:
+cd ..
 git -C client-sdk-rust/yuv-sys submodule sync --recursive
 git -C client-sdk-rust/yuv-sys submodule update --init --recursive --checkout
 
@@ -90,8 +94,13 @@ cargo build -p yuv-sys -vv
 ```
 
 ### Full clean (Rust + C++ build folders)
-
 In some cases, you may need to perform a full clean that deletes all build artifacts from both the Rust and C++ folders:
 ```bash
 ./build.sh clean-all
+```
+
+### Clang format
+CPP SDK is using clang C++ format
+```bash
+brew install clang-format
 ```

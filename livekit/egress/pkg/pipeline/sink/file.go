@@ -53,9 +53,7 @@ func newFileSink(
 	}
 
 	return &FileSink{
-		base: &base{
-			bin: fileBin,
-		},
+		base:       &base{bin: fileBin},
 		FileConfig: o,
 		Uploader:   u,
 		conf:       conf,

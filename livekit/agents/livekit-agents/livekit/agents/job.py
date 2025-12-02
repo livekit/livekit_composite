@@ -39,7 +39,7 @@ from livekit.protocol import agent, models
 
 from .log import logger
 from .telemetry import _upload_session_report, trace_types, tracer
-from .telemetry.traces import _setup_cloud_tracer
+from .telemetry.traces import _setup_cloud_tracer, _shutdown_telemetry
 from .types import NotGivenOr
 from .utils import http_context, is_given, wait_for_participant
 from .utils.misc import is_cloud
@@ -201,6 +201,7 @@ class JobContext:
 
     def _on_cleanup(self) -> None:
         self._tempdir.cleanup()
+        _shutdown_telemetry()
 
     def _init_log_factory(self) -> None:
         old_factory = logging.getLogRecordFactory()
@@ -311,6 +312,13 @@ class JobContext:
         return self._room.local_participant
 
     @property
+    def local_participant_identity(self) -> str:
+        if identity := self.token_claims().identity:
+            return identity
+
+        return self._room.local_participant.identity
+
+    @property
     def log_context_fields(self) -> dict[str, Any]:
         """
         Returns the current dictionary of log fields that will be injected into log records.
@@ -400,7 +408,7 @@ class JobContext:
             _apply_auto_subscribe_opts(self._room, auto_subscribe)
             self._connected = True
 
-    def delete_room(self) -> asyncio.Future[api.DeleteRoomResponse]:  # type: ignore
+    def delete_room(self, room_name: str | None = None) -> asyncio.Future[api.DeleteRoomResponse]:  # type: ignore
         """Deletes the room and disconnects all participants."""
         if self.is_fake_job():
             logger.warning("job_ctx.delete_room() is not executed while in console mode")
@@ -410,7 +418,9 @@ class JobContext:
 
         async def _delete_room() -> None:
             try:
-                await self.api.room.delete_room(api.DeleteRoomRequest(room=self._room.name))
+                await self.api.room.delete_room(
+                    api.DeleteRoomRequest(room=room_name or self._room.name)
+                )
             except aiohttp.ServerDisconnectedError:
                 logger.warning("server disconnected while deleting room")
             except api.TwirpError as e:

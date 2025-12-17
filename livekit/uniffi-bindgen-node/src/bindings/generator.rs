@@ -21,11 +21,12 @@ pub struct Bindings {
 #[template(escape = "none", path = "package.json")]
 struct PackageJsonTemplate<'ci> {
     ci: &'ci ComponentInterface,
+    out_node_version: String,
 }
 
 impl<'ci> PackageJsonTemplate<'ci> {
-    pub fn new(ci: &'ci ComponentInterface) -> Self {
-        Self { ci }
+    pub fn new(ci: &'ci ComponentInterface, out_node_version: &str) -> Self {
+        Self { ci, out_node_version: out_node_version.into() }
     }
 }
 
@@ -55,18 +56,21 @@ struct NodeTsTemplate<'ci> {
     ci: &'ci ComponentInterface,
     sys_ts_main_file_name: String,
     out_import_extension: ImportExtension,
+    out_verbose_logs: bool,
 }
 
 impl<'ci> NodeTsTemplate<'ci> {
     pub fn new(
         ci: &'ci ComponentInterface,
         sys_ts_main_file_name: &str,
-        out_import_extension: ImportExtension
+        out_import_extension: ImportExtension,
+        out_verbose_logs: bool,
     ) -> Self {
         Self {
             ci,
             sys_ts_main_file_name: sys_ts_main_file_name.to_string(),
             out_import_extension,
+            out_verbose_logs,
         }
     }
 }
@@ -103,10 +107,12 @@ pub fn generate_node_bindings(
     out_dirname_api: DirnameApi,
     out_disable_auto_loading_lib: bool,
     out_import_extension: ImportExtension,
+    out_node_version: &str,
+    out_verbose_logs: bool,
 ) -> Result<Bindings> {
-    let package_json_contents = PackageJsonTemplate::new(ci).render().context("failed to render package.json template")?;
+    let package_json_contents = PackageJsonTemplate::new(ci, out_node_version).render().context("failed to render package.json template")?;
     let sys_template_contents = SysTemplate::new(ci, out_dirname_api, out_disable_auto_loading_lib).render().context("failed to render sys.ts template")?;
-    let node_ts_file_contents = NodeTsTemplate::new(ci, sys_ts_main_file_name, out_import_extension.clone()).render().context("failed to render node.ts template")?;
+    let node_ts_file_contents = NodeTsTemplate::new(ci, sys_ts_main_file_name, out_import_extension.clone(), out_verbose_logs).render().context("failed to render node.ts template")?;
     let index_ts_file_contents = IndexTsTemplate::new(node_ts_main_file_name, sys_ts_main_file_name, out_import_extension, out_disable_auto_loading_lib).render().context("failed to render index.ts template")?;
 
     Ok(Bindings {

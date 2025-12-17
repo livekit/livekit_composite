@@ -36,11 +36,11 @@ import (
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/rpc"
 	"github.com/livekit/psrpc"
-	"github.com/livekit/sipgo"
-
 	"github.com/livekit/sip/pkg/config"
+	siperrors "github.com/livekit/sip/pkg/errors"
 	"github.com/livekit/sip/pkg/stats"
 	"github.com/livekit/sip/version"
+	"github.com/livekit/sipgo"
 )
 
 type ServiceConfig struct {
@@ -213,6 +213,14 @@ func (s *Service) Start() error {
 		sipgo.WithUserAgent(UserAgent),
 		sipgo.WithUserAgentLogger(slog.New(logger.ToSlogHandler(s.log))),
 	}
+	if tconf := s.conf.TCP; tconf != nil {
+		opts = append(opts, sipgo.WithUserAgentTCPConfig(&sipgo.TCPConfig{
+			DialPorts: sipgo.PortRange{
+				Min: tconf.DialPort.Start,
+				Max: tconf.DialPort.End,
+			},
+		}))
+	}
 	var tlsConf *tls.Config
 	if tconf := s.conf.TLS; tconf != nil {
 		if len(tconf.Certs) == 0 {
@@ -267,7 +275,8 @@ func (s *Service) Start() error {
 }
 
 func (s *Service) CreateSIPParticipant(ctx context.Context, req *rpc.InternalCreateSIPParticipantRequest) (*rpc.InternalCreateSIPParticipantResponse, error) {
-	return s.cli.CreateSIPParticipant(ctx, req)
+	resp, err := s.cli.CreateSIPParticipant(ctx, req)
+	return resp, siperrors.ApplySIPStatus(err)
 }
 
 func (s *Service) CreateSIPParticipantAffinity(ctx context.Context, req *rpc.InternalCreateSIPParticipantRequest) float32 {
@@ -276,6 +285,11 @@ func (s *Service) CreateSIPParticipantAffinity(ctx context.Context, req *rpc.Int
 }
 
 func (s *Service) TransferSIPParticipant(ctx context.Context, req *rpc.InternalTransferSIPParticipantRequest) (*emptypb.Empty, error) {
+	resp, err := s.transferSIPParticipant(ctx, req)
+	return resp, siperrors.ApplySIPStatus(err)
+}
+
+func (s *Service) transferSIPParticipant(ctx context.Context, req *rpc.InternalTransferSIPParticipantRequest) (*emptypb.Empty, error) {
 	s.log.Infow("transferring SIP call", "callID", req.SipCallId, "transferTo", req.TransferTo)
 
 	// Check if provider is internal and config is set before allowing transfer

@@ -65,7 +65,7 @@ type testMixer struct {
 func newTestMixer(t testing.TB) *testMixer {
 	m := &testMixer{t: t}
 
-	m.Mixer = newMixer(newTestWriter(&m.sample, 8000), 5, nil, DefaultInputBufferFrames)
+	m.Mixer = newMixer(newTestWriter(&m.sample, 8000), 5)
 	return m
 }
 
@@ -209,6 +209,7 @@ func TestMixer(t *testing.T) {
 			WriteSampleN(inp, i)
 		}
 
+		time.Sleep(step)
 		m.mixUpdate()
 		require.EqualValues(t, 1, m.mixCnt)
 		m.CheckSampleN(0)

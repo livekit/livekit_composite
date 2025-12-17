@@ -143,7 +143,7 @@ func (t *telemetryService) FlushStats() {
 	var prev, reap *StatsWorker
 	for worker != nil {
 		next := worker.next
-		if closed := worker.Flush(now); closed {
+		if closed := worker.Flush(now, workerCleanupWait); closed {
 			if prev == nil {
 				// this worker was at the head of the list
 				t.workersMu.Lock()

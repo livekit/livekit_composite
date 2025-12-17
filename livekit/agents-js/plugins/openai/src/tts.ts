@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2024 LiveKit, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
-import { AudioByteStream, shortuuid, tts } from '@livekit/agents';
+import { type APIConnectOptions, AudioByteStream, shortuuid, tts } from '@livekit/agents';
 import type { AudioFrame } from '@livekit/rtc-node';
 import { OpenAI } from 'openai';
 import type { TTSModels, TTSVoices } from './models.js';
@@ -30,6 +30,7 @@ export class TTS extends tts.TTS {
   #opts: TTSOptions;
   #client: OpenAI;
   label = 'openai.TTS';
+  private abortController = new AbortController();
 
   /**
    * Create a new instance of OpenAI TTS.
@@ -58,23 +59,36 @@ export class TTS extends tts.TTS {
     this.#opts = { ...this.#opts, ...opts };
   }
 
-  synthesize(text: string): ChunkedStream {
+  synthesize(
+    text: string,
+    connOptions?: APIConnectOptions,
+    abortSignal?: AbortSignal,
+  ): ChunkedStream {
     return new ChunkedStream(
       this,
       text,
-      this.#client.audio.speech.create({
-        input: text,
-        model: this.#opts.model,
-        voice: this.#opts.voice,
-        instructions: this.#opts.instructions,
-        response_format: 'pcm',
-        speed: this.#opts.speed,
-      }),
+      this.#client.audio.speech.create(
+        {
+          input: text,
+          model: this.#opts.model,
+          voice: this.#opts.voice,
+          instructions: this.#opts.instructions,
+          response_format: 'pcm',
+          speed: this.#opts.speed,
+        },
+        { signal: abortSignal },
+      ),
+      connOptions,
+      abortSignal,
     );
   }
 
   stream(): tts.SynthesizeStream {
     throw new Error('Streaming is not supported on OpenAI TTS');
+  }
+
+  async close(): Promise<void> {
+    this.abortController.abort();
   }
 }
 
@@ -83,31 +97,46 @@ export class ChunkedStream extends tts.ChunkedStream {
   private stream: Promise<any>;
 
   // set Promise<T> to any because OpenAI returns an annoying Response type
-  constructor(tts: TTS, text: string, stream: Promise<any>) {
-    super(text, tts);
+  constructor(
+    tts: TTS,
+    text: string,
+    stream: Promise<any>,
+    connOptions?: APIConnectOptions,
+    abortSignal?: AbortSignal,
+  ) {
+    super(text, tts, connOptions, abortSignal);
     this.stream = stream;
   }
 
   protected async run() {
-    const buffer = await this.stream.then((r) => r.arrayBuffer());
-    const requestId = shortuuid();
-    const audioByteStream = new AudioByteStream(OPENAI_TTS_SAMPLE_RATE, OPENAI_TTS_CHANNELS);
-    const frames = audioByteStream.write(buffer);
+    try {
+      const buffer = await this.stream.then((r) => r.arrayBuffer());
+      const requestId = shortuuid();
+      const audioByteStream = new AudioByteStream(OPENAI_TTS_SAMPLE_RATE, OPENAI_TTS_CHANNELS);
+      const frames = audioByteStream.write(buffer);
 
-    let lastFrame: AudioFrame | undefined;
-    const sendLastFrame = (segmentId: string, final: boolean) => {
-      if (lastFrame) {
-        this.queue.put({ requestId, segmentId, frame: lastFrame, final });
-        lastFrame = undefined;
+      let lastFrame: AudioFrame | undefined;
+      const sendLastFrame = (segmentId: string, final: boolean) => {
+        if (lastFrame) {
+          this.queue.put({ requestId, segmentId, frame: lastFrame, final });
+          lastFrame = undefined;
+        }
+      };
+
+      for (const frame of frames) {
+        sendLastFrame(requestId, false);
+        lastFrame = frame;
       }
-    };
+      sendLastFrame(requestId, true);
 
-    for (const frame of frames) {
-      sendLastFrame(requestId, false);
-      lastFrame = frame;
+      this.queue.close();
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+      throw error;
+    } finally {
+      this.queue.close();
     }
-    sendLastFrame(requestId, true);
-
-    this.queue.close();
   }
 }

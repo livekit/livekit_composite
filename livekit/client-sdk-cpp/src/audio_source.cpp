@@ -22,8 +22,8 @@
 
 #include "audio_frame.pb.h"
 #include "ffi.pb.h"
+#include "ffi_client.h"
 #include "livekit/audio_frame.h"
-#include "livekit/ffi_client.h"
 
 namespace livekit {
 
@@ -54,11 +54,6 @@ AudioSource::AudioSource(int sample_rate, int num_channels, int queue_size_ms)
   const auto &source_info = resp.new_audio_source().source();
   // Wrap FFI handle in RAII FfiHandle
   handle_ = FfiHandle(static_cast<uintptr_t>(source_info.handle().id()));
-}
-
-AudioSource::~AudioSource() {
-  // Let FfiHandle::~FfiHandle() drop the native handle.
-  // If you later add an explicit "dispose" request, you can send it here.
 }
 
 double AudioSource::queuedDuration() const noexcept {
@@ -131,18 +126,6 @@ void AudioSource::captureFrame(const AudioFrame &frame, int timeout_ms) {
     std::cerr << "captureAudioFrameAsync timed out after " << timeout_ms
               << " ms\n";
   }
-}
-
-void AudioSource::waitForPlayout() const {
-  // Python uses a future + event loop timer that fires after q_size.
-  // Here we approximate that by simply sleeping for the current queued
-  // duration.
-  double dur = queuedDuration();
-  if (dur <= 0.0) {
-    return;
-  }
-
-  std::this_thread::sleep_for(std::chrono::duration<double>(dur));
 }
 
 } // namespace livekit

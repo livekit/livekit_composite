@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "ffi.pb.h"
-#include "livekit/ffi_client.h"
+#include "ffi_client.h"
 #include "livekit/ffi_handle.h"
 #include "video_frame.pb.h"
 
@@ -92,7 +92,7 @@ proto::VideoBufferInfo toProto(const LKVideoFrame &frame) {
     cmpt->set_size(plane.size);
   }
 
-  // Stride for main packed formats (matches Python logic)
+  // Stride for main packed formats.
   std::uint32_t stride = 0;
   switch (frame.type()) {
   case VideoBufferType::ARGB:

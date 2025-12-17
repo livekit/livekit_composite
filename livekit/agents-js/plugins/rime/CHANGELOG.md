@@ -1,5 +1,51 @@
 # @livekit/agents-plugin-rime
 
+## 1.0.28
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @livekit/agents@1.0.28
+
+## 1.0.27
+
+### Patch Changes
+
+- Sync all package versions - [#900](https://github.com/livekit/agents-js/pull/900) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Updated dependencies [[`714c1a9f73d03a83ee25f7b6d3bd6727070030ae`](https://github.com/livekit/agents-js/commit/714c1a9f73d03a83ee25f7b6d3bd6727070030ae)]:
+  - @livekit/agents@1.0.27
+
+## 1.0.19
+
+### Patch Changes
+
+- Improve TTS resource cleanup - [#893](https://github.com/livekit/agents-js/pull/893) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Updated dependencies [[`78a0d217b783c9467e68c24752d01b9c806b9280`](https://github.com/livekit/agents-js/commit/78a0d217b783c9467e68c24752d01b9c806b9280), [`78a0d217b783c9467e68c24752d01b9c806b9280`](https://github.com/livekit/agents-js/commit/78a0d217b783c9467e68c24752d01b9c806b9280)]:
+  - @livekit/agents@1.0.26
+
+## 1.0.18
+
+### Patch Changes
+
+- Updated dependencies [[`6b94d1a1b50d3a4e96443b21979ddad415ac7b6e`](https://github.com/livekit/agents-js/commit/6b94d1a1b50d3a4e96443b21979ddad415ac7b6e), [`e590012fda5a32e86c183d06d9ff5a5810ad688a`](https://github.com/livekit/agents-js/commit/e590012fda5a32e86c183d06d9ff5a5810ad688a), [`40aa678d7cbd63b97215ced99e700b286c971ff0`](https://github.com/livekit/agents-js/commit/40aa678d7cbd63b97215ced99e700b286c971ff0), [`3a0872e730179fe1dbcc3a446d92480611270992`](https://github.com/livekit/agents-js/commit/3a0872e730179fe1dbcc3a446d92480611270992), [`c7ea84ec3ee9cd132b8e3a7bd7cca3040ae420dc`](https://github.com/livekit/agents-js/commit/c7ea84ec3ee9cd132b8e3a7bd7cca3040ae420dc), [`a21eb72d7ca452489353ef42f8e2922d2b6047a2`](https://github.com/livekit/agents-js/commit/a21eb72d7ca452489353ef42f8e2922d2b6047a2), [`6b94d1a1b50d3a4e96443b21979ddad415ac7b6e`](https://github.com/livekit/agents-js/commit/6b94d1a1b50d3a4e96443b21979ddad415ac7b6e)]:
+  - @livekit/agents@1.0.25
+
+## 1.0.17
+
+### Patch Changes
+
+- Updated dependencies [[`a1f71249c9d5106481d4a4635218917f46029d0f`](https://github.com/livekit/agents-js/commit/a1f71249c9d5106481d4a4635218917f46029d0f)]:
+  - @livekit/agents@1.0.24
+
+## 1.0.16
+
+### Patch Changes
+
+- Updated dependencies [[`33ca7ad3bef1c941988667b95f7f8b908182cef9`](https://github.com/livekit/agents-js/commit/33ca7ad3bef1c941988667b95f7f8b908182cef9), [`b1ba4de94c48b520f145e9f6805ed1f0f64630e5`](https://github.com/livekit/agents-js/commit/b1ba4de94c48b520f145e9f6805ed1f0f64630e5), [`97d066fbcd6bbc525567dbb68c5ce1e8e3755ac6`](https://github.com/livekit/agents-js/commit/97d066fbcd6bbc525567dbb68c5ce1e8e3755ac6), [`705b88690d3949b84b95677f324f3afa52a557df`](https://github.com/livekit/agents-js/commit/705b88690d3949b84b95677f324f3afa52a557df)]:
+  - @livekit/agents@1.0.23
+
 ## 1.0.15
 
 ### Patch Changes

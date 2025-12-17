@@ -24,8 +24,7 @@ import (
 	"go.uber.org/atomic"
 
 	dd "github.com/livekit/livekit-server/pkg/sfu/rtpextension/dependencydescriptor"
-	"github.com/livekit/livekit-server/pkg/sfu/utils"
-
+	"github.com/livekit/mediatransportutil/pkg/utils"
 	"github.com/livekit/protocol/logger"
 )
 
@@ -184,6 +183,7 @@ func (r *DependencyDescriptorParser) Parse(pkt *rtp.Packet) (*ExtDependencyDescr
 				"fn", ddVal.FrameNumber,
 				"extFN", extFN,
 			)
+			ReleaseExtDependencyDescriptor(extDD)
 			return nil, videoLayer, ErrDDStructureAttachedToNonFirstPacket
 		}
 
@@ -245,15 +245,6 @@ func (r *DependencyDescriptorParser) Parse(pkt *rtp.Packet) (*ExtDependencyDescr
 	extDD.ExtKeyFrameNum = r.structureExtFrameNum
 
 	return extDD, videoLayer, nil
-}
-
-func (r *DependencyDescriptorParser) ReleaseExtDependencyDescriptor(extDD *ExtDependencyDescriptor) {
-	if extDD == nil {
-		return
-	}
-
-	*extDD = ExtDependencyDescriptor{}
-	ExtDependencyDescriptorFactory.Put(extDD)
 }
 
 func (r *DependencyDescriptorParser) restart() {
@@ -328,4 +319,15 @@ func ExtractDependencyDescriptorVideoSize(dd *dd.DependencyDescriptor) []VideoSi
 	}
 
 	return videoSizes
+}
+
+// ------------------------------------------------------------------------------
+
+func ReleaseExtDependencyDescriptor(extDD *ExtDependencyDescriptor) {
+	if extDD == nil {
+		return
+	}
+
+	*extDD = ExtDependencyDescriptor{}
+	ExtDependencyDescriptorFactory.Put(extDD)
 }

@@ -1,13 +1,16 @@
 {
   "name": "lib{{ ci.crate_name().to_kebab_case() }}",
   "description": "Uniffi wrapper around the {{ ci.crate_name() }} rust crate.",
+  "engines": {
+    "node": "{{out_node_version}}"
+  },
   "dependencies": {
     "ffi-rs": "^1.3.0",
     "ref-napi": "^3.0.3",
     "uniffi-bindgen-react-native": "^0.29.3-1"
   },
   "devDependencies": {
-    "@types/node": "^24.9.2",
+    "@types/node": "{{out_node_version}}",
     "@types/ref-napi": "^3.0.12"
   }
 }

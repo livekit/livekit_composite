@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:math' show max;
 
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
+
+import 'package:collection/collection.dart';
 import 'package:livekit_client/livekit_client.dart' as sdk;
 import 'package:provider/provider.dart';
 
@@ -9,6 +11,10 @@ import '../../../context/track_reference_context.dart';
 
 enum VisualizerState { thinking, listening, active }
 
+/// Configuration options for [AudioVisualizerWidget].
+///
+/// These options control the number of bars, sizing, animation cadence, and
+/// styling used to render a simple audio spectrum / agent-state indicator.
 class AudioVisualizerWidgetOptions {
   final int barCount;
   final bool centeredBands;
@@ -75,6 +81,24 @@ class AudioVisualizerWidget extends StatelessWidget {
   final AudioVisualizerWidgetOptions options;
   final Color backgroundColor;
 
+  /// Renders an animated bar visualizer for the current audio track.
+  ///
+  /// The widget consumes a [TrackReferenceContext] from the widget tree to
+  /// discover the `sdk.AudioTrack` and associated `sdk.Participant`. When the
+  /// participant is an agent, the visualizer also reacts to agent state changes:
+  ///
+  /// - `thinking`: highlights bars in sequence.
+  /// - `initializing` / `listening`: renders a subtle "listening" pulse.
+  /// - otherwise: uses live audio samples when available.
+  ///
+  /// Example:
+  /// ```dart
+  /// ParticipantTrack(
+  ///   participant: participant,
+  ///   track: publication,
+  ///   builder: (context) => const AudioVisualizerWidget(),
+  /// );
+  /// ```
   const AudioVisualizerWidget({
     Key? key,
     this.backgroundColor = Colors.transparent,
@@ -122,7 +146,7 @@ class _SoundWaveformWidgetState extends State<SoundWaveformWidget> with SingleTi
   sdk.EventsListener<sdk.ParticipantEvent>? _participantListener;
 
   // Agent support
-  sdk.AgentState _agentState = sdk.AgentState.INITIALIZING;
+  sdk.AgentState _agentState = sdk.AgentState.initializing;
 
   @override
   void didUpdateWidget(SoundWaveformWidget oldWidget) {
@@ -133,8 +157,7 @@ class _SoundWaveformWidgetState extends State<SoundWaveformWidget> with SingleTi
 
     if (didUpdateParams) {
       // Re-attach listeners
-      _detachListeners();
-      _attachListeners();
+      unawaited(_detachListeners().then((_) => _attachListeners()));
     }
   }
 
@@ -154,7 +177,7 @@ class _SoundWaveformWidgetState extends State<SoundWaveformWidget> with SingleTi
           if (!mounted) return;
           final agentAttributes = sdk.AgentAttributes.fromJson(e.attributes);
           setState(() {
-            _agentState = agentAttributes.lkAgentState ?? sdk.AgentState.INITIALIZING;
+            _agentState = agentAttributes.lkAgentState ?? sdk.AgentState.initializing;
           });
         });
       }
@@ -198,20 +221,21 @@ class _SoundWaveformWidgetState extends State<SoundWaveformWidget> with SingleTi
     _controller = AnimationController(
       duration: Duration(milliseconds: widget.options.durationInMilliseconds),
       vsync: this,
-    )..repeat(reverse: true);
+    );
+    unawaited(_controller.repeat(reverse: true));
 
     _pulseAnimation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeInOut,
     );
 
-    _attachListeners();
+    unawaited(_attachListeners());
   }
 
   @override
   void dispose() {
     _controller.dispose();
-    _detachListeners();
+    unawaited(_detachListeners());
     super.dispose();
   }
 
@@ -258,13 +282,13 @@ class _SoundWaveformWidgetState extends State<SoundWaveformWidget> with SingleTi
   }
 
   VisualizerState _determineState() {
-    if (widget.participant?.kind == sdk.ParticipantKind.AGENT && _agentState == sdk.AgentState.THINKING) {
+    if (widget.participant?.kind == sdk.ParticipantKind.AGENT && _agentState == sdk.AgentState.thinking) {
       return VisualizerState.thinking;
     }
 
     if (widget.participant == null ||
         widget.participant?.kind == sdk.ParticipantKind.AGENT &&
-            (_agentState == sdk.AgentState.INITIALIZING || _agentState == sdk.AgentState.LISTENING)) {
+            (_agentState == sdk.AgentState.initializing || _agentState == sdk.AgentState.listening)) {
       return VisualizerState.listening;
     }
 

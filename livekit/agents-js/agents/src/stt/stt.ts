@@ -10,7 +10,7 @@ import { calculateAudioDurationSeconds } from '../audio.js';
 import { log } from '../log.js';
 import type { STTMetrics } from '../metrics/base.js';
 import { DeferredReadableStream } from '../stream/deferred_stream.js';
-import { type APIConnectOptions, DEFAULT_API_CONNECT_OPTIONS } from '../types.js';
+import { type APIConnectOptions, DEFAULT_API_CONNECT_OPTIONS, intervalForRetry } from '../types.js';
 import type { AudioBuffer } from '../utils.js';
 import { AsyncIterableQueue, delay, startSoon, toError } from '../utils.js';
 
@@ -113,9 +113,9 @@ export abstract class STT extends (EventEmitter as new () => TypedEmitter<STTCal
   }
 
   /** Receives an audio buffer and returns transcription in the form of a {@link SpeechEvent} */
-  async recognize(frame: AudioBuffer): Promise<SpeechEvent> {
+  async recognize(frame: AudioBuffer, abortSignal?: AbortSignal): Promise<SpeechEvent> {
     const startTime = process.hrtime.bigint();
-    const event = await this._recognize(frame);
+    const event = await this._recognize(frame, abortSignal);
     const durationMs = Number((process.hrtime.bigint() - startTime) / BigInt(1000000));
     this.emit('metrics_collected', {
       type: 'stt_metrics',
@@ -128,13 +128,19 @@ export abstract class STT extends (EventEmitter as new () => TypedEmitter<STTCal
     });
     return event;
   }
-  protected abstract _recognize(frame: AudioBuffer): Promise<SpeechEvent>;
+
+  protected abstract _recognize(
+    frame: AudioBuffer,
+    abortSignal?: AbortSignal,
+  ): Promise<SpeechEvent>;
 
   /**
    * Returns a {@link SpeechStream} that can be used to push audio frames and receive
    * transcriptions
+   *
+   * @param options - Optional configuration including connection options
    */
-  abstract stream(): SpeechStream;
+  abstract stream(options?: { connOptions?: APIConnectOptions }): SpeechStream;
 
   async close(): Promise<void> {
     return;
@@ -171,6 +177,8 @@ export abstract class SpeechStream implements AsyncIterableIterator<SpeechEvent>
   private logger = log();
   private _connOptions: APIConnectOptions;
 
+  protected abortController = new AbortController();
+
   constructor(
     stt: STT,
     sampleRate?: number,
@@ -196,7 +204,7 @@ export abstract class SpeechStream implements AsyncIterableIterator<SpeechEvent>
         return await this.run();
       } catch (error) {
         if (error instanceof APIError) {
-          const retryInterval = this._connOptions._intervalForRetry(i);
+          const retryInterval = intervalForRetry(this._connOptions, i);
 
           if (this._connOptions.maxRetry === 0 || !error.retryable) {
             this.emitError({ error, recoverable: false });
@@ -288,6 +296,10 @@ export abstract class SpeechStream implements AsyncIterableIterator<SpeechEvent>
 
   protected abstract run(): Promise<void>;
 
+  protected get abortSignal(): AbortSignal {
+    return this.abortController.signal;
+  }
+
   updateInputStream(audioStream: ReadableStream<AudioFrame>) {
     this.deferredInputStream.setSource(audioStream);
   }
@@ -352,6 +364,7 @@ export abstract class SpeechStream implements AsyncIterableIterator<SpeechEvent>
     if (!this.input.closed) this.input.close();
     if (!this.queue.closed) this.queue.close();
     if (!this.output.closed) this.output.close();
+    if (!this.abortController.signal.aborted) this.abortController.abort();
     this.closed = true;
   }
 

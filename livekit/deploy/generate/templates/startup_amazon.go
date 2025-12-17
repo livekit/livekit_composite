@@ -47,7 +47,7 @@ write_files:
 {{- end }}
 
 runcmd:
-  - curl -L "https://github.com/docker/compose/releases/download/v2.20.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+  - curl -L "https://github.com/docker/compose/releases/download/v5.0.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
   - chmod 755 /usr/local/bin/docker-compose
   - chmod 755 {{.InstallPrefix}}/update_ip.sh
   - {{.InstallPrefix}}/update_ip.sh

@@ -17,6 +17,8 @@ pub struct NodeBindingGenerator {
     out_dirname_api: utils::DirnameApi,
     out_disable_auto_loading_lib: bool,
     out_import_extension: utils::ImportExtension,
+    out_node_version: String,
+    out_verbose_logs: bool,
 }
 
 impl NodeBindingGenerator {
@@ -24,8 +26,16 @@ impl NodeBindingGenerator {
         out_dirname_api: utils::DirnameApi,
         out_disable_auto_loading_lib: bool,
         out_import_extension: utils::ImportExtension,
+        out_node_version: &str,
+        out_verbose_logs: bool,
     ) -> Self {
-        Self { out_dirname_api, out_disable_auto_loading_lib, out_import_extension }
+        Self {
+            out_dirname_api,
+            out_disable_auto_loading_lib,
+            out_import_extension,
+            out_node_version: out_node_version.into(),
+            out_verbose_logs,
+        }
     }
 }
 
@@ -73,6 +83,8 @@ impl BindingGenerator for NodeBindingGenerator {
                 self.out_dirname_api.clone(),
                 self.out_disable_auto_loading_lib,
                 self.out_import_extension.clone(),
+                self.out_node_version.as_str(),
+                self.out_verbose_logs,
             )?;
 
             let package_json_path = settings.out_dir.join("package.json");

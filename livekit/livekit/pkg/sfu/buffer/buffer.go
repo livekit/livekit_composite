@@ -85,6 +85,7 @@ type ExtPacket struct {
 	AbsCaptureTimeExt    *act.AbsCaptureTime
 	IsOutOfOrder         bool
 	IsBuffered           bool
+	IsRestart            bool
 }
 
 // VideoSize represents video resolution
@@ -123,10 +124,11 @@ type Buffer struct {
 	latestTSForAudioLevelInitialized bool
 	latestTSForAudioLevel            uint32
 
-	twcc                    *twcc.Responder
-	audioLevelParams        audio.AudioLevelParams
-	audioLevel              *audio.AudioLevel
-	enableAudioLossProxying bool
+	twcc                         *twcc.Responder
+	audioLevelParams             audio.AudioLevelParams
+	audioLevel                   *audio.AudioLevel
+	enableAudioLossProxying      bool
+	enableStreamRestartDetection bool
 
 	lastPacketRead int
 
@@ -229,6 +231,13 @@ func (b *Buffer) SetAudioLossProxying(enable bool) {
 	b.enableAudioLossProxying = enable
 }
 
+func (b *Buffer) SetStreamRestartDetection(enable bool) {
+	b.Lock()
+	defer b.Unlock()
+
+	b.enableStreamRestartDetection = enable
+}
+
 func (b *Buffer) Bind(params webrtc.RTPParameters, codec webrtc.RTPCodecCapability, bitrates int) error {
 	b.Lock()
 	defer b.Unlock()
@@ -242,13 +251,7 @@ func (b *Buffer) Bind(params webrtc.RTPParameters, codec webrtc.RTPCodecCapabili
 		return errInvalidCodec
 	}
 
-	b.rtpStats = rtpstats.NewRTPStatsReceiver(rtpstats.RTPStatsParams{
-		ClockRate: codec.ClockRate,
-		Logger:    b.logger,
-	})
-	b.rrSnapshotId = b.rtpStats.NewSnapshotId()
-	b.deltaStatsSnapshotId = b.rtpStats.NewSnapshotId()
-	b.ppsSnapshotId = b.rtpStats.NewSnapshotId()
+	b.setupRTPStats(codec.ClockRate)
 
 	b.clockRate = codec.ClockRate
 	b.lastReport = mono.UnixNano()
@@ -335,7 +338,7 @@ func (b *Buffer) Bind(params webrtc.RTPParameters, codec webrtc.RTPCodecCapabili
 	}
 
 	if len(b.pPackets) != 0 {
-		b.logger.Debugw("releasing queued packets on bind")
+		b.logger.Debugw("releasing queued packets on bind", "count", len(b.pPackets))
 	}
 	for _, pp := range b.pPackets {
 		b.calc(pp.packet, nil, pp.arrivalTime, false, true)
@@ -356,15 +359,30 @@ func (b *Buffer) OnCodecChange(fn func(webrtc.RTPCodecParameters)) {
 	b.Unlock()
 }
 
+func (b *Buffer) setupRTPStats(clockRate uint32) {
+	b.rtpStats = rtpstats.NewRTPStatsReceiver(rtpstats.RTPStatsParams{
+		ClockRate: clockRate,
+		Logger:    b.logger,
+	})
+	b.rrSnapshotId = b.rtpStats.NewSnapshotId()
+	b.deltaStatsSnapshotId = b.rtpStats.NewSnapshotId()
+	b.ppsSnapshotId = b.rtpStats.NewSnapshotId()
+}
+
 func (b *Buffer) createDDParserAndFrameRateCalculator() {
 	if mime.IsMimeTypeSVCCapable(b.mime) || b.mime == mime.MimeTypeVP8 {
 		frc := NewFrameRateCalculatorDD(b.clockRate, b.logger)
 		for i := range b.frameRateCalculator {
 			b.frameRateCalculator[i] = frc.GetFrameRateCalculatorForSpatial(int32(i))
 		}
-		b.ddParser = NewDependencyDescriptorParser(b.ddExtID, b.logger, func(spatial, temporal int32) {
-			frc.SetMaxLayer(spatial, temporal)
-		}, false)
+		b.ddParser = NewDependencyDescriptorParser(
+			b.ddExtID,
+			b.logger,
+			func(spatial, temporal int32) {
+				frc.SetMaxLayer(spatial, temporal)
+			},
+			false,
+		)
 	}
 }
 
@@ -385,6 +403,8 @@ func (b *Buffer) createFrameRateCalculator() {
 }
 
 // Write adds an RTP Packet, ordering is not guaranteed, newer packets may arrive later
+//
+//go:noinline
 func (b *Buffer) Write(pkt []byte) (n int, err error) {
 	var rtpPacket rtp.Packet
 	err = rtpPacket.Unmarshal(pkt)
@@ -541,25 +561,17 @@ func (b *Buffer) ReadExtended(buf []byte) (*ExtPacket, error) {
 		}
 		if b.extPackets.Len() > 0 {
 			ep := b.extPackets.PopFront()
-			ep = b.patchExtPacket(ep, buf)
-			if ep == nil {
+			patched := b.patchExtPacket(ep, buf)
+			if patched == nil {
+				ReleaseExtPacket(ep)
 				continue
 			}
 
 			b.Unlock()
-			return ep, nil
+			return patched, nil
 		}
 		b.readCond.Wait()
 	}
-}
-
-func (b *Buffer) ReleaseExtPacket(extPkt *ExtPacket) {
-	if b.ddParser != nil {
-		b.ddParser.ReleaseExtDependencyDescriptor(extPkt.DependencyDescriptor)
-	}
-
-	*extPkt = ExtPacket{}
-	ExtPacketFactory.Put(extPkt)
 }
 
 func (b *Buffer) Close() error {
@@ -664,8 +676,29 @@ func (b *Buffer) calc(rawPkt []byte, rtpPacket *rtp.Packet, arrivalTime int64, i
 	// process header extensions always as padding packets could be used for probing
 	b.processHeaderExtensions(rtpPacket, arrivalTime, isRTX)
 
+	isRestart := false
 	flowState := b.updateStreamState(rtpPacket, arrivalTime)
-	if flowState.IsNotHandled {
+	switch flowState.UnhandledReason {
+	case rtpstats.RTPFlowUnhandledReasonNone:
+	case rtpstats.RTPFlowUnhandledReasonRestart:
+		if !b.enableStreamRestartDetection {
+			return
+		}
+
+		b.rtpStats.Stop()
+		b.logger.Infow("stream restart - rtp stats", b.rtpStats)
+
+		b.snRangeMap = utils.NewRangeMap[uint64, uint64](100)
+		b.setupRTPStats(b.clockRate)
+		b.bucket.ResyncOnNextPacket()
+		if b.nacker != nil {
+			b.nacker = nack.NewNACKQueue(nack.NackQueueParamsDefault)
+		}
+		b.extPackets.Clear()
+
+		flowState = b.updateStreamState(rtpPacket, arrivalTime)
+		isRestart = true
+	default:
 		return
 	}
 
@@ -749,7 +782,7 @@ func (b *Buffer) calc(rawPkt []byte, rtpPacket *rtp.Packet, arrivalTime int64, i
 		return
 	}
 
-	ep := b.getExtPacket(rtpPacket, arrivalTime, isBuffered, flowState)
+	ep := b.getExtPacket(rtpPacket, arrivalTime, isBuffered, isRestart, flowState)
 	if ep == nil {
 		return
 	}
@@ -921,7 +954,7 @@ func (b *Buffer) processHeaderExtensions(p *rtp.Packet, arrivalTime int64, isRTX
 	}
 }
 
-func (b *Buffer) getExtPacket(rtpPacket *rtp.Packet, arrivalTime int64, isBuffered bool, flowState rtpstats.RTPFlowState) *ExtPacket {
+func (b *Buffer) getExtPacket(rtpPacket *rtp.Packet, arrivalTime int64, isBuffered bool, isRestart bool, flowState rtpstats.RTPFlowState) *ExtPacket {
 	ep := ExtPacketFactory.Get().(*ExtPacket)
 	*ep = ExtPacket{
 		Arrival:           arrivalTime,
@@ -934,6 +967,7 @@ func (b *Buffer) getExtPacket(rtpPacket *rtp.Packet, arrivalTime int64, isBuffer
 		},
 		IsOutOfOrder: flowState.IsOutOfOrder,
 		IsBuffered:   isBuffered,
+		IsRestart:    isRestart,
 	}
 
 	if len(rtpPacket.Payload) == 0 {
@@ -948,11 +982,12 @@ func (b *Buffer) getExtPacket(rtpPacket *rtp.Packet, arrivalTime int64, isBuffer
 		if err != nil {
 			if errors.Is(err, ErrDDExtentionNotFound) {
 				if b.mime == mime.MimeTypeVP8 || b.mime == mime.MimeTypeVP9 {
-					b.logger.Infow("dd extension not found,  disable dd parser")
+					b.logger.Infow("dd extension not found, disable dd parser")
 					b.ddParser = nil
 					b.createFrameRateCalculator()
 				}
 			} else {
+				ReleaseExtPacket(ep)
 				return nil
 			}
 		} else if ddVal != nil {
@@ -968,6 +1003,7 @@ func (b *Buffer) getExtPacket(rtpPacket *rtp.Packet, arrivalTime int64, isBuffer
 		vp8Packet := VP8{}
 		if err := vp8Packet.Unmarshal(rtpPacket.Payload); err != nil {
 			b.logger.Warnw("could not unmarshal VP8 packet", err)
+			ReleaseExtPacket(ep)
 			return nil
 		}
 		ep.KeyFrame = vp8Packet.IsKeyFrame
@@ -992,6 +1028,7 @@ func (b *Buffer) getExtPacket(rtpPacket *rtp.Packet, arrivalTime int64, isBuffer
 			_, err := vp9Packet.Unmarshal(rtpPacket.Payload)
 			if err != nil {
 				b.logger.Warnw("could not unmarshal VP9 packet", err)
+				ReleaseExtPacket(ep)
 				return nil
 			}
 			ep.VideoLayer = VideoLayer{
@@ -1032,6 +1069,7 @@ func (b *Buffer) getExtPacket(rtpPacket *rtp.Packet, arrivalTime int64, isBuffer
 		if ep.DependencyDescriptor == nil {
 			if len(rtpPacket.Payload) < 2 {
 				b.logger.Warnw("invalid H265 packet", nil)
+				ReleaseExtPacket(ep)
 				return nil
 			}
 			ep.VideoLayer = VideoLayer{
@@ -1120,7 +1158,14 @@ func (b *Buffer) mayGrowBucket() {
 				cap = b.bucket.Grow()
 			}
 			if cap > oldCap {
-				b.logger.Debugw("grow bucket", "from", oldCap, "to", cap, "pps", pps)
+				b.logger.Infow(
+					"grow bucket",
+					"from", oldCap,
+					"to", cap,
+					"pps", pps,
+					"deltaInfo", deltaInfo,
+					"rtpStats", b.rtpStats,
+				)
 			}
 		}
 	}
@@ -1399,12 +1444,13 @@ func (b *Buffer) seedKeyFrame(keyFrameSeederGeneration int32) {
 
 	for {
 		if b.closed.Load() || b.keyFrameSeederGeneration.Load() != keyFrameSeederGeneration {
+			b.logger.Debugw("stopping key frame seeder: stopped")
 			return
 		}
 
 		select {
 		case <-timer.C:
-			b.logger.Infow("stopping key frame seeder: timeout")
+			b.logger.Debugw("stopping key frame seeder: timeout")
 			return
 
 		case <-ticker.C:
@@ -1427,3 +1473,14 @@ func (b *Buffer) seedKeyFrame(keyFrameSeederGeneration int32) {
 }
 
 // ---------------------------------------------------------------
+
+func ReleaseExtPacket(extPkt *ExtPacket) {
+	if extPkt == nil {
+		return
+	}
+
+	ReleaseExtDependencyDescriptor(extPkt.DependencyDescriptor)
+
+	*extPkt = ExtPacket{}
+	ExtPacketFactory.Put(extPkt)
+}

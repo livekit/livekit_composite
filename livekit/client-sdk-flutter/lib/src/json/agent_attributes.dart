@@ -45,49 +45,63 @@ class AgentAttributes {
 @JsonEnum(alwaysCreate: true)
 enum AgentInput {
   @JsonValue('audio')
-  AUDIO,
+  audio,
   @JsonValue('text')
-  TEXT,
+  text,
   @JsonValue('video')
-  VIDEO,
+  video,
 }
 
 @JsonEnum(alwaysCreate: true)
 enum AgentOutput {
   @JsonValue('audio')
-  AUDIO,
+  audio,
   @JsonValue('transcription')
-  TRANSCRIPTION,
+  transcription,
 }
 
 @JsonEnum(alwaysCreate: true)
 enum AgentState {
   @JsonValue('idle')
-  IDLE,
+  idle,
   @JsonValue('initializing')
-  INITIALIZING,
+  initializing,
   @JsonValue('listening')
-  LISTENING,
+  listening,
   @JsonValue('speaking')
-  SPEAKING,
+  speaking,
   @JsonValue('thinking')
-  THINKING,
+  thinking,
 }
 
 @JsonSerializable()
 class TranscriptionAttributes {
+  /// Schema for transcription-related text stream attributes.
+  ///
+  /// These attributes are attached to LiveKit text streams used for agent and
+  /// user transcriptions (typically on the `'lk.transcription'` topic).
+  ///
+  /// - Note: Some agent implementations may encode `lk.transcription_final` as a
+  ///   boolean or a string (`"true"`/`"false"`/`"1"`/`"0"`). This model accepts
+  ///   both forms.
   const TranscriptionAttributes({
     this.lkSegmentId,
     this.lkTranscribedTrackId,
     this.lkTranscriptionFinal,
   });
 
+  /// Stable identifier for the transcript segment (`lk.segment_id`).
+  ///
+  /// A segment id remains stable for the lifetime of a transcript segment and
+  /// can be used to reconcile incremental updates in UIs.
   @JsonKey(name: 'lk.segment_id')
   final String? lkSegmentId;
 
+  /// Track id associated with the transcription (`lk.transcribed_track_id`).
   @JsonKey(name: 'lk.transcribed_track_id')
   final String? lkTranscribedTrackId;
 
+  /// Whether this segment is finalized (`lk.transcription_final`).
   @JsonKey(name: 'lk.transcription_final', fromJson: _boolFromJson, toJson: _boolToJson)
   final bool? lkTranscriptionFinal;
 

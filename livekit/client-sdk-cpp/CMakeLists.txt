@@ -159,16 +159,18 @@ add_library(livekit
   include/livekit/audio_frame.h
   include/livekit/audio_source.h
   include/livekit/audio_stream.h
+  include/livekit/data_stream.h
   include/livekit/room.h
+  include/livekit/room_event_types.h
   include/livekit/room_delegate.h
   include/livekit/ffi_handle.h
-  include/livekit/ffi_client.h
   include/livekit/local_audio_track.h
   include/livekit/remote_audio_track.h
   include/livekit/participant.h
   include/livekit/local_participant.h
   include/livekit/remote_participant.h
   include/livekit/livekit.h
+  include/livekit/rpc_error.h
   include/livekit/stats.h
   include/livekit/track.h
   include/livekit/track_publication.h
@@ -182,8 +184,10 @@ add_library(livekit
   src/audio_frame.cpp
   src/audio_source.cpp
   src/audio_stream.cpp
+  src/data_stream.cpp
   src/ffi_handle.cpp
   src/ffi_client.cpp
+  src/ffi_client.h
   src/local_audio_track.cpp
   src/remote_audio_track.cpp
   src/room.cpp
@@ -198,6 +202,7 @@ add_library(livekit
   src/track_publication.cpp
   src/local_track_publication.cpp
   src/remote_track_publication.cpp
+  src/rpc_error.cpp
   src/video_frame.cpp
   src/video_source.cpp
   src/video_stream.cpp

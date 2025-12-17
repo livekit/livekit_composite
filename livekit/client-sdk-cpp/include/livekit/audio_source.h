@@ -43,8 +43,7 @@ public:
    * @param queue_size_ms Max buffer duration for the internal queue in ms.
    */
   AudioSource(int sample_rate, int num_channels, int queue_size_ms = 1000);
-
-  ~AudioSource();
+  virtual ~AudioSource() = default;
 
   AudioSource(const AudioSource &) = delete;
   AudioSource &operator=(const AudioSource &) = delete;
@@ -102,11 +101,6 @@ public:
    *     a timeout may occur in bounded-wait mode.
    */
   void captureFrame(const AudioFrame &frame, int timeout_ms = 20);
-
-  /**
-   * Block until the currently queued audio has (roughly) played out.
-   */
-  void waitForPlayout() const;
 
 private:
   // Internal helper to reset the local queue tracking (like _release_waiter).

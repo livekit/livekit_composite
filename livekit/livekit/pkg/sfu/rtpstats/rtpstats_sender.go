@@ -645,7 +645,7 @@ func (r *RTPStatsSender) UpdateFromReceiverReport(rr rtcp.ReceptionReport) (rtt 
 		// should not roll over for long time, for e. g. it will approximately take 100 days at 500 pps).
 		// So, there seems to be a remote reporter issue where the sequence number rollover is missed.
 		//
-		// catch up till diffrence between highest sent and highest received via receiver report is
+		// catch up till difference between highest sent and highest received via receiver report is
 		// less than full 16-bit range.
 		//
 		// in a different flavor, there are clients that do not report properly,
@@ -1268,13 +1268,18 @@ func (r *RTPStatsSender) getIntervalStats(
 	extEndExclusive uint64,
 	ehsn uint64,
 ) (intervalStats intervalStats) {
-	processESN := func(esn uint64, ehsn uint64) {
-		slot := r.getSnInfoOutOfOrderSlot(esn, ehsn)
-		if slot < 0 {
-			intervalStats.packetsNotFoundMetadata++
-			return
-		}
+	upperBound := ehsn + 1
+	lowerBound := uint64(0)
+	if n := uint64(len(r.snInfos)); n != 0 && ehsn >= n-1 {
+		lowerBound = ehsn - n + 1
+	}
+	extStartInclusiveClamped := max(min(extStartInclusive, upperBound), lowerBound)
+	extEndExclusiveClamped := max(min(extEndExclusive, upperBound), extStartInclusive)
 
+	intervalStats.packetsNotFoundMetadata += (extEndExclusive - extStartInclusive) - (extEndExclusiveClamped - extStartInclusiveClamped)
+
+	for esn := extStartInclusiveClamped; esn != extEndExclusiveClamped; esn++ {
+		slot := r.getSnInfoOutOfOrderSlot(esn, ehsn)
 		snInfo := &r.snInfos[slot]
 		switch {
 		case snInfo.pktSize == 0:
@@ -1297,10 +1302,6 @@ func (r *RTPStatsSender) getIntervalStats(
 		if (snInfo.flags & snInfoFlagMarker) != 0 {
 			intervalStats.frames++
 		}
-	}
-
-	for esn := extStartInclusive; esn != extEndExclusive; esn++ {
-		processESN(esn, ehsn)
 	}
 	return
 }

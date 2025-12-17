@@ -79,6 +79,16 @@ pub struct Args {
     #[arg(long, action, value_enum, default_value_t=OutputImportExtension::default())]
     out_import_extension: OutputImportExtension,
 
+    /// Specifies the version (in semver) of node that the typescript bindings will depend on in
+    /// the built output. By default, this is "^18".
+    #[arg(long, default_value = "^18")]
+    out_node_version: String,
+
+    /// If passed, adds verbose logging to the bindgen output, which is helpful for debugging
+    /// issues in the bindgne itself.
+    #[arg(long, action)]
+    out_verbose_logs: bool,
+
     /// Config file override.
     #[arg(short, long)]
     config_override: Option<Utf8PathBuf>,
@@ -95,6 +105,8 @@ pub fn run(args: Args) -> Result<()> {
         args.out_dirname_api.into(),
         args.out_disable_auto_load_lib,
         args.out_import_extension.into(),
+        args.out_node_version.as_str(),
+        args.out_verbose_logs,
     );
 
     uniffi_bindgen::library_mode::generate_bindings(

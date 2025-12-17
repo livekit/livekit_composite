@@ -42,7 +42,7 @@ namespace {
 
 std::atomic<bool> g_running{true};
 
-void print_usage(const char *prog) {
+void printUsage(const char *prog) {
   std::cerr << "Usage:\n"
             << "  " << prog << " <ws-url> <token>\n"
             << "or:\n"
@@ -52,9 +52,9 @@ void print_usage(const char *prog) {
             << "  LIVEKIT_URL, LIVEKIT_TOKEN\n";
 }
 
-void handle_sigint(int) { g_running.store(false); }
+void handleSignal(int) { g_running.store(false); }
 
-bool parse_args(int argc, char *argv[], std::string &url, std::string &token) {
+bool parseArgs(int argc, char *argv[], std::string &url, std::string &token) {
   // 1) --help
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
@@ -156,8 +156,9 @@ public:
   void onParticipantConnected(
       livekit::Room & /*room*/,
       const livekit::ParticipantConnectedEvent &ev) override {
-    std::cout << "[Room] participant connected: identity=" << ev.identity
-              << " name=" << ev.name << "\n";
+    std::cout << "[Room] participant connected: identity="
+              << ev.participant->identity()
+              << " name=" << ev.participant->name() << "\n";
   }
 
   void onTrackSubscribed(livekit::Room & /*room*/,
@@ -172,19 +173,18 @@ public:
               << participant_identity << " track_sid=" << track_sid
               << " name=" << track_name;
     if (ev.track) {
-      std::cout << " kind=" << static_cast<int>(ev.track->kind()) << "\n";
+      std::cout << " kind=" << static_cast<int>(ev.track->kind());
     }
     if (ev.publication) {
-      std::cout << " source=" << static_cast<int>(ev.publication->source())
-                << "\n";
+      std::cout << " source=" << static_cast<int>(ev.publication->source());
     }
+    std::cout << std::endl;
 
     // If this is a VIDEO track, create a VideoStream and attach to renderer
     if (ev.track && ev.track->kind() == TrackKind::KIND_VIDEO) {
       VideoStream::Options opts;
       opts.format = livekit::VideoBufferType::RGBA;
       auto video_stream = VideoStream::fromTrack(ev.track, opts);
-      std::cout << "after fromTrack " << std::endl;
       if (!video_stream) {
         std::cerr << "Failed to create VideoStream for track " << track_sid
                   << "\n";
@@ -215,8 +215,8 @@ private:
 
 int main(int argc, char *argv[]) {
   std::string url, token;
-  if (!parse_args(argc, argv, url, token)) {
-    print_usage(argv[0]);
+  if (!parseArgs(argc, argv, url, token)) {
+    printUsage(argv[0]);
     return 1;
   }
 
@@ -238,7 +238,7 @@ int main(int argc, char *argv[]) {
   std::cout << "Connecting to: " << url << std::endl;
 
   // Handle Ctrl-C to exit the idle loop
-  std::signal(SIGINT, handle_sigint);
+  std::signal(SIGINT, handleSignal);
 
   livekit::Room room{};
   SimpleRoomDelegate delegate(media);
@@ -286,7 +286,7 @@ int main(int argc, char *argv[]) {
   try {
     // publishTrack takes std::shared_ptr<Track>, LocalAudioTrack derives from
     // Track
-    audioPub = room.local_participant()->publishTrack(audioTrack, audioOpts);
+    audioPub = room.localParticipant()->publishTrack(audioTrack, audioOpts);
 
     std::cout << "Published track:\n"
               << "  SID: " << audioPub->sid() << "\n"
@@ -314,7 +314,7 @@ int main(int argc, char *argv[]) {
   try {
     // publishTrack takes std::shared_ptr<Track>, LocalAudioTrack derives from
     // Track
-    videoPub = room.local_participant()->publishTrack(videoTrack, videoOpts);
+    videoPub = room.localParticipant()->publishTrack(videoTrack, videoOpts);
 
     std::cout << "Published track:\n"
               << "  SID: " << videoPub->sid() << "\n"
@@ -341,12 +341,12 @@ int main(int argc, char *argv[]) {
   media.stopMic();
 
   // Clean up the audio track publishment
-  room.local_participant()->unpublishTrack(audioPub->sid());
+  room.localParticipant()->unpublishTrack(audioPub->sid());
 
   media.stopCamera();
 
   // Clean up the video track publishment
-  room.local_participant()->unpublishTrack(videoPub->sid());
+  room.localParticipant()->unpublishTrack(videoPub->sid());
 
   FfiClient::instance().shutdown();
   std::cout << "Exiting.\n";

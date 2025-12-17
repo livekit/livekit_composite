@@ -490,7 +490,12 @@ func (f *Forwarder) Mute(muted bool, isSubscribeMutable bool) bool {
 	// It could result in some bandwidth consumed for stream without visibility in
 	// the case of intentional mute.
 	if muted && !isSubscribeMutable {
-		f.logger.Debugw("ignoring forwarder mute, paused due to congestion")
+		f.logger.Infow(
+			"ignoring forwarder mute, paused due to congestion",
+			"targetLayers", f.vls.GetTarget(),
+			"currentLayers", f.vls.GetCurrent(),
+			"lastAllocation", f.lastAllocation,
+		)
 		return false
 	}
 
@@ -701,7 +706,7 @@ func (f *Forwarder) SetRefSenderReport(layer int32, srData *livekit.RTCPSenderRe
 		//
 		// It could happen like this
 		//   1. Normal operation: publisher sending sender reports and
-		//      suscribers use reports from publisher to calculate and send
+		//      subscribers use reports from publisher to calculate and send
 		//      RTCP sender report.
 		//   2. Publisher pauses: there are no more reports.
 		//   3. When paused, subscriber can still use the publisher side sender
@@ -2075,6 +2080,15 @@ func (f *Forwarder) getTranslationParamsVideo(extPkt *buffer.ExtPacket, layer in
 	result := f.vls.Select(extPkt, layer)
 	if !result.IsSelected {
 		if f.isDDAvailable && extPkt.DependencyDescriptor == nil {
+			f.logger.Infow(
+				"turning off dependency descriptor",
+				"layer", layer,
+				"refInfos", logger.ObjectSlice(f.refInfos[:]),
+				"lastSwitchExtIncomingTS", f.lastSwitchExtIncomingTS,
+				"currentLayer", f.vls.GetCurrent(),
+				"targetLayer", f.vls.GetCurrent(),
+				"maxLayer", f.vls.GetMax(),
+			)
 			f.isDDAvailable = false
 			switch f.mime {
 			case mime.MimeTypeVP9:

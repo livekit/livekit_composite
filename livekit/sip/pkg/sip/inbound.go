@@ -53,6 +53,8 @@ import (
 )
 
 const (
+	statsInterval = time.Minute
+
 	stateUpdateTick = 10 * time.Minute
 
 	// audioBridgeMaxDelay delays sending audio for certain time, unless RTP packet is received.
@@ -221,10 +223,8 @@ func (s *Server) handleInviteAuth(tid traceid.ID, log logger.Logger, req *sip.Re
 			"expectedUsername", username,
 			"receivedUsername", cred.Username,
 		)
-		// Commenting for now. Will check the number of occurences in production before
-		// uncommenting this.
-		// _ = tx.Respond(sip.NewResponseFromRequest(req, 401, "Unauthorized", nil))
-		// return false
+		_ = tx.Respond(sip.NewResponseFromRequest(req, 401, "Unauthorized", nil))
+		return false
 	}
 
 	// Check if we have a valid challenge state
@@ -628,6 +628,7 @@ func (s *Server) newInboundCall(
 		jitterBuf:  SelectValueBool(s.conf.EnableJitterBuffer, s.conf.EnableJitterBufferProb),
 		projectID:  "", // Will be set in handleInvite when available
 	}
+	c.stats.Update()
 	c.setLog(log.WithValues("jitterBuf", c.jitterBuf))
 	// we need it created earlier so that the audio mixer is available for pin prompts
 	c.lkRoom = s.getRoom(c.log(), &c.stats.Room)
@@ -893,13 +894,17 @@ func (c *inboundCall) handleInvite(ctx context.Context, tid traceid.ID, req *sip
 	// Wait for the caller to terminate the call. Send regular keep alives
 	ticker := time.NewTicker(stateUpdateTick)
 	defer ticker.Stop()
+
+	statsTicker := time.NewTicker(statsInterval)
+	defer statsTicker.Stop()
 	for {
 		select {
+		case <-statsTicker.C:
+			c.stats.Update()
+			c.printStats(c.log())
 		case <-ticker.C:
 			c.log().Debugw("sending keep-alive")
 			c.state.ForceFlush(ctx)
-			c.stats.Update()
-			c.printStats(c.log())
 		case <-ctx.Done():
 			c.closeWithHangup()
 			return nil
@@ -1115,7 +1120,10 @@ func (c *inboundCall) close(error bool, status CallStatus, reason string) {
 	c.stats.Closed.Store(true)
 	sipCode, sipStatus := status.SIPStatus()
 	log := c.log().WithValues("status", sipCode, "reason", reason)
-	defer c.printStats(log)
+	defer func() {
+		c.stats.Update()
+		c.printStats(log)
+	}()
 	c.setStatus(status)
 	c.mon.CallTerminate(reason)
 	isWarn := error || status == callHangupMedia
@@ -1128,8 +1136,12 @@ func (c *inboundCall) close(error bool, status CallStatus, reason string) {
 		defer log.Infow("Inbound call closed")
 	}
 
-	c.closeMedia()
+	// Send BYE _before_ closing media/room connection.
+	// This ensures participant attributes are still available for
+	// attributes_to_headers mapping in the setHeaders callback.
+	// See: https://github.com/livekit/sip/issues/404
 	c.cc.CloseWithStatus(sipCode, sipStatus)
+	c.closeMedia()
 	if c.callDur != nil {
 		c.callDur()
 	}

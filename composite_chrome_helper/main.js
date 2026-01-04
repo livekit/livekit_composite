@@ -1,3 +1,5 @@
+import { convertCompositeToSource } from './composite-redirect.js';
+
 let applicationLK = document.getElementById("applicationLK");
 let information = document.getElementById("information");
 
@@ -101,19 +103,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     information.querySelector('#go-to-source-btn').addEventListener('click', async () => {
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        const currentUrl = tab.url;
-        const prefix = 'https://github.com/livekit/livekit_composite/blob/';
-        if (currentUrl.startsWith(prefix)) {
-            const rest = currentUrl.slice(prefix.length);
-            const match = rest.match(/^[^/]+\/([^/]+)\/([^/]+)\/(.+)$/);
-            if (match) {
-                const [, org, repo, filePath] = match;
-                const newUrl = `https://github.com/${org}/${repo}/blob/main/${filePath}`;
-                browser.tabs.update(tab.id, { url: newUrl });
-                return;
-            }
+        const newUrl = convertCompositeToSource(tab.url);
+
+        if (newUrl) {
+            browser.tabs.update(tab.id, { url: newUrl });
+        } else {
+            alert('This is not a livekit_composite file URL or could not parse the path.');
         }
-        alert('This is not a livekit_composite file URL or could not parse the path.');
     });
 
     information.querySelector('#ask-deepwiki-btn').addEventListener('click', () => {

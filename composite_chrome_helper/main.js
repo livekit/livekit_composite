@@ -44,9 +44,7 @@ function fillField(container, name, value, tabId) {
     container.appendChild(entry);
 }
 
-if (typeof browser === "undefined") {
-    var browser = chrome;
-}
+const browser = typeof globalThis.browser !== "undefined" ? globalThis.browser : chrome;
 
 function getCurrentWindowTabs() {
     return browser.tabs.query({ currentWindow: true, active: true });

@@ -2,3 +2,4 @@ output
 .vscode
 __pycache__
 *.raw
+*.local.*

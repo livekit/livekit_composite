@@ -35,7 +35,7 @@ async function handle404Redirect() {
 
     try {
         const response = await browser.runtime.sendMessage({
-            type: 'handle404',
+            type: 'handleLiveKit404',
             url: window.location.href
         });
 

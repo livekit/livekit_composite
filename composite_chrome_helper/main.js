@@ -101,12 +101,30 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     information.querySelector('#go-to-source-btn').addEventListener('click', async () => {
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        const response = await browser.runtime.sendMessage({ type: 'convertUrl', url: tab.url });
+
+        // Sanity check: input must be livekit_composite
+        if (!tab.url.startsWith('https://github.com/livekit/livekit_composite')) {
+            alert('This is not a livekit_composite file URL.');
+            return;
+        }
+
+        const response = await browser.runtime.sendMessage({ type: 'convertCompositeUrl', url: tab.url });
 
         if (response.url) {
-            browser.tabs.update(tab.id, { url: response.url });
+            // Sanity check: output must be github.com/livekit or github.com/livekit-examples before redirection
+            if (!response.url.startsWith('https://github.com/livekit/') &&
+                !response.url.startsWith('https://github.com/livekit-examples/')) {
+                alert('Internal Error: Invalid redirect URL generated.');
+                return;
+            }
+            // Use scripting API to navigate, preserving browser history
+            browser.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: (url) => { location.assign(url); },
+                args: [response.url]
+            });
         } else {
-            alert('This is not a livekit_composite file URL or could not parse the path.');
+            alert('Internal Error: could not parse the redirection url. This only works on file URLs (/blob/)');
         }
     });
 

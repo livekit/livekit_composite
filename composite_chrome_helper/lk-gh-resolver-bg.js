@@ -1,3 +1,11 @@
+/**
+ * LiveKit GitHub URL Resolver - Background Service Worker
+ *
+ * ASSUMPTION: All callers (main.js, 404-detector.js) validate that URLs are
+ * github.com/livekit/* or github.com/livekit-examples/* before calling these functions.
+ * This file does NOT perform that sanity check - it trusts the upstream validation.
+ */
+
 // In-memory branch cache for all tabs to share
 let branchCache = null;
 
@@ -74,58 +82,70 @@ async function fetchDefaultBranchFromAPI(org, repo) {
 /**
  * Converts a LiveKit composite repository URL to its source repository URL
  *
- * @param {string} url - The URL to convert
+ * NOTE: This parses COMPOSITE URLs where the source org/repo are NESTED in the path.
+ * Do not merge with parseSourceRepoUrl() - they handle different URL structures.
+ *
+ * Input:  https://github.com/livekit/livekit_composite/blob/{branch}/{org}/{repo}/{filePath}
+ * Output: https://github.com/{org}/{repo}/blob/{branch}/{filePath}
+ *
+ * @param {string} url - The composite URL to convert
  * @returns {string|null} - The converted source URL, or null if conversion fails
  */
 function convertCompositeToSource(url) {
-    const prefix = 'https://github.com/livekit/livekit_composite/blob/';
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    // parts: [livekit, livekit_composite, type, branch, org, repo, ...filePath]
+    //         0        1                  2     3       4    5     6+
+    if (parts[2] !== 'blob') {
+        return null; // TODO: handle 'tree' in the future
+    }
 
-    if (!url.startsWith(prefix)) {
+    if (parts.length < 7) {
         return null;
     }
 
-    const rest = url.slice(prefix.length);
-    const match = rest.match(/^[^/]+\/([^/]+)\/([^/]+)\/(.+)$/);
-
-    if (match) {
-        const [, org, repo, filePath] = match;
-        const branch = getDefaultBranch(org, repo);
-        return `https://github.com/${org}/${repo}/blob/${branch}/${filePath}?utm_source=livekit_extension`;
-    }
-
-    return null;
+    const [, , , , org, repo, ...filePathParts] = parts;
+    const filePath = filePathParts.join('/');
+    const branch = getDefaultBranch(org, repo);
+    return `https://github.com/${org}/${repo}/blob/${branch}/${filePath}?utm_source=livekit_extension`;
 }
 
 /**
- * Parse GitHub URL to extract org, repo, and file path
- * @param {string} url - GitHub URL
- * @returns {object|null} - Parsed components or null
+ * Parse a source repo URL (after redirect from composite) to extract org, repo, and file path
+ *
+ * NOTE: This parses SOURCE REPO URLs where org/repo are at the ROOT of the path.
+ * Do not merge with convertCompositeToSource() - they handle different URL structures.
+ *
+ * Input: https://github.com/{org}/{repo}/blob/{branch}/{filePath}
+ * Used by: tryResolveStaleBranch404() to re-resolve 404s from stale branch cache
+ *
+ * @param {string} url - GitHub source repo URL
+ * @returns {object|null} - { org, repo, filePath } or null
  */
-function parseGitHubUrl(url) {
-    const match = url.match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/[^/]+\/(.+)$/);
-    if (match) {
-        return {
-            org: match[1],
-            repo: match[2],
-            filePath: match[3]
-        };
+function parseSourceRepoUrl(url) {
+    const parts = new URL(url).pathname.split('/').filter(Boolean);
+    // parts: [org, repo, 'blob', branch, ...filePath]
+    //         0    1      2       3       4+
+    if (parts.length < 5 || parts[2] !== 'blob') {
+        return null;
     }
-    return null;
+
+    const [org, repo, , , ...filePathParts] = parts;
+    return { org, repo, filePath: filePathParts.join('/') };
 }
 
 /**
- * Handle 404 redirect logic - called from content script
+ * Try to resolve a 404 caused by stale branch cache
  * @param {string} url - Current page URL
  * @returns {Promise<string|null>} - Redirect URL or null
  */
-async function handle404Redirect(url) {
+async function tryResolveStaleBranch404(url) {
     // Only handle redirects that came from our extension
     if (!url.includes('utm_source=livekit_extension')) {
         console.log('[LiveKit Extension] 404 not from extension, ignoring');
         return null;
     }
 
-    const parsed = parseGitHubUrl(url);
+    const parsed = parseSourceRepoUrl(url);
     if (!parsed) {
         return null;
     }
@@ -162,25 +182,7 @@ async function handle404Redirect(url) {
  * Handle messages from content scripts and popup
  */
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-    if (msg.type === 'getBranchCache') {
-        // Return the prefetched cache to content script
-        prefetchCache().then(data => {
-            sendResponse({ data });
-        });
-        return true;
-    }
-
-    if (msg.type === 'updateBranchCache') {
-        // Update the in-memory cache when API discovers new branch
-        prefetchCache().then(() => {
-            const { org, repo, branch } = msg;
-            updateBranchCache(org, repo, branch);
-            sendResponse({ success: true });
-        });
-        return true;
-    }
-
-    if (msg.type === 'convertUrl') {
+    if (msg.type === 'convertCompositeUrl') {
         // Convert composite URL to source URL (used by popup)
         prefetchCache().then(() => {
             const result = convertCompositeToSource(msg.url);
@@ -189,10 +191,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return true;
     }
 
-    if (msg.type === 'handle404') {
+    if (msg.type === 'handleLiveKit404') {
         // Handle 404 redirect logic (used by content script)
         prefetchCache().then(async () => {
-            const redirectUrl = await handle404Redirect(msg.url);
+            const redirectUrl = await tryResolveStaleBranch404(msg.url);
             sendResponse({ redirectUrl });
         });
         return true;

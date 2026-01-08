@@ -187,6 +187,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         prefetchCache().then(() => {
             const result = convertCompositeToSource(msg.url);
             sendResponse({ url: result });
+        }).catch(err => {
+            console.error('[LiveKit Extension] Error converting URL:', err);
+            sendResponse({ url: null });
         });
         return true;
     }
@@ -196,6 +199,9 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         prefetchCache().then(async () => {
             const redirectUrl = await tryResolveStaleBranch404(msg.url);
             sendResponse({ redirectUrl });
+        }).catch(err => {
+            console.error('[LiveKit Extension] Error handling 404:', err);
+            sendResponse({ redirectUrl: null });
         });
         return true;
     }

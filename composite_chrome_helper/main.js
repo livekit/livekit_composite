@@ -1,5 +1,3 @@
-import { convertCompositeToSource } from './composite-redirect.js';
-
 let applicationLK = document.getElementById("applicationLK");
 let information = document.getElementById("information");
 
@@ -103,10 +101,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     information.querySelector('#go-to-source-btn').addEventListener('click', async () => {
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        const newUrl = convertCompositeToSource(tab.url);
+        const response = await browser.runtime.sendMessage({ type: 'convertUrl', url: tab.url });
 
-        if (newUrl) {
-            browser.tabs.update(tab.id, { url: newUrl });
+        if (response.url) {
+            browser.tabs.update(tab.id, { url: response.url });
         } else {
             alert('This is not a livekit_composite file URL or could not parse the path.');
         }

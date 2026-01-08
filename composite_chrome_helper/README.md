@@ -18,4 +18,11 @@ While in a `https://github.com/livekit/livekit_composite/...` repository click t
 
 ## How to develop:
 
+1. Make changes to the source files
+2. Go to `chrome://extensions` and click the refresh icon on the extension
+3. Test your changes
 
+## Future Improvements
+
+- [ ] Add a bundler (esbuild/rollup) to enable shared code between content scripts and background, TypeScript support, and minification
+- [ ] Remove empty `content-script.js` if MAIN world access is not needed

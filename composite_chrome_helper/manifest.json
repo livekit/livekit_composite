@@ -27,6 +27,10 @@
     "tabs",
     "webNavigation"
   ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
@@ -35,6 +39,14 @@
       "all_frames": true,
       "match_about_blank": true,
       "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://github.com/livekit/*",
+        "https://github.com/livekit-examples/*"
+      ],
+      "js": ["404-detector.js"],
+      "run_at": "document_idle"
     }
   ]
 }

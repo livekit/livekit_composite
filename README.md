@@ -39,7 +39,13 @@ This project contains a comprehensive knowledge base about LiveKit, a real-time 
 - **Format**: Plain text format optimized for language models
 - **Update script**: `python sync_livekit_repos.py` (included in repo sync)
 
-### 5. **CRITICAL: LLM Guidance** (`knowledge_guidance.md`)
+### 5. Chrome Extension (`composite_chrome_helper/` directory)
+- **Content**: Chrome extension that adds a "Go To Source" button to navigate from composite repo URLs to their original source repositories
+- **Branch data**: `composite_chrome_helper/repo-default-branches.json` - mapping of repo names to default branches
+- **Update script**: `python update_chrome_helper_branches.py`
+- **Purpose**: Fetches current default branch info from GitHub API for accurate source repo navigation
+
+### 6. **CRITICAL: LLM Guidance** (`knowledge_guidance.md`)
 - **Source**: Curated clarifications and corrections for common misunderstandings
 - **Purpose**: Prevents misleading or incorrect responses about LiveKit
 - **Content**: Specific guidance on issues that have caused confusion in the past

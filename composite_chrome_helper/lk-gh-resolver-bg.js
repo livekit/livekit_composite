@@ -16,9 +16,14 @@ let branchCache = null;
 async function prefetchCache() {
     if (!branchCache) {
         console.log('[LiveKit Extension] Prefetching branch cache in background...');
-        const res = await fetch(chrome.runtime.getURL('repo-default-branches.json'));
-        branchCache = await res.json();
-        console.log('[LiveKit Extension] Branch cache prefetched and ready');
+        try {
+            const res = await fetch(chrome.runtime.getURL('repo-default-branches.json'));
+            branchCache = await res.json();
+            console.log('[LiveKit Extension] Branch cache prefetched and ready');
+        } catch (err) {
+            console.warn('[LiveKit Extension] Failed to load branch cache, using empty cache:', err);
+            branchCache = {};
+        }
     }
     return branchCache;
 }

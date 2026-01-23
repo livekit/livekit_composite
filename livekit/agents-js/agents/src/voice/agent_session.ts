@@ -3,6 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { AudioFrame, Room } from '@livekit/rtc-node';
 import type { TypedEventEmitter as TypedEmitter } from '@livekit/typed-emitter';
+import type { Context, Span } from '@opentelemetry/api';
+import { ROOT_CONTEXT, context as otelContext, trace } from '@opentelemetry/api';
 import { EventEmitter } from 'node:events';
 import type { ReadableStream } from 'node:stream/web';
 import {
@@ -13,14 +15,22 @@ import {
   type STTModelString,
   type TTSModelString,
 } from '../inference/index.js';
-import { getJobContext } from '../job.js';
+import { type JobContext, getJobContext } from '../job.js';
+import type { FunctionCall, FunctionCallOutput } from '../llm/chat_context.js';
 import { AgentHandoffItem, ChatContext, ChatMessage } from '../llm/chat_context.js';
 import type { LLM, RealtimeModel, RealtimeModelError, ToolChoice } from '../llm/index.js';
 import type { LLMError } from '../llm/llm.js';
 import { log } from '../log.js';
 import type { STT } from '../stt/index.js';
 import type { STTError } from '../stt/stt.js';
+import { traceTypes, tracer } from '../telemetry/index.js';
 import type { TTS, TTSError } from '../tts/tts.js';
+import {
+  DEFAULT_API_CONNECT_OPTIONS,
+  DEFAULT_SESSION_CONNECT_OPTIONS,
+  type ResolvedSessionConnectOptions,
+  type SessionConnectOptions,
+} from '../types.js';
 import type { VAD } from '../vad.js';
 import type { Agent } from './agent.js';
 import { AgentActivity } from './agent_activity.js';
@@ -36,6 +46,7 @@ import {
   type ErrorEvent,
   type FunctionToolsExecutedEvent,
   type MetricsCollectedEvent,
+  type ShutdownReason,
   type SpeechCreatedEvent,
   type UserInputTranscribedEvent,
   type UserState,
@@ -46,6 +57,7 @@ import {
   createUserStateChangedEvent,
 } from './events.js';
 import { AgentInput, AgentOutput } from './io.js';
+import { RecorderIO } from './recorder_io/index.js';
 import { RoomIO, type RoomInputOptions, type RoomOutputOptions } from './room_io/index.js';
 import type { UnknownUserData } from './run_context.js';
 import type { SpeechHandle } from './speech_handle.js';
@@ -96,6 +108,7 @@ export type AgentSessionOptions<UserData = UnknownUserData> = {
   tts?: TTS | TTSModelString;
   userData?: UserData;
   voiceOptions?: Partial<VoiceOptions>;
+  connOptions?: SessionConnectOptions;
 };
 
 export class AgentSession<
@@ -128,8 +141,31 @@ export class AgentSession<
   private closingTask: Promise<void> | null = null;
   private userAwayTimer: NodeJS.Timeout | null = null;
 
+  // Connection options for STT, LLM, and TTS
+  private _connOptions: ResolvedSessionConnectOptions;
+
+  // Unrecoverable error counts, reset after agent speaking
+  private llmErrorCounts = 0;
+  private ttsErrorCounts = 0;
+
+  private sessionSpan?: Span;
+  private userSpeakingSpan?: Span;
+  private agentSpeakingSpan?: Span;
+
+  /** @internal */
+  _recorderIO?: RecorderIO;
+
+  /** @internal */
+  rootSpanContext?: Context;
+
   /** @internal */
   _recordedEvents: AgentEvent[] = [];
+
+  /** @internal */
+  _enableRecording = false;
+
+  /** @internal - Timestamp when the session started (milliseconds) */
+  _startedAt?: number;
 
   constructor(opts: AgentSessionOptions<UserData>) {
     super();
@@ -142,7 +178,18 @@ export class AgentSession<
       turnDetection,
       userData,
       voiceOptions = defaultVoiceOptions,
+      connOptions,
     } = opts;
+
+    // Merge user-provided connOptions with defaults
+    this._connOptions = {
+      sttConnOptions: { ...DEFAULT_API_CONNECT_OPTIONS, ...connOptions?.sttConnOptions },
+      llmConnOptions: { ...DEFAULT_API_CONNECT_OPTIONS, ...connOptions?.llmConnOptions },
+      ttsConnOptions: { ...DEFAULT_API_CONNECT_OPTIONS, ...connOptions?.ttsConnOptions },
+      maxUnrecoverableErrors:
+        connOptions?.maxUnrecoverableErrors ??
+        DEFAULT_SESSION_CONNECT_OPTIONS.maxUnrecoverableErrors,
+    };
 
     this.vad = vad;
 
@@ -175,7 +222,8 @@ export class AgentSession<
     this._chatCtx = ChatContext.empty();
     this.options = { ...defaultVoiceOptions, ...voiceOptions };
 
-    this.on(AgentSessionEventTypes.UserInputTranscribed, this._onUserInputTranscribed.bind(this));
+    this._onUserInputTranscribed = this._onUserInputTranscribed.bind(this);
+    this.on(AgentSessionEventTypes.UserInputTranscribed, this._onUserInputTranscribed);
   }
 
   emit<K extends keyof AgentSessionCallbacks>(
@@ -207,29 +255,29 @@ export class AgentSession<
     return this._chatCtx;
   }
 
+  /** Connection options for STT, LLM, and TTS. */
+  get connOptions(): ResolvedSessionConnectOptions {
+    return this._connOptions;
+  }
+
   set userData(value: UserData) {
     this._userData = value;
   }
 
-  async start({
-    // TODO(brian): PR2 - Add setupCloudTracer() call if on LiveKit Cloud with recording enabled
-    // TODO(brian): PR3 - Add span: this._sessionSpan = tracer.startSpan('agent_session'), store as instance property
-    // TODO(brian): PR4 - Add setupCloudLogger() call in setupCloudTracer() to setup OTEL logging with Pino bridge
+  private async _startImpl({
     agent,
     room,
     inputOptions,
     outputOptions,
-    record = true,
+    span,
   }: {
     agent: Agent;
     room: Room;
     inputOptions?: Partial<RoomInputOptions>;
     outputOptions?: Partial<RoomOutputOptions>;
-    record?: boolean;
+    span: Span;
   }): Promise<void> {
-    if (this.started) {
-      return;
-    }
+    span.setAttribute(traceTypes.ATTR_AGENT_LABEL, agent.id);
 
     this.agent = agent;
     this._updateAgentState('initializing');
@@ -260,19 +308,38 @@ export class AgentSession<
     });
     this.roomIO.start();
 
-    const ctx = getJobContext();
-    if (ctx && ctx.room === room && !room.isConnected) {
-      this.logger.debug('Auto-connecting to room via job context');
-      tasks.push(ctx.connect());
+    let ctx: JobContext | undefined = undefined;
+    try {
+      ctx = getJobContext();
+    } catch (error) {
+      // JobContext is not available in evals
+      this.logger.warn('JobContext is not available');
     }
 
-    if (record) {
+    if (ctx) {
+      if (ctx.room === room && !room.isConnected) {
+        this.logger.debug('Auto-connecting to room via job context');
+        tasks.push(ctx.connect());
+      }
+
       if (ctx._primaryAgentSession === undefined) {
         ctx._primaryAgentSession = this;
-      } else {
+      } else if (this._enableRecording) {
         throw new Error(
-          'Only one `AgentSession` can be the primary at a time. If you want to ignore primary designation, use session.start(record=False).',
+          'Only one `AgentSession` can be the primary at a time. If you want to ignore primary designation, use `session.start({ record: false })`.',
         );
+      }
+
+      if (this.input.audio && this.output.audio && this._enableRecording) {
+        this._recorderIO = new RecorderIO({ agentSession: this });
+        this.input.audio = this._recorderIO.recordInput(this.input.audio);
+        this.output.audio = this._recorderIO.recordOutput(this.output.audio);
+
+        // Start recording to session directory
+        const sessionDir = ctx.sessionDirectory;
+        if (sessionDir) {
+          tasks.push(this._recorderIO.start(`${sessionDir}/audio.ogg`));
+        }
       }
     }
 
@@ -291,7 +358,59 @@ export class AgentSession<
     );
 
     this.started = true;
+    this._startedAt = Date.now();
     this._updateAgentState('listening');
+  }
+
+  async start({
+    agent,
+    room,
+    inputOptions,
+    outputOptions,
+    record,
+  }: {
+    agent: Agent;
+    room: Room;
+    inputOptions?: Partial<RoomInputOptions>;
+    outputOptions?: Partial<RoomOutputOptions>;
+    record?: boolean;
+  }): Promise<void> {
+    if (this.started) {
+      return;
+    }
+
+    let ctx: JobContext | undefined = undefined;
+    try {
+      ctx = getJobContext();
+
+      if (record === undefined) {
+        record = ctx.job.enableRecording;
+      }
+
+      this._enableRecording = record;
+
+      if (this._enableRecording) {
+        ctx.initRecording();
+      }
+    } catch (error) {
+      // JobContext is not available in evals
+      this.logger.warn('JobContext is not available');
+    }
+
+    this.sessionSpan = tracer.startSpan({
+      name: 'agent_session',
+      context: ROOT_CONTEXT,
+    });
+
+    this.rootSpanContext = trace.setSpan(ROOT_CONTEXT, this.sessionSpan);
+
+    await this._startImpl({
+      agent,
+      room,
+      inputOptions,
+      outputOptions,
+      span: this.sessionSpan,
+    });
   }
 
   updateAgent(agent: Agent): void {
@@ -329,7 +448,17 @@ export class AgentSession<
       throw new Error('AgentSession is not running');
     }
 
-    return this.activity.say(text, options);
+    const doSay = (activity: AgentActivity) => {
+      return activity.say(text, options);
+    };
+
+    // attach to the session span if called outside of the AgentSession
+    const activeSpan = trace.getActiveSpan();
+    if (!activeSpan && this.rootSpanContext) {
+      return otelContext.with(this.rootSpanContext, () => doSay(this.activity!));
+    }
+
+    return doSay(this.activity);
   }
 
   interrupt() {
@@ -356,43 +485,63 @@ export class AgentSession<
         })
       : undefined;
 
-    if (this.activity.draining) {
-      if (!this.nextActivity) {
-        throw new Error('AgentSession is closing, cannot use generateReply()');
+    const doGenerateReply = (activity: AgentActivity, nextActivity?: AgentActivity) => {
+      if (activity.draining) {
+        if (!nextActivity) {
+          throw new Error('AgentSession is closing, cannot use generateReply()');
+        }
+        return nextActivity.generateReply({ userMessage, ...options });
       }
-      return this.nextActivity.generateReply({ userMessage, ...options });
+      return activity.generateReply({ userMessage, ...options });
+    };
+
+    // attach to the session span if called outside of the AgentSession
+    const activeSpan = trace.getActiveSpan();
+    if (!activeSpan && this.rootSpanContext) {
+      return otelContext.with(this.rootSpanContext, () =>
+        doGenerateReply(this.activity!, this.nextActivity),
+      );
     }
 
-    return this.activity.generateReply({ userMessage, ...options });
+    return doGenerateReply(this.activity!, this.nextActivity);
   }
 
   private async updateActivity(agent: Agent): Promise<void> {
-    // TODO(AJS-129): add lock to agent activity core lifecycle
-    this.nextActivity = new AgentActivity(agent, this);
+    const runWithContext = async () => {
+      // TODO(AJS-129): add lock to agent activity core lifecycle
+      this.nextActivity = new AgentActivity(agent, this);
 
-    const previousActivity = this.activity;
+      const previousActivity = this.activity;
 
-    if (this.activity) {
-      await this.activity.drain();
-      await this.activity.close();
+      if (this.activity) {
+        await this.activity.drain();
+        await this.activity.close();
+      }
+
+      this.activity = this.nextActivity;
+      this.nextActivity = undefined;
+
+      this._chatCtx.insert(
+        new AgentHandoffItem({
+          oldAgentId: previousActivity?.agent.id,
+          newAgentId: agent.id,
+        }),
+      );
+      this.logger.debug({ previousActivity, agent }, 'Agent handoff inserted into chat context');
+
+      await this.activity.start();
+
+      if (this._input.audio) {
+        this.activity.attachAudioInput(this._input.audio.stream);
+      }
+    };
+
+    // Run within session span context if available
+    if (this.rootSpanContext) {
+      return otelContext.with(this.rootSpanContext, runWithContext);
     }
 
-    this.activity = this.nextActivity;
-    this.nextActivity = undefined;
-
-    this._chatCtx.insert(
-      new AgentHandoffItem({
-        oldAgentId: previousActivity?.agent.id,
-        newAgentId: agent.id,
-      }),
-    );
-    this.logger.debug({ previousActivity, agent }, 'Agent handoff inserted into chat context');
-
-    await this.activity.start();
-
-    if (this._input.audio) {
-      this.activity.attachAudioInput(this._input.audio.stream);
-    }
+    return runWithContext();
   }
 
   get chatCtx(): ChatContext {
@@ -415,13 +564,22 @@ export class AgentSession<
     await this.closeImpl(CloseReason.USER_INITIATED);
   }
 
+  shutdown(options?: { drain?: boolean; reason?: ShutdownReason }): void {
+    const { drain = true, reason = CloseReason.USER_INITIATED } = options ?? {};
+
+    this._closeSoon({
+      reason,
+      drain,
+    });
+  }
+
   /** @internal */
   _closeSoon({
     reason,
     drain = false,
     error = null,
   }: {
-    reason: CloseReason;
+    reason: ShutdownReason;
     drain?: boolean;
     error?: RealtimeModelError | STTError | TTSError | LLMError | null;
   }): void {
@@ -435,6 +593,19 @@ export class AgentSession<
   _onError(error: RealtimeModelError | STTError | TTSError | LLMError): void {
     if (this.closingTask || error.recoverable) {
       return;
+    }
+
+    // Track error counts per type to implement max_unrecoverable_errors logic
+    if (error.type === 'llm_error') {
+      this.llmErrorCounts += 1;
+      if (this.llmErrorCounts <= this._connOptions.maxUnrecoverableErrors) {
+        return;
+      }
+    } else if (error.type === 'tts_error') {
+      this.ttsErrorCounts += 1;
+      if (this.ttsErrorCounts <= this._connOptions.maxUnrecoverableErrors) {
+        return;
+      }
     }
 
     this.logger.error(error, 'AgentSession is closing due to unrecoverable error');
@@ -453,13 +624,36 @@ export class AgentSession<
   }
 
   /** @internal */
+  _toolItemsAdded(items: (FunctionCall | FunctionCallOutput)[]): void {
+    this._chatCtx.insert(items);
+  }
+
+  /** @internal */
   _updateAgentState(state: AgentState) {
     if (this._agentState === state) {
       return;
     }
 
-    // TODO(brian): PR3 - Add span: if state === 'speaking' && !this._agentSpeakingSpan, create tracer.startSpan('agent_speaking') with participant attributes
-    // TODO(brian): PR3 - Add span: if state !== 'speaking' && this._agentSpeakingSpan, end and clear this._agentSpeakingSpan
+    if (state === 'speaking') {
+      // Reset error counts when agent starts speaking
+      this.llmErrorCounts = 0;
+      this.ttsErrorCounts = 0;
+
+      if (this.agentSpeakingSpan === undefined) {
+        this.agentSpeakingSpan = tracer.startSpan({
+          name: 'agent_speaking',
+          context: this.rootSpanContext,
+        });
+
+        // TODO(brian): PR4 - Set participant attributes if roomIO.room.localParticipant is available
+        // (Ref: Python agent_session.py line 1161-1164)
+      }
+    } else if (this.agentSpeakingSpan !== undefined) {
+      // TODO(brian): PR4 - Set ATTR_END_TIME attribute if available
+      this.agentSpeakingSpan.end();
+      this.agentSpeakingSpan = undefined;
+    }
+
     const oldState = this._agentState;
     this._agentState = state;
 
@@ -482,8 +676,20 @@ export class AgentSession<
       return;
     }
 
-    // TODO(brian): PR3 - Add span: if state === 'speaking' && !this._userSpeakingSpan, create tracer.startSpan('user_speaking') with participant attributes
-    // TODO(brian): PR3 - Add span: if state !== 'speaking' && this._userSpeakingSpan, end and clear this._userSpeakingSpan
+    if (state === 'speaking' && this.userSpeakingSpan === undefined) {
+      this.userSpeakingSpan = tracer.startSpan({
+        name: 'user_speaking',
+        context: this.rootSpanContext,
+      });
+
+      // TODO(brian): PR4 - Set participant attributes if roomIO.linkedParticipant is available
+      // (Ref: Python agent_session.py line 1192-1195)
+    } else if (this.userSpeakingSpan !== undefined) {
+      // TODO(brian): PR4 - Set ATTR_END_TIME attribute with lastSpeakingTime if available
+      this.userSpeakingSpan.end();
+      this.userSpeakingSpan = undefined;
+    }
+
     const oldState = this.userState;
     this.userState = state;
 
@@ -547,7 +753,21 @@ export class AgentSession<
   }
 
   private async closeImpl(
-    reason: CloseReason,
+    reason: ShutdownReason,
+    error: RealtimeModelError | LLMError | TTSError | STTError | null = null,
+    drain: boolean = false,
+  ): Promise<void> {
+    if (this.rootSpanContext) {
+      return otelContext.with(this.rootSpanContext, async () => {
+        await this.closeImplInner(reason, error, drain);
+      });
+    }
+
+    return this.closeImplInner(reason, error, drain);
+  }
+
+  private async closeImplInner(
+    reason: ShutdownReason,
     error: RealtimeModelError | LLMError | TTSError | STTError | null = null,
     drain: boolean = false,
   ): Promise<void> {
@@ -556,13 +776,13 @@ export class AgentSession<
     }
 
     this._cancelUserAwayTimer();
+    this.off(AgentSessionEventTypes.UserInputTranscribed, this._onUserInputTranscribed);
 
     if (this.activity) {
       if (!drain) {
         try {
           this.activity.interrupt();
         } catch (error) {
-          // uninterruptible speech [copied from python]
           // TODO(shubhra): force interrupt or wait for it to finish?
           // it might be an audio played from the error callback
         }
@@ -570,7 +790,16 @@ export class AgentSession<
       await this.activity.drain();
       // wait any uninterruptible speech to finish
       await this.activity.currentSpeech?.waitForPlayout();
-      this.activity.detachAudioInput();
+      try {
+        this.activity.detachAudioInput();
+      } catch (error) {
+        // Ignore detach errors during cleanup - source may not have been set
+      }
+    }
+
+    // Close recorder before detaching inputs/outputs (keep reference for session report)
+    if (this._recorderIO) {
+      await this._recorderIO.close();
     }
 
     // detach the inputs and outputs
@@ -584,12 +813,30 @@ export class AgentSession<
     await this.activity?.close();
     this.activity = undefined;
 
+    if (this.sessionSpan) {
+      this.sessionSpan.end();
+      this.sessionSpan = undefined;
+    }
+
+    if (this.userSpeakingSpan) {
+      this.userSpeakingSpan.end();
+      this.userSpeakingSpan = undefined;
+    }
+
+    if (this.agentSpeakingSpan) {
+      this.agentSpeakingSpan.end();
+      this.agentSpeakingSpan = undefined;
+    }
+
     this.started = false;
 
     this.emit(AgentSessionEventTypes.Close, createCloseEvent(reason, error));
 
     this.userState = 'listening';
     this._agentState = 'initializing';
+    this.rootSpanContext = undefined;
+    this.llmErrorCounts = 0;
+    this.ttsErrorCounts = 0;
 
     this.logger.info({ reason, error }, 'AgentSession closed');
   }

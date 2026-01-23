@@ -344,6 +344,18 @@ func (w *AppWriter) SetTimeProvider(tp gstreamer.TimeProvider) {
 	w.tpLock.Unlock()
 }
 
+func (w *AppWriter) waitFor(ch <-chan struct{}) bool {
+	if ch == nil {
+		return true
+	}
+	select {
+	case <-ch:
+		return true
+	case <-w.draining.Watch():
+		return false
+	}
+}
+
 func (w *AppWriter) pipelineRunningTime() (time.Duration, bool) {
 	w.tpLock.RLock()
 	provider := w.timeProvider
@@ -407,10 +419,11 @@ func (w *AppWriter) onPacket(sample []jitter.ExtPacket) {
 }
 
 func (w *AppWriter) pushSamples() {
-	select {
-	case <-w.playing.Watch():
-		// continue
-	case <-w.draining.Watch():
+	if !w.waitFor(w.callbacks.PipelinePaused()) {
+		return
+	}
+
+	if !w.waitFor(w.playing.Watch()) {
 		return
 	}
 
@@ -609,6 +622,10 @@ func (w *AppWriter) updateDrift(drift time.Duration) {
 
 func (w *AppWriter) shouldHandleDiscontinuity() bool {
 	return w.track.Kind() == webrtc.RTPCodecTypeAudio && w.conf.AudioTempoController.Enabled
+}
+
+func (w *AppWriter) TrackKind() webrtc.RTPCodecType {
+	return w.track.Kind()
 }
 
 func isDiscontinuity(lastPTS time.Duration, pts time.Duration) bool {

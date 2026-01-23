@@ -17,6 +17,7 @@ ARG GOVERSION=1.24
 FROM golang:$GOVERSION AS builder
 
 ARG TARGETPLATFORM
+ARG VERSION=0.0.0-dev
 
 WORKDIR /workspace
 
@@ -36,13 +37,15 @@ COPY version/ version/
 
 # build
 RUN if [ "$TARGETPLATFORM" = "linux/arm64" ]; then GOARCH=arm64; else GOARCH=amd64; fi && \
-    CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -a -o livekit-sip ./cmd/livekit-sip
+    CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -a \
+    -ldflags "-X github.com/livekit/sip/version.Version=${VERSION}" \
+    -o livekit-sip ./cmd/livekit-sip
 
-FROM golang:$GOVERSION
+FROM debian:trixie-slim
 
 # install wget for health check
 RUN apt-get update && \
-    apt-get install -y libopus0 libopusfile0 libsoxr0 && \
+    apt-get install -y libopus0 libopusfile0 libsoxr0 ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 

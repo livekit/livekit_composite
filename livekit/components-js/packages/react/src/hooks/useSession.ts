@@ -52,6 +52,14 @@ export type SessionConnectOptions = {
       enabled?: boolean;
       publishOptions?: TrackPublishOptions;
     };
+    camera?: {
+      enabled?: boolean;
+      publishOptions?: TrackPublishOptions;
+    };
+    screenShare?: {
+      enabled?: boolean;
+      publishOptions?: TrackPublishOptions;
+    };
   };
 
   /** Options for Room.connect(.., .., opts) */
@@ -88,8 +96,9 @@ type SessionStateConnecting = SessionStateCommon & {
   isConnected: false;
 
   local: {
-    cameraTrack: null;
-    microphoneTrack: null;
+    cameraTrack: undefined;
+    microphoneTrack: undefined;
+    screenShareTrack: undefined;
   };
 };
 
@@ -101,8 +110,9 @@ type SessionStateConnected = SessionStateCommon & {
   isConnected: true;
 
   local: {
-    cameraTrack: TrackReference | null;
-    microphoneTrack: TrackReference | null;
+    cameraTrack?: TrackReference;
+    microphoneTrack?: TrackReference;
+    screenShareTrack?: TrackReference;
   };
 };
 
@@ -111,8 +121,9 @@ type SessionStateDisconnected = SessionStateCommon & {
   isConnected: false;
 
   local: {
-    cameraTrack: null;
-    microphoneTrack: null;
+    cameraTrack: undefined;
+    microphoneTrack: undefined;
+    screenShareTrack: undefined;
   };
 };
 
@@ -367,26 +378,37 @@ export function useSession(
   const { localParticipant } = useLocalParticipant({ room });
   const cameraPublication = localParticipant.getTrackPublication(Track.Source.Camera);
   const localCamera = React.useMemo(() => {
-    if (!cameraPublication || cameraPublication.isMuted) {
-      return null;
+    if (!cameraPublication) {
+      return undefined;
     }
     return {
       source: Track.Source.Camera,
       participant: localParticipant,
       publication: cameraPublication,
     };
-  }, [localParticipant, cameraPublication, cameraPublication?.isMuted]);
+  }, [localParticipant, cameraPublication]);
   const microphonePublication = localParticipant.getTrackPublication(Track.Source.Microphone);
   const localMicrophone = React.useMemo(() => {
-    if (!microphonePublication || microphonePublication.isMuted) {
-      return null;
+    if (!microphonePublication) {
+      return undefined;
     }
     return {
       source: Track.Source.Microphone,
       participant: localParticipant,
       publication: microphonePublication,
     };
-  }, [localParticipant, microphonePublication, microphonePublication?.isMuted]);
+  }, [localParticipant, microphonePublication]);
+  const screenSharePublication = localParticipant.getTrackPublication(Track.Source.ScreenShare);
+  const localScreenShare = React.useMemo(() => {
+    if (!screenSharePublication) {
+      return undefined;
+    }
+    return {
+      source: Track.Source.ScreenShare,
+      participant: localParticipant,
+      publication: screenSharePublication,
+    };
+  }, [localParticipant, screenSharePublication]);
 
   const {
     agentTimeoutFailureReason,
@@ -441,8 +463,9 @@ export function useSession(
           ...generateDerivedConnectionStateValues(ConnectionState.Connecting),
 
           local: {
-            cameraTrack: null,
-            microphoneTrack: null,
+            cameraTrack: undefined,
+            microphoneTrack: undefined,
+            screenShareTrack: undefined,
           },
         };
 
@@ -458,6 +481,7 @@ export function useSession(
           local: {
             cameraTrack: localCamera,
             microphoneTrack: localMicrophone,
+            screenShareTrack: localScreenShare,
           },
         };
 
@@ -469,8 +493,9 @@ export function useSession(
           ...generateDerivedConnectionStateValues(ConnectionState.Disconnected),
 
           local: {
-            cameraTrack: null,
-            microphoneTrack: null,
+            cameraTrack: undefined,
+            microphoneTrack: undefined,
+            screenShareTrack: undefined,
           },
         };
     }
@@ -553,6 +578,20 @@ export function useSession(
               true,
               undefined,
               tracks.microphone?.publishOptions ?? {},
+            )
+          : Promise.resolve(),
+        tracks.camera?.enabled
+          ? room.localParticipant.setCameraEnabled(
+              true,
+              undefined,
+              tracks.camera?.publishOptions ?? {},
+            )
+          : Promise.resolve(),
+        tracks.screenShare?.enabled
+          ? room.localParticipant.setScreenShareEnabled(
+              true,
+              undefined,
+              tracks.screenShare?.publishOptions ?? {},
             )
           : Promise.resolve(),
       ]);

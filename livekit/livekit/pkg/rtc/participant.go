@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"slices"
 	"strings"
@@ -172,51 +173,54 @@ type ParticipantParams struct {
 	PLIThrottleConfig       sfu.PLIThrottleConfig
 	CongestionControlConfig config.CongestionControlConfig
 	// codecs that are enabled for this room
-	PublishEnabledCodecs           []*livekit.Codec
-	SubscribeEnabledCodecs         []*livekit.Codec
-	Logger                         logger.Logger
-	LoggerResolver                 logger.DeferredFieldResolver
-	Reporter                       roomobs.ParticipantSessionReporter
-	ReporterResolver               roomobs.ParticipantReporterResolver
-	SimTracks                      map[uint32]SimulcastTrackInfo
-	Grants                         *auth.ClaimGrants
-	InitialVersion                 uint32
-	ClientConf                     *livekit.ClientConfiguration
-	ClientInfo                     ClientInfo
-	Region                         string
-	Migration                      bool
-	Reconnect                      bool
-	AdaptiveStream                 bool
-	AllowTCPFallback               bool
-	TCPFallbackRTTThreshold        int
-	AllowUDPUnstableFallback       bool
-	TURNSEnabled                   bool
-	ParticipantHelper              types.LocalParticipantHelper
-	DisableSupervisor              bool
-	ReconnectOnPublicationError    bool
-	ReconnectOnSubscriptionError   bool
-	ReconnectOnDataChannelError    bool
-	VersionGenerator               utils.TimedVersionGenerator
-	DisableDynacast                bool
-	SubscriberAllowPause           bool
-	SubscriptionLimitAudio         int32
-	SubscriptionLimitVideo         int32
-	PlayoutDelay                   *livekit.PlayoutDelay
-	SyncStreams                    bool
-	ForwardStats                   *sfu.ForwardStats
-	DisableSenderReportPassThrough bool
-	MetricConfig                   metric.MetricConfig
-	UseOneShotSignallingMode       bool
-	EnableMetrics                  bool
-	DataChannelMaxBufferedAmount   uint64
-	DatachannelSlowThreshold       int
-	DatachannelLossyTargetLatency  time.Duration
-	FireOnTrackBySdp               bool
-	DisableCodecRegression         bool
-	LastPubReliableSeq             uint32
-	Country                        string
-	PreferVideoSizeFromMedia       bool
-	UseSinglePeerConnection        bool
+	PublishEnabledCodecs            []*livekit.Codec
+	SubscribeEnabledCodecs          []*livekit.Codec
+	Logger                          logger.Logger
+	LoggerResolver                  logger.DeferredFieldResolver
+	Reporter                        roomobs.ParticipantSessionReporter
+	ReporterResolver                roomobs.ParticipantReporterResolver
+	SimTracks                       map[uint32]SimulcastTrackInfo
+	Grants                          *auth.ClaimGrants
+	InitialVersion                  uint32
+	ClientConf                      *livekit.ClientConfiguration
+	ClientInfo                      ClientInfo
+	Region                          string
+	Migration                       bool
+	Reconnect                       bool
+	AdaptiveStream                  bool
+	AllowTCPFallback                bool
+	TCPFallbackRTTThreshold         int
+	AllowUDPUnstableFallback        bool
+	TURNSEnabled                    bool
+	ParticipantListener             types.LocalParticipantListener
+	ParticipantHelper               types.LocalParticipantHelper
+	DisableSupervisor               bool
+	ReconnectOnPublicationError     bool
+	ReconnectOnSubscriptionError    bool
+	ReconnectOnDataChannelError     bool
+	VersionGenerator                utils.TimedVersionGenerator
+	DisableDynacast                 bool
+	SubscriberAllowPause            bool
+	SubscriptionLimitAudio          int32
+	SubscriptionLimitVideo          int32
+	PlayoutDelay                    *livekit.PlayoutDelay
+	SyncStreams                     bool
+	ForwardStats                    *sfu.ForwardStats
+	DisableSenderReportPassThrough  bool
+	MetricConfig                    metric.MetricConfig
+	UseOneShotSignallingMode        bool
+	EnableMetrics                   bool
+	DataChannelMaxBufferedAmount    uint64
+	DatachannelSlowThreshold        int
+	DatachannelLossyTargetLatency   time.Duration
+	FireOnTrackBySdp                bool
+	DisableCodecRegression          bool
+	LastPubReliableSeq              uint32
+	Country                         string
+	PreferVideoSizeFromMedia        bool
+	UseSinglePeerConnection         bool
+	EnableDataTracks                bool
+	EnableRTPStreamRestartDetection bool
 }
 
 type ParticipantImpl struct {
@@ -226,8 +230,9 @@ type ParticipantImpl struct {
 
 	params ParticipantParams
 
-	participantHelper atomic.Value // types.LocalParticipantHelper
-	id                atomic.Value // types.ParticipantID
+	participantListener atomic.Pointer[types.LocalParticipantListener]
+	participantHelper   atomic.Value // types.LocalParticipantHelper
+	id                  atomic.Value // types.ParticipantID
 
 	isClosed    atomic.Bool
 	closeReason atomic.Value // types.ParticipantCloseReason
@@ -264,7 +269,10 @@ type ParticipantImpl struct {
 
 	*TransportManager
 	*UpTrackManager
+	*UpDataTrackManager
 	*SubscriptionManager
+
+	nextSubscribedDataTrackHandle uint16
 
 	icQueue [2]atomic.Pointer[webrtc.ICECandidate]
 
@@ -291,23 +299,6 @@ type ParticipantImpl struct {
 
 	dirty   atomic.Bool
 	version atomic.Uint32
-
-	// callbacks & handlers
-	onTrackPublished               func(types.LocalParticipant, types.MediaTrack)
-	onTrackUpdated                 func(types.LocalParticipant, types.MediaTrack)
-	onTrackUnpublished             func(types.LocalParticipant, types.MediaTrack)
-	onStateChange                  func(p types.LocalParticipant)
-	onSubscriberReady              func(p types.LocalParticipant)
-	onMigrateStateChange           func(p types.LocalParticipant, migrateState types.MigrateState)
-	onParticipantUpdate            func(types.LocalParticipant)
-	onDataPacket                   func(types.LocalParticipant, livekit.DataPacket_Kind, *livekit.DataPacket)
-	onDataMessage                  func(types.LocalParticipant, []byte)
-	onMetrics                      func(types.Participant, *livekit.DataPacket)
-	onUpdateSubscriptions          func(types.LocalParticipant, []livekit.TrackID, []*livekit.ParticipantTracks, bool)
-	onUpdateSubscriptionPermission func(types.LocalParticipant, *livekit.SubscriptionPermission) error
-	onSyncState                    func(types.LocalParticipant, *livekit.SyncState) error
-	onSimulateScenario             func(types.LocalParticipant, *livekit.SimulateScenario) error
-	onLeave                        func(types.LocalParticipant, types.ParticipantCloseReason)
 
 	migrateState                atomic.Value // types.MigrateState
 	migratedTracksPublishedFuse core.Fuse
@@ -370,10 +361,11 @@ func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
 			joiningMessageFirstSeqs:       make(map[livekit.ParticipantID]uint32),
 			joiningMessageLastWrittenSeqs: make(map[livekit.ParticipantID]uint32),
 		},
-		rpcPendingAcks:      make(map[string]*utils.DataChannelRpcPendingAckHandler),
-		rpcPendingResponses: make(map[string]*utils.DataChannelRpcPendingResponseHandler),
-		onClose:             make(map[string]func(types.LocalParticipant)),
-		telemetryGuard:      &telemetry.ReferenceGuard{},
+		rpcPendingAcks:                make(map[string]*utils.DataChannelRpcPendingAckHandler),
+		rpcPendingResponses:           make(map[string]*utils.DataChannelRpcPendingResponseHandler),
+		onClose:                       make(map[string]func(types.LocalParticipant)),
+		telemetryGuard:                &telemetry.ReferenceGuard{},
+		nextSubscribedDataTrackHandle: uint16(rand.Intn(256)),
 	}
 	p.setupSignalling()
 
@@ -386,6 +378,7 @@ func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
 		params.Reporter,
 	)
 	p.reliableDataInfo.lastPubReliableSeq.Store(params.LastPubReliableSeq)
+	p.setListener(params.ParticipantListener)
 	p.participantHelper.Store(params.ParticipantHelper)
 	if !params.DisableSupervisor {
 		p.supervisor = supervisor.NewParticipantSupervisor(supervisor.ParticipantSupervisorParams{Logger: params.Logger})
@@ -416,7 +409,7 @@ func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
 		tx.ReportDuration(uint16(millis))
 		tx.ReportDurationMinutes(uint8(mins))
 
-		return !p.IsDisconnected()
+		return !p.IsClosed()
 	})
 
 	var err error
@@ -431,10 +424,34 @@ func NewParticipant(params ParticipantParams) (*ParticipantImpl, error) {
 	}
 
 	p.setupUpTrackManager()
+	p.setupUpDataTrackManager()
 	p.setupSubscriptionManager()
 	p.setupMetrics()
 
 	return p, nil
+}
+
+func (p *ParticipantImpl) setListener(listener types.LocalParticipantListener) {
+	if listener == nil {
+		p.participantListener.Store(nil)
+		return
+	}
+	p.participantListener.Store(&listener)
+}
+
+func (p *ParticipantImpl) listener() types.LocalParticipantListener {
+	if l := p.participantListener.Load(); l != nil {
+		return *l
+	}
+	return &types.NullLocalParticipantListener{}
+}
+
+func (p *ParticipantImpl) GetParticipantListener() types.ParticipantListener {
+	return p.listener()
+}
+
+func (p *ParticipantImpl) ClearParticipantListener() {
+	p.setListener(nil)
 }
 
 func (p *ParticipantImpl) GetCountry() string {
@@ -662,13 +679,11 @@ func (p *ParticipantImpl) SetName(name string) {
 	p.grants.Store(grants)
 	p.dirty.Store(true)
 
-	onParticipantUpdate := p.onParticipantUpdate
 	onClaimsChanged := p.onClaimsChanged
 	p.lock.Unlock()
 
-	if onParticipantUpdate != nil {
-		onParticipantUpdate(p)
-	}
+	p.listener().OnParticipantUpdate(p)
+
 	if onClaimsChanged != nil {
 		onClaimsChanged(p)
 	}
@@ -689,13 +704,11 @@ func (p *ParticipantImpl) SetMetadata(metadata string) {
 	p.requireBroadcast = p.requireBroadcast || metadata != ""
 	p.dirty.Store(true)
 
-	onParticipantUpdate := p.onParticipantUpdate
 	onClaimsChanged := p.onClaimsChanged
 	p.lock.Unlock()
 
-	if onParticipantUpdate != nil {
-		onParticipantUpdate(p)
-	}
+	p.listener().OnParticipantUpdate(p)
+
 	if onClaimsChanged != nil {
 		onClaimsChanged(p)
 	}
@@ -726,13 +739,11 @@ func (p *ParticipantImpl) SetAttributes(attrs map[string]string) {
 	p.requireBroadcast = true // already checked above
 	p.dirty.Store(true)
 
-	onParticipantUpdate := p.onParticipantUpdate
 	onClaimsChanged := p.onClaimsChanged
 	p.lock.Unlock()
 
-	if onParticipantUpdate != nil {
-		onParticipantUpdate(p)
-	}
+	p.listener().OnParticipantUpdate(p)
+
 	if onClaimsChanged != nil {
 		onClaimsChanged(p)
 	}
@@ -764,7 +775,6 @@ func (p *ParticipantImpl) SetPermission(permission *livekit.ParticipantPermissio
 	canPublish := grants.Video.GetCanPublish()
 	canSubscribe := grants.Video.GetCanSubscribe()
 
-	onParticipantUpdate := p.onParticipantUpdate
 	onClaimsChanged := p.onClaimsChanged
 
 	isPublisher := canPublish && p.TransportManager.IsPublisherEstablished()
@@ -788,12 +798,17 @@ func (p *ParticipantImpl) SetPermission(permission *livekit.ParticipantPermissio
 		}
 	}
 
+	if !grants.Video.GetCanPublishData() {
+		for _, dt := range p.UpDataTrackManager.GetPublishedDataTracks() {
+			p.UpDataTrackManager.RemovePublishedDataTrack(dt)
+		}
+	}
+
 	// update isPublisher attribute
 	p.isPublisher.Store(isPublisher)
 
-	if onParticipantUpdate != nil {
-		onParticipantUpdate(p)
-	}
+	p.listener().OnParticipantUpdate(p)
+
 	if onClaimsChanged != nil {
 		onClaimsChanged(p)
 	}
@@ -882,6 +897,8 @@ func (p *ParticipantImpl) ToProtoWithVersion() (*livekit.ParticipantInfo, utils.
 	}
 	p.pendingTracksLock.RUnlock()
 
+	pi.DataTracks = p.UpDataTrackManager.ToProto()
+
 	return pi, piv
 }
 
@@ -892,182 +909,6 @@ func (p *ParticipantImpl) ToProto() *livekit.ParticipantInfo {
 
 func (p *ParticipantImpl) TelemetryGuard() *telemetry.ReferenceGuard {
 	return p.telemetryGuard
-}
-
-// callbacks for clients
-
-func (p *ParticipantImpl) OnTrackPublished(callback func(types.LocalParticipant, types.MediaTrack)) {
-	p.lock.Lock()
-	p.onTrackPublished = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnTrackPublished() func(types.LocalParticipant, types.MediaTrack) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onTrackPublished
-}
-
-func (p *ParticipantImpl) OnTrackUnpublished(callback func(types.LocalParticipant, types.MediaTrack)) {
-	p.lock.Lock()
-	p.onTrackUnpublished = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnTrackUnpublished() func(types.LocalParticipant, types.MediaTrack) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onTrackUnpublished
-}
-
-func (p *ParticipantImpl) OnStateChange(callback func(p types.LocalParticipant)) {
-	p.lock.Lock()
-	p.onStateChange = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnStateChange() func(p types.LocalParticipant) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onStateChange
-}
-
-func (p *ParticipantImpl) OnSubscriberReady(callback func(p types.LocalParticipant)) {
-	p.lock.Lock()
-	p.onSubscriberReady = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnSubscriberReady() func(p types.LocalParticipant) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onSubscriberReady
-}
-
-func (p *ParticipantImpl) OnMigrateStateChange(callback func(p types.LocalParticipant, state types.MigrateState)) {
-	p.lock.Lock()
-	p.onMigrateStateChange = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnMigrateStateChange() func(p types.LocalParticipant, state types.MigrateState) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onMigrateStateChange
-}
-
-func (p *ParticipantImpl) OnTrackUpdated(callback func(types.LocalParticipant, types.MediaTrack)) {
-	p.lock.Lock()
-	p.onTrackUpdated = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnTrackUpdated() func(types.LocalParticipant, types.MediaTrack) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onTrackUpdated
-}
-
-func (p *ParticipantImpl) OnParticipantUpdate(callback func(types.LocalParticipant)) {
-	p.lock.Lock()
-	p.onParticipantUpdate = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) OnDataPacket(callback func(types.LocalParticipant, livekit.DataPacket_Kind, *livekit.DataPacket)) {
-	p.lock.Lock()
-	p.onDataPacket = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnDataPacket() func(types.LocalParticipant, livekit.DataPacket_Kind, *livekit.DataPacket) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onDataPacket
-}
-
-func (p *ParticipantImpl) OnDataMessage(callback func(types.LocalParticipant, []byte)) {
-	p.lock.Lock()
-	p.onDataMessage = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnDataMessage() func(types.LocalParticipant, []byte) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onDataMessage
-}
-
-func (p *ParticipantImpl) OnMetrics(callback func(types.Participant, *livekit.DataPacket)) {
-	p.lock.Lock()
-	p.onMetrics = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnMetrics() func(types.Participant, *livekit.DataPacket) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onMetrics
-}
-
-func (p *ParticipantImpl) OnUpdateSubscriptions(callback func(types.LocalParticipant, []livekit.TrackID, []*livekit.ParticipantTracks, bool)) {
-	p.lock.Lock()
-	p.onUpdateSubscriptions = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnUpdateSubscriptions() func(types.LocalParticipant, []livekit.TrackID, []*livekit.ParticipantTracks, bool) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onUpdateSubscriptions
-}
-
-func (p *ParticipantImpl) OnUpdateSubscriptionPermission(callback func(types.LocalParticipant, *livekit.SubscriptionPermission) error) {
-	p.lock.Lock()
-	p.onUpdateSubscriptionPermission = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnUpdateSubscriptionPermission() func(types.LocalParticipant, *livekit.SubscriptionPermission) error {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onUpdateSubscriptionPermission
-}
-
-func (p *ParticipantImpl) OnSyncState(callback func(types.LocalParticipant, *livekit.SyncState) error) {
-	p.lock.Lock()
-	p.onSyncState = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnSyncState() func(types.LocalParticipant, *livekit.SyncState) error {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onSyncState
-}
-
-func (p *ParticipantImpl) OnSimulateScenario(callback func(types.LocalParticipant, *livekit.SimulateScenario) error) {
-	p.lock.Lock()
-	p.onSimulateScenario = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnSimulateScenario() func(types.LocalParticipant, *livekit.SimulateScenario) error {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onSimulateScenario
-}
-
-func (p *ParticipantImpl) OnLeave(callback func(types.LocalParticipant, types.ParticipantCloseReason)) {
-	p.lock.Lock()
-	p.onLeave = callback
-	p.lock.Unlock()
-}
-
-func (p *ParticipantImpl) getOnLeave() func(types.LocalParticipant, types.ParticipantCloseReason) {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.onLeave
 }
 
 func (p *ParticipantImpl) AddOnClose(key string, callback func(types.LocalParticipant)) {
@@ -1169,7 +1010,7 @@ func (p *ParticipantImpl) updateRidsFromSDP(parsed *sdp.SessionDescription, unma
 			rids, ok := protosdp.GetSimulcastRids(m)
 			if ok {
 				n := min(len(rids), len(inRids))
-				for i := 0; i < n; i++ {
+				for i := range n {
 					// disabled layers will have a `~` prefix, remove it while determining actual rid
 					if len(rids[i]) != 0 && rids[i][0] == '~' {
 						outRids[i] = rids[i][1:]
@@ -1289,9 +1130,7 @@ func (p *ParticipantImpl) HandleOffer(sd *livekit.SessionDescription) error {
 	}
 
 	if p.params.UseOneShotSignallingMode {
-		if onSubscriberReady := p.getOnSubscriberReady(); onSubscriberReady != nil {
-			go onSubscriberReady(p)
-		}
+		go p.listener().OnSubscriberReady(p)
 	}
 
 	p.handlePendingRemoteTracks()
@@ -1454,6 +1293,7 @@ func (p *ParticipantImpl) SetMigrateInfo(
 	mediaTracks []*livekit.TrackPublishedResponse,
 	dataChannels []*livekit.DataChannelInfo,
 	dataChannelReceiveState []*livekit.DataChannelReceiveState,
+	dataTracks []*livekit.PublishDataTrackResponse,
 ) {
 	p.pendingTracksLock.Lock()
 	for _, t := range mediaTracks {
@@ -1478,7 +1318,13 @@ func (p *ParticipantImpl) SetMigrateInfo(
 	}
 	p.pendingTracksLock.Unlock()
 
-	if len(mediaTracks) != 0 {
+	for _, t := range dataTracks {
+		dti := t.GetInfo()
+		dt := NewDataTrack(DataTrackParams{Logger: p.params.Logger.WithValues("trackID", dti.Sid)}, dti)
+		p.UpDataTrackManager.AddPublishedDataTrack(dt)
+	}
+
+	if len(mediaTracks) != 0 || len(dataTracks) != 0 {
 		p.setIsPublisher(true)
 	}
 
@@ -1525,6 +1371,12 @@ func (p *ParticipantImpl) Close(sendLeave bool, reason types.ParticipantCloseRea
 	}
 
 	p.pendingTracksLock.Lock()
+	for _, pti := range p.pendingTracks {
+		if len(pti.trackInfos) == 0 {
+			continue
+		}
+		prometheus.RecordTrackPublishCancels(pti.trackInfos[0].Type.String(), int32(len(pti.trackInfos)))
+	}
 	p.pendingTracks = make(map[string]*pendingTrackInfo)
 	p.pendingPublishingTracks = make(map[livekit.TrackID]*pendingTrackInfo)
 	p.pendingTracksLock.Unlock()
@@ -1745,9 +1597,7 @@ func (p *ParticipantImpl) SetMigrateState(s types.MigrateState) {
 			<-p.migratedTracksPublishedFuse.Watch()
 		}
 
-		if onMigrateStateChange := p.getOnMigrateStateChange(); onMigrateStateChange != nil {
-			onMigrateStateChange(p, s)
-		}
+		p.listener().OnMigrateStateChange(p, s)
 	}()
 }
 
@@ -1977,6 +1827,10 @@ func (h PublisherTransportHandler) OnDataMessageUnlabeled(data []byte) {
 	h.p.onReceivedDataMessageUnlabeled(data)
 }
 
+func (h PublisherTransportHandler) OnDataTrackMessage(data []byte) {
+	h.p.onReceivedDataTrackMessage(data)
+}
+
 func (h PublisherTransportHandler) OnDataSendError(err error) {
 	h.p.onDataSendError(err)
 }
@@ -2083,6 +1937,7 @@ func (p *ParticipantImpl) setupTransportManager() error {
 		DataChannelStats:              p.dataChannelStats,
 		UseOneShotSignallingMode:      p.params.UseOneShotSignallingMode,
 		FireOnTrackBySdp:              p.params.FireOnTrackBySdp,
+		EnableDataTracks:              p.params.EnableDataTracks,
 	}
 	if p.params.SyncStreams && p.params.PlayoutDelay.GetEnabled() && p.params.ClientInfo.isFirefox() {
 		// we will disable playout delay for Firefox if the user is expecting
@@ -2127,12 +1982,17 @@ func (p *ParticipantImpl) setupUpTrackManager() {
 
 	p.UpTrackManager.OnPublishedTrackUpdated(func(track types.MediaTrack) {
 		p.dirty.Store(true)
-		if onTrackUpdated := p.getOnTrackUpdated(); onTrackUpdated != nil {
-			onTrackUpdated(p, track)
-		}
+		p.listener().OnTrackUpdated(p, track)
 	})
 
 	p.UpTrackManager.OnUpTrackManagerClose(p.onUpTrackManagerClose)
+}
+
+func (p *ParticipantImpl) setupUpDataTrackManager() {
+	p.UpDataTrackManager = NewUpDataTrackManager(UpDataTrackManagerParams{
+		Logger:      p.pubLogger,
+		Participant: p,
+	})
 }
 
 func (p *ParticipantImpl) setupSubscriptionManager() {
@@ -2141,6 +2001,9 @@ func (p *ParticipantImpl) setupSubscriptionManager() {
 		Logger:      p.subLogger.WithoutSampler(),
 		TrackResolver: func(lp types.LocalParticipant, ti livekit.TrackID) types.MediaResolverResult {
 			return p.helper().ResolveMediaTrack(lp, ti)
+		},
+		DataTrackResolver: func(lp types.LocalParticipant, ti livekit.TrackID) types.DataResolverResult {
+			return p.helper().ResolveDataTrack(lp, ti)
 		},
 		Telemetry:                p.params.Telemetry,
 		OnTrackSubscribed:        p.onTrackSubscribed,
@@ -2165,14 +2028,12 @@ func (p *ParticipantImpl) MetricsCollectorTimeToCollectMetrics() {
 }
 
 func (p *ParticipantImpl) MetricsCollectorBatchReady(mb *livekit.MetricsBatch) {
-	if onMetrics := p.getOnMetrics(); onMetrics != nil {
-		onMetrics(p, &livekit.DataPacket{
-			ParticipantIdentity: string(p.Identity()),
-			Value: &livekit.DataPacket_Metrics{
-				Metrics: mb,
-			},
-		})
-	}
+	p.listener().OnMetrics(p, &livekit.DataPacket{
+		ParticipantIdentity: string(p.Identity()),
+		Value: &livekit.DataPacket_Metrics{
+			Metrics: mb,
+		},
+	})
 }
 
 func (p *ParticipantImpl) MetricsReporterBatchReady(mb *livekit.MetricsBatch) {
@@ -2232,9 +2093,7 @@ func (p *ParticipantImpl) updateState(state livekit.ParticipantInfo_State) {
 	p.params.Logger.Debugw("updating participant state", "state", state.String())
 	p.dirty.Store(true)
 
-	if onStateChange := p.getOnStateChange(); onStateChange != nil {
-		go onStateChange(p)
-	}
+	go p.listener().OnStateChange(p)
 
 	if state == livekit.ParticipantInfo_DISCONNECTED && oldState == livekit.ParticipantInfo_ACTIVE {
 		p.disconnectedAt.Store(pointer.To(time.Now()))
@@ -2255,13 +2114,7 @@ func (p *ParticipantImpl) setIsPublisher(isPublisher bool) {
 
 	// trigger update as well if participant is already fully connected
 	if p.State() == livekit.ParticipantInfo_ACTIVE {
-		p.lock.RLock()
-		onParticipantUpdate := p.onParticipantUpdate
-		p.lock.RUnlock()
-
-		if onParticipantUpdate != nil {
-			onParticipantUpdate(p)
-		}
+		p.listener().OnParticipantUpdate(p)
 	}
 }
 
@@ -2380,9 +2233,7 @@ func (p *ParticipantImpl) onMediaTrack(rtcTrack *webrtc.TrackRemote, rtpReceiver
 	)
 
 	if !isNewTrack && !publishedTrack.HasPendingCodec() && p.IsReady() {
-		if onTrackUpdated := p.getOnTrackUpdated(); onTrackUpdated != nil {
-			onTrackUpdated(p, publishedTrack)
-		}
+		p.listener().OnTrackUpdated(p, publishedTrack)
 	}
 }
 
@@ -2444,7 +2295,7 @@ func (p *ParticipantImpl) onReceivedDataMessage(kind livekit.DataPacket_Kind, da
 				return
 
 			case MigrationDataCacheStateDone:
-				// see the continous message, drop the cache
+				// see the continuous message, drop the cache
 				p.reliableDataInfo.migrateInPubDataCache.Store(nil)
 			}
 		}
@@ -2602,14 +2453,10 @@ func (p *ParticipantImpl) handleReceivedDataMessage(kind livekit.DataPacket_Kind
 	}
 
 	if shouldForwardData {
-		if onDataPacket := p.getOnDataPacket(); onDataPacket != nil {
-			onDataPacket(p, kind, dp)
-		}
+		p.listener().OnDataPacket(p, kind, dp)
 	}
 	if shouldForwardMetrics {
-		if onMetrics := p.getOnMetrics(); onMetrics != nil {
-			onMetrics(p, dp)
-		}
+		p.listener().OnMetrics(p, dp)
 	}
 }
 
@@ -2620,9 +2467,7 @@ func (p *ParticipantImpl) onReceivedDataMessageUnlabeled(data []byte) {
 
 	p.dataChannelStats.AddBytes(uint64(len(data)), false)
 
-	if onDataMessage := p.getOnDataMessage(); onDataMessage != nil {
-		onDataMessage(p, data)
-	}
+	p.listener().OnDataMessage(p, data)
 }
 
 func (p *ParticipantImpl) onICECandidate(c *webrtc.ICECandidate, target livekit.SignalTarget) error {
@@ -2986,7 +2831,8 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 
 			mimeType := codec.Codec
 			videoLayerMode := codec.VideoLayerMode
-			if req.Type == livekit.TrackType_VIDEO {
+			switch req.Type {
+			case livekit.TrackType_VIDEO:
 				if !mime.IsMimeTypeStringVideo(mimeType) {
 					mimeType = mime.MimeTypePrefixVideo + mimeType
 				}
@@ -3012,7 +2858,8 @@ func (p *ParticipantImpl) addPendingTrackLocked(req *livekit.AddTrackRequest) *l
 						}
 					}
 				}
-			} else if req.Type == livekit.TrackType_AUDIO {
+
+			case livekit.TrackType_AUDIO:
 				if !mime.IsMimeTypeStringAudio(mimeType) {
 					mimeType = mime.MimeTypePrefixAudio + mimeType
 				}
@@ -3288,7 +3135,7 @@ func (p *ParticipantImpl) mediaTrackReceived(track sfu.TrackRemote, rtpReceiver 
 
 		// if the addTrackRequest is sent before participant active then it means the client tries to publish
 		// before fully connected, in this case we only record the time when the participant is active since
-		// we want this metric to represent the time cost by pubilshing.
+		// we want this metric to represent the time cost by publishing.
 		if activeAt := p.lastActiveAt.Load(); activeAt != nil && createdAt.Before(*activeAt) {
 			createdAt = *activeAt
 		}
@@ -3414,7 +3261,8 @@ func (p *ParticipantImpl) addMediaTrack(signalCid string, ti *livekit.TrackInfo)
 		ShouldRegressCodec: func() bool {
 			return p.helper().ShouldRegressCodec()
 		},
-		PreferVideoSizeFromMedia: p.params.PreferVideoSizeFromMedia,
+		PreferVideoSizeFromMedia:        p.params.PreferVideoSizeFromMedia,
+		EnableRTPStreamRestartDetection: p.params.EnableRTPStreamRestartDetection,
 	}, ti)
 
 	mt.OnSubscribedMaxQualityChange(p.onSubscribedMaxQualityChange)
@@ -3477,18 +3325,14 @@ func (p *ParticipantImpl) addMediaTrack(signalCid string, ti *livekit.TrackInfo)
 			"expectedToResume", isExpectedToResume,
 			"track", logger.Proto(ti),
 		)
-		if onTrackUnpublished := p.getOnTrackUnpublished(); onTrackUnpublished != nil {
-			onTrackUnpublished(p, mt)
-		}
+		p.listener().OnTrackUnpublished(p, mt)
 	})
 
 	return mt
 }
 
 func (p *ParticipantImpl) handleTrackPublished(track types.MediaTrack, isMigrated bool) {
-	if onTrackPublished := p.getOnTrackPublished(); onTrackPublished != nil {
-		onTrackPublished(p, track)
-	}
+	p.listener().OnTrackPublished(p, track)
 
 	// send webhook after callbacks are complete, persistence and state handling happens
 	// in `onTrackPublished` cb
@@ -4140,6 +3984,7 @@ func (p *ParticipantImpl) MoveToRoom(params types.MoveToRoomParams) {
 
 	p.params.LoggerResolver.Reset()
 	p.params.ReporterResolver.Reset()
+	p.setListener(params.Listener)
 	p.participantHelper.Store(params.Helper)
 	p.SubscriptionManager.ClearAllSubscriptions()
 	p.id.Store(params.ParticipantID)
@@ -4164,39 +4009,23 @@ func (p *ParticipantImpl) HandleUpdateSubscriptions(
 	participantTracks []*livekit.ParticipantTracks,
 	subscribe bool,
 ) {
-	if onUpdateSubscriptions := p.getOnUpdateSubscriptions(); onUpdateSubscriptions != nil {
-		onUpdateSubscriptions(p, trackIDs, participantTracks, subscribe)
-	}
+	p.listener().OnUpdateSubscriptions(p, trackIDs, participantTracks, subscribe)
 }
 
 func (p *ParticipantImpl) HandleUpdateSubscriptionPermission(subscriptionPermission *livekit.SubscriptionPermission) error {
-	if onUpdateSubscriptionPermission := p.getOnUpdateSubscriptionPermission(); onUpdateSubscriptionPermission != nil {
-		return onUpdateSubscriptionPermission(p, subscriptionPermission)
-	}
-
-	return errors.New("no handler")
+	return p.listener().OnUpdateSubscriptionPermission(p, subscriptionPermission)
 }
 
 func (p *ParticipantImpl) HandleSyncState(syncState *livekit.SyncState) error {
-	if onSyncState := p.getOnSyncState(); onSyncState != nil {
-		return onSyncState(p, syncState)
-	}
-
-	return errors.New("no handler")
+	return p.listener().OnSyncState(p, syncState)
 }
 
 func (p *ParticipantImpl) HandleSimulateScenario(simulateScenario *livekit.SimulateScenario) error {
-	if onSimulateScenario := p.getOnSimulateScenario(); onSimulateScenario != nil {
-		return onSimulateScenario(p, simulateScenario)
-	}
-
-	return errors.New("no handler")
+	return p.listener().OnSimulateScenario(p, simulateScenario)
 }
 
 func (p *ParticipantImpl) HandleLeaveRequest(reason types.ParticipantCloseReason) {
-	if onLeave := p.getOnLeave(); onLeave != nil {
-		onLeave(p, reason)
-	}
+	p.listener().OnLeave(p, reason)
 }
 
 func (p *ParticipantImpl) HandleSignalMessage(msg proto.Message) error {

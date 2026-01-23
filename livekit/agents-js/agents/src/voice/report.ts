@@ -12,8 +12,17 @@ export interface SessionReport {
   options: VoiceOptions;
   events: AgentEvent[];
   chatHistory: ChatContext;
-  enableUserDataTraining: boolean;
+  enableRecording: boolean;
+  /** Timestamp when the session started (milliseconds) */
+  startedAt: number;
+  /** Timestamp when the session report was created (milliseconds), typically at the end of the session */
   timestamp: number;
+  /** Path to the audio recording file (if recording was enabled) */
+  audioRecordingPath?: string;
+  /** Timestamp when the audio recording started (milliseconds) */
+  audioRecordingStartedAt?: number;
+  /** Duration of the session in milliseconds */
+  duration?: number;
 }
 
 export interface SessionReportOptions {
@@ -23,11 +32,21 @@ export interface SessionReportOptions {
   options: VoiceOptions;
   events: AgentEvent[];
   chatHistory: ChatContext;
-  enableUserDataTraining?: boolean;
+  enableRecording?: boolean;
+  /** Timestamp when the session started (milliseconds) */
+  startedAt?: number;
+  /** Timestamp when the session report was created (milliseconds) */
   timestamp?: number;
+  /** Path to the audio recording file (if recording was enabled) */
+  audioRecordingPath?: string;
+  /** Timestamp when the audio recording started (milliseconds) */
+  audioRecordingStartedAt?: number;
 }
 
 export function createSessionReport(opts: SessionReportOptions): SessionReport {
+  const timestamp = opts.timestamp ?? Date.now();
+  const audioRecordingStartedAt = opts.audioRecordingStartedAt;
+
   return {
     jobId: opts.jobId,
     roomId: opts.roomId,
@@ -35,12 +54,16 @@ export function createSessionReport(opts: SessionReportOptions): SessionReport {
     options: opts.options,
     events: opts.events,
     chatHistory: opts.chatHistory,
-    enableUserDataTraining: opts.enableUserDataTraining ?? false,
-    timestamp: opts.timestamp ?? Date.now(),
+    enableRecording: opts.enableRecording ?? false,
+    startedAt: opts.startedAt ?? Date.now(),
+    timestamp,
+    audioRecordingPath: opts.audioRecordingPath,
+    audioRecordingStartedAt,
+    duration:
+      audioRecordingStartedAt !== undefined ? timestamp - audioRecordingStartedAt : undefined,
   };
 }
 
-// TODO(brian): PR5 - Add uploadSessionReport() function that creates multipart form with:
 //   - header: protobuf MetricsRecordingHeader (room_id, duration, start_time)
 //   - chat_history: JSON serialized chat history (use sessionReportToJSON)
 //   - audio: audio recording file if available (ogg format)
@@ -71,7 +94,7 @@ export function sessionReportToJSON(report: SessionReport): Record<string, unkno
       max_tool_steps: report.options.maxToolSteps,
     },
     chat_history: report.chatHistory.toJSON({ excludeTimestamp: false }),
-    enable_user_data_training: report.enableUserDataTraining,
+    enable_user_data_training: report.enableRecording,
     timestamp: report.timestamp,
   };
 }

@@ -129,7 +129,7 @@ internal constructor(
             .mapNotNull { it as? LocalTrackPublication }
             .toList()
 
-    private val jobs = mutableMapOf<Any, Job>()
+    private val jobs = mutableMapOf<LocalTrackPublication, Job>()
 
     private val rpcHandlers = Collections.synchronizedMap(mutableMapOf<String, RpcHandler>()) // methodName to handler
     private val pendingAcks = Collections.synchronizedMap(mutableMapOf<String, PendingRpcAck>()) // requestId to pending ack
@@ -540,6 +540,10 @@ internal constructor(
             if (options.scalabilityMode == null) {
                 options = options.copy(scalabilityMode = "L3T3_KEY")
             }
+            // VP9/AV1 with screen sharing requires single spatial layer, always override
+            if (track.options.isScreencast) {
+                options = options.copy(scalabilityMode = "L1T3")
+            }
         }
         val encodings = computeVideoEncodings(track.options.isScreencast, track.dimensions, options)
         val videoLayers =
@@ -940,7 +944,7 @@ internal constructor(
         val publicationJob = jobs[publication]
         if (publicationJob != null) {
             publicationJob.cancel()
-            jobs.remove(publicationJob)
+            jobs.remove(publication)
         }
 
         val sid = publication.sid

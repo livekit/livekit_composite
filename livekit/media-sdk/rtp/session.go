@@ -75,6 +75,9 @@ func (s *session) OpenWriteStream() (WriteStream, error) {
 }
 
 func (s *session) AcceptStream() (ReadStream, uint32, error) {
+	// This must be called outside the s.rmu, otherwise it may deadlock with s.closed.Once in Close.
+	closed := s.closed.Watch()
+
 	s.rmu.Lock()
 	defer s.rmu.Unlock()
 	overflow := false
@@ -102,7 +105,7 @@ func (s *session) AcceptStream() (ReadStream, uint32, error) {
 		if r == nil {
 			r = &readStream{
 				ssrc:   p.SSRC,
-				closed: s.closed.Watch(),
+				closed: closed,
 				copied: make(chan int),
 				recv:   make(chan *rtp.Packet, 10),
 			}

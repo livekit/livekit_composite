@@ -1,5 +1,81 @@
 # @livekit/agents
 
+## 1.0.28
+
+## 1.0.27
+
+### Patch Changes
+
+- Sync all package versions - [#900](https://github.com/livekit/agents-js/pull/900) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.26
+
+### Patch Changes
+
+- Fix improper resource cleanup inside AgentActivity by not close global STT / TTS / VAD components - [#893](https://github.com/livekit/agents-js/pull/893) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Improve TTS resource cleanup - [#893](https://github.com/livekit/agents-js/pull/893) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.25
+
+### Patch Changes
+
+- Rename pushedDurationMs to pushedDuration (was actually in seconds) - [#876](https://github.com/livekit/agents-js/pull/876) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Fix improper resource cleanup inside AgentActivity by not close global STT / TTS / VAD components - [#891](https://github.com/livekit/agents-js/pull/891) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Add Session Connection Options and Fix Blocking Speech from High-latency LLM Generation - [#880](https://github.com/livekit/agents-js/pull/880) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Add session shutdown API - [#866](https://github.com/livekit/agents-js/pull/866) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Add traces for `session.say` and `session.generateReply` - [#882](https://github.com/livekit/agents-js/pull/882) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Fix error spam during stream cleanup. Gracefully handle edge cases when detaching audio streams that were never initialized. - [#884](https://github.com/livekit/agents-js/pull/884) ([@Hormold](https://github.com/Hormold))
+
+- Add RecorderIO for stereo audio recording - [#876](https://github.com/livekit/agents-js/pull/876) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.24
+
+### Patch Changes
+
+- Unset record flag by default in agent session - [#878](https://github.com/livekit/agents-js/pull/878) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.23
+
+### Patch Changes
+
+- Support transcripts & traces upload to livekit cloud observability - [#863](https://github.com/livekit/agents-js/pull/863) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Fixed memory leaks in AgentActivity and AgentSession - [#875](https://github.com/livekit/agents-js/pull/875) ([@jessebond2](https://github.com/jessebond2))
+
+- Support otel traces upload to livekit cloud observability - [#867](https://github.com/livekit/agents-js/pull/867) ([@toubatbrian](https://github.com/toubatbrian))
+
+- Support logging integration to livekit cloud observability - [#873](https://github.com/livekit/agents-js/pull/873) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.22
+
+### Patch Changes
+
+- Fix race condition where STT/TTS processing could throw "Queue is closed" error when a participant disconnects. These events are now logged as warnings instead of errors. - [#861](https://github.com/livekit/agents-js/pull/861) ([@Devesh36](https://github.com/Devesh36))
+
+- Fix TTS with proper error handling logics from expected shutdown / interruptions - [#859](https://github.com/livekit/agents-js/pull/859) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.21
+
+### Patch Changes
+
+- create a new error object on timeout to have a correct stacktrace - [#853](https://github.com/livekit/agents-js/pull/853) ([@simllll](https://github.com/simllll))
+
+- Fix memory leak of inference gateway STT provider - [#858](https://github.com/livekit/agents-js/pull/858) ([@toubatbrian](https://github.com/toubatbrian))
+
+## 1.0.20
+
+### Patch Changes
+
+- fix resource cleanup - [#849](https://github.com/livekit/agents-js/pull/849) ([@simllll](https://github.com/simllll))
+
+- fix await supportslangauge - [#850](https://github.com/livekit/agents-js/pull/850) ([@simllll](https://github.com/simllll))
+
 ## 1.0.19
 
 ### Patch Changes

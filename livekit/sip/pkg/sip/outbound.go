@@ -112,6 +112,7 @@ func (c *Client) newCall(ctx context.Context, tid traceid.ID, conf *config.Confi
 		jitterBuf: jitterBuf,
 		projectID: projectID,
 	}
+	call.stats.Update()
 	call.log = call.log.WithValues("jitterBuf", call.jitterBuf)
 	call.cc = c.newOutbound(log, id, URI{
 		User:      sipConf.from,
@@ -225,12 +226,17 @@ func (c *outboundCall) waitClose(ctx context.Context, tid traceid.ID) error {
 
 	ticker := time.NewTicker(stateUpdateTick)
 	defer ticker.Stop()
+
+	statsTicker := time.NewTicker(statsInterval)
+	defer statsTicker.Stop()
 	for {
 		select {
+		case <-statsTicker.C:
+			c.stats.Update()
+			c.printStats()
 		case <-ticker.C:
 			c.log.Debugw("sending keep-alive")
 			c.state.ForceFlush(ctx)
-			c.printStats()
 		case <-c.Disconnected():
 			c.CloseWithReason(callDropped, "removed", livekit.DisconnectReason_CLIENT_INITIATED)
 			return nil
@@ -284,13 +290,16 @@ func (c *outboundCall) closeWithTimeout() {
 }
 
 func (c *outboundCall) printStats() {
-	c.log.Infow("call statistics", "stats", c.stats.Load(), "durMin", int(time.Since(c.callStart).Minutes()))
+	c.stats.Log(c.log, c.callStart)
 }
 
 func (c *outboundCall) close(err error, status CallStatus, description string, reason livekit.DisconnectReason) {
 	c.stopped.Once(func() {
 		c.stats.Closed.Store(true)
-		defer c.printStats()
+		defer func() {
+			c.stats.Update()
+			c.printStats()
+		}()
 
 		c.setStatus(status)
 		if err != nil {
@@ -305,14 +314,19 @@ func (c *outboundCall) close(err error, status CallStatus, description string, r
 			}
 			info.DisconnectReason = reason
 		})
+
+		// Send BYE _before_ closing media/room connection.
+		// This ensures participant attributes are still available for
+		// attributes_to_headers mapping in the setHeaders callback.
+		// See: https://github.com/livekit/sip/issues/404
+		c.stopSIP(description)
 		c.media.Close()
+
 		if r := c.lkRoom; r != nil {
 			_ = r.CloseOutput()
 			_ = r.CloseWithReason(status.DisconnectReason())
 		}
 		c.lkRoomIn = nil
-
-		c.stopSIP(description)
 
 		c.c.cmu.Lock()
 		delete(c.c.activeCalls, c.cc.ID())
@@ -851,7 +865,7 @@ authLoop:
 		if err != nil {
 			return nil, fmt.Errorf("invalid challenge %q: %w", challengeStr, err)
 		}
-		toHeader = resp.To()
+		toHeader := resp.To()
 		if toHeader == nil {
 			return nil, errors.New("no 'To' header on Response")
 		}

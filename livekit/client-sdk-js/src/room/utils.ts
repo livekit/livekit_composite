@@ -5,7 +5,9 @@ import {
   DisconnectReason,
   Transcription as TranscriptionModel,
 } from '@livekit/protocol';
-import { type BrowserDetails, getBrowser } from '../utils/browserParser';
+import TypedPromise from '../utils/TypedPromise';
+import { getBrowser } from '../utils/browserParser';
+import type { BrowserDetails } from '../utils/browserParser';
 import { protocolVersion, version } from '../version';
 import { type ConnectionError, ConnectionErrorReason } from './errors';
 import type LocalParticipant from './participant/LocalParticipant';
@@ -38,8 +40,8 @@ export function unpackStreamId(packed: string): string[] {
   return [packed, ''];
 }
 
-export async function sleep(duration: number): Promise<void> {
-  return new Promise((resolve) => CriticalTimers.setTimeout(resolve, duration));
+export function sleep(duration: number): TypedPromise<void, never> {
+  return new TypedPromise<void, never>((resolve) => CriticalTimers.setTimeout(resolve, duration));
 }
 
 /** @internal */

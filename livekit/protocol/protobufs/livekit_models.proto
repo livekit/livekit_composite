@@ -154,13 +154,17 @@ message ParticipantInfo {
     AGENT = 4;
     // Connectors participants
     CONNECTOR = 7;
-    // NEXT_ID: 8
+    // Bridge participants
+    BRIDGE = 8;
+    // NEXT_ID: 9
   }
   enum KindDetail {
     CLOUD_AGENT = 0;
     FORWARDED = 1;
     CONNECTOR_WHATSAPP = 2;
     CONNECTOR_TWILIO = 3;
+    BRIDGE_RTSP = 4;
+    // NEXT_ID: 5
   }
   string sid = 1;
   string identity = 2;
@@ -174,7 +178,7 @@ message ParticipantInfo {
   int64 joined_at = 6;
   // timestamp when participant joined room, in milliseconds
   int64 joined_at_ms = 17;
-  string name = 9;
+  string name = 9 [(logger.redact) = true];
   uint32 version = 10;
   ParticipantPermission permission = 11;
   string region = 12;
@@ -182,11 +186,15 @@ message ParticipantInfo {
   // and can publish to the server
   bool is_publisher = 13;
   Kind kind = 14;
-  map<string, string> attributes = 15;
+  map<string, string> attributes = 15 [
+    (logger.redact) = true,
+    (logger.redact_format) = "<redacted ({{ .Size }} bytes)>"
+  ];
   DisconnectReason disconnect_reason = 16;
   repeated KindDetail kind_details = 18;
+  repeated DataTrackInfo data_tracks = 19;
 
-  // NEXT_ID: 19
+  // NEXT_ID: 20
 }
 
 enum TrackType {
@@ -227,7 +235,7 @@ message SimulcastCodecInfo {
 message TrackInfo {
   string sid = 1;
   TrackType type = 2;
-  string name = 3;
+  string name = 3 [(logger.redact) = true];
   bool muted = 4;
   // original width of video (unset for audio)
   // clients may receive a lower resolution version with simulcast
@@ -253,6 +261,36 @@ message TrackInfo {
   TimedVersion version = 18;
   repeated AudioTrackFeature audio_features = 19;
   BackupCodecPolicy backup_codec_policy = 20;
+}
+
+message DataTrackInfo {
+  // Client-assigned, 16-bit identifier that will be attached to packets sent by the publisher.
+  uint32 pub_handle = 1;
+
+  // Server-assigned track identifier.
+  string sid = 2;
+
+  // Human-readable identifier (e.g., `geoLocation`, `servoPosition.x`, etc.), unique per publisher.
+  string name = 3;
+
+  // Method used for end-to-end encryption (E2EE) on packet payloads.
+  Encryption.Type encryption = 4;
+}
+
+enum DataTrackExtensionID {
+  DTEI_INVALID = 0;
+  DTEI_PARTICIPANT_SID = 1;
+}
+
+message DataTrackExtensionParticipantSid {
+  DataTrackExtensionID id = 1;
+  string participant_sid = 2;
+}
+
+message DataTrackSubscriptionOptions {
+  // Rate in frames per second (FPS) the subscriber wants to receive frames at.
+  // If omitted, the subscriber defaults to the publisher's fps
+  optional uint32 target_fps = 1;
 }
 
 enum VideoQuality {

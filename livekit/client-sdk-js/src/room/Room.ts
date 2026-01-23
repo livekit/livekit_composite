@@ -31,8 +31,9 @@ import {
   protoInt64,
 } from '@livekit/protocol';
 import { EventEmitter } from 'events';
-import type TypedEmitter from 'typed-emitter';
 import 'webrtc-adapter';
+import type TypedEmitter from 'typed-emitter';
+import { ensureTrailingSlash } from '../api/utils';
 import { EncryptionEvent } from '../e2ee';
 import { type BaseE2EEManager, E2EEManager } from '../e2ee/E2eeManager';
 import log, { LoggerNames, getLogger } from '../logger';
@@ -42,6 +43,7 @@ import type {
   RoomConnectOptions,
   RoomOptions,
 } from '../options';
+import TypedPromise from '../utils/TypedPromise';
 import { getBrowser } from '../utils/browserParser';
 import { BackOffStrategy } from './BackOffStrategy';
 import DeviceManager from './DeviceManager';
@@ -60,7 +62,12 @@ import {
   roomOptionDefaults,
   videoDefaults,
 } from './defaults';
-import { ConnectionError, ConnectionErrorReason, UnsupportedServer } from './errors';
+import {
+  ConnectionError,
+  ConnectionErrorReason,
+  UnexpectedConnectionState,
+  UnsupportedServer,
+} from './errors';
 import { EngineEvent, ParticipantEvent, RoomEvent, TrackEvent } from './events';
 import LocalParticipant from './participant/LocalParticipant';
 import type Participant from './participant/Participant';
@@ -276,7 +283,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
       const abortController = new AbortController();
 
       // in order to catch device changes prior to room connection we need to register the event in the constructor
-      navigator.mediaDevices?.addEventListener('devicechange', this.handleDeviceChange, {
+      navigator.mediaDevices?.addEventListener?.('devicechange', this.handleDeviceChange, {
         signal: abortController.signal,
       });
 
@@ -414,14 +421,14 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
    * server assigned unique room id.
    * returns once a sid has been issued by the server.
    */
-  async getSid(): Promise<string> {
+  getSid(): TypedPromise<string, UnexpectedConnectionState> {
     if (this.state === ConnectionState.Disconnected) {
-      return '';
+      return TypedPromise.resolve('');
     }
     if (this.roomInfo && this.roomInfo.sid !== '') {
-      return this.roomInfo.sid;
+      return TypedPromise.resolve(this.roomInfo.sid);
     }
-    return new Promise((resolve, reject) => {
+    return new TypedPromise<string, UnexpectedConnectionState>((resolve, reject) => {
       const handleRoomUpdate = (roomInfo: RoomModel) => {
         if (roomInfo.sid !== '') {
           this.engine.off(EngineEvent.RoomUpdate, handleRoomUpdate);
@@ -431,7 +438,9 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
       this.engine.on(EngineEvent.RoomUpdate, handleRoomUpdate);
       this.once(RoomEvent.Disconnected, () => {
         this.engine.off(EngineEvent.RoomUpdate, handleRoomUpdate);
-        reject('Room disconnected before room server id was available');
+        reject(
+          new UnexpectedConnectionState('Room disconnected before room server id was available'),
+        );
       });
     });
   }
@@ -644,7 +653,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
     }
 
     this.setAndEmitConnectionState(ConnectionState.Connecting);
-    if (this.regionUrlProvider?.getServerUrl().toString() !== url) {
+    if (this.regionUrlProvider?.getServerUrl().toString() !== ensureTrailingSlash(url)) {
       this.regionUrl = undefined;
       this.regionUrlProvider = undefined;
     }
@@ -686,7 +695,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
       try {
         await BackOffStrategy.getInstance().getBackOffPromise(url);
         if (abortController.signal.aborted) {
-          throw new ConnectionError('Connection attempt aborted', ConnectionErrorReason.Cancelled);
+          throw ConnectionError.cancelled('Connection attempt aborted');
         }
         await this.attemptConnection(regionUrl ?? url, token, opts, abortController);
         this.abortController = undefined;
@@ -894,12 +903,11 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
     } catch (err) {
       await this.engine.close();
       this.recreateEngine();
-      const resultingError = new ConnectionError(
-        `could not establish signal connection`,
-        abortController.signal.aborted
-          ? ConnectionErrorReason.Cancelled
-          : ConnectionErrorReason.ServerUnreachable,
-      );
+
+      const resultingError = abortController.signal.aborted
+        ? ConnectionError.cancelled('Signal connection aborted')
+        : ConnectionError.serverUnreachable('could not establish signal connection');
+
       if (err instanceof Error) {
         resultingError.message = `${resultingError.message}: ${err.message}`;
       }
@@ -917,7 +925,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
     if (abortController.signal.aborted) {
       await this.engine.close();
       this.recreateEngine();
-      throw new ConnectionError(`Connection attempt aborted`, ConnectionErrorReason.Cancelled);
+      throw ConnectionError.cancelled(`Connection attempt aborted`);
     }
 
     try {
@@ -938,7 +946,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
       window.addEventListener('beforeunload', this.onPageLeave);
     }
     if (isWeb()) {
-      document.addEventListener('freeze', this.onPageLeave);
+      window.addEventListener('freeze', this.onPageLeave);
     }
     this.setAndEmitConnectionState(ConnectionState.Connected);
     this.emit(RoomEvent.Connected);
@@ -974,9 +982,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
         this.log.warn(msg, this.logContext);
         this.abortController?.abort(msg);
         // in case the abort controller didn't manage to cancel the connection attempt, reject the connect promise explicitly
-        this.connectFuture?.reject?.(
-          new ConnectionError('Client initiated disconnect', ConnectionErrorReason.Cancelled),
-        );
+        this.connectFuture?.reject?.(ConnectionError.cancelled('Client initiated disconnect'));
         this.connectFuture = undefined;
       }
 
@@ -1618,7 +1624,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
         window.removeEventListener('beforeunload', this.onPageLeave);
         window.removeEventListener('pagehide', this.onPageLeave);
         window.removeEventListener('freeze', this.onPageLeave);
-        navigator.mediaDevices?.removeEventListener('devicechange', this.handleDeviceChange);
+        navigator.mediaDevices?.removeEventListener?.('devicechange', this.handleDeviceChange);
       }
     } finally {
       this.setAndEmitConnectionState(ConnectionState.Disconnected);
@@ -1925,7 +1931,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
       });
       if (byteLength(response) > MAX_PAYLOAD_BYTES) {
         responseError = RpcError.builtIn('RESPONSE_PAYLOAD_TOO_LARGE');
-        console.warn(`RPC Response payload too large for ${method}`);
+        this.log.warn(`RPC Response payload too large for ${method}`);
       } else {
         responsePayload = response;
       }
@@ -1933,7 +1939,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
       if (error instanceof RpcError) {
         responseError = error;
       } else {
-        console.warn(
+        this.log.warn(
           `Uncaught error returned by RPC handler for ${method}. Returning APPLICATION_ERROR instead.`,
           error,
         );
@@ -2501,7 +2507,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
           name: 'video-dummy',
         }),
         new LocalVideoTrack(
-          publishOptions.useRealTracks
+          publishOptions.useRealTracks && window.navigator.mediaDevices?.getUserMedia
             ? (
                 await window.navigator.mediaDevices.getUserMedia({ video: true })
               ).getVideoTracks()[0]
@@ -2530,7 +2536,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
           type: TrackType.AUDIO,
         }),
         new LocalAudioTrack(
-          publishOptions.useRealTracks
+          publishOptions.useRealTracks && navigator.mediaDevices?.getUserMedia
             ? (await navigator.mediaDevices.getUserMedia({ audio: true })).getAudioTracks()[0]
             : getEmptyAudioStreamTrack(),
           undefined,

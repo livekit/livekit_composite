@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"strconv"
 	"sync/atomic"
+	"time"
 
 	"github.com/pion/interceptor"
 	prtp "github.com/pion/rtp"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/livekit/media-sdk/rtp"
 
+	"github.com/livekit/protocol/logger"
 	"github.com/livekit/sip/pkg/stats"
 )
 
@@ -45,47 +47,17 @@ type StatsSnapshot struct {
 	Closed bool               `json:"closed"`
 }
 
-type PortStatsSnapshot struct {
-	Streams        uint64 `json:"streams"`
-	Packets        uint64 `json:"packets"`
-	IgnoredPackets uint64 `json:"packets_ignored"`
-	InputPackets   uint64 `json:"packets_input"`
-
-	MuxPackets uint64 `json:"mux_packets"`
-	MuxBytes   uint64 `json:"mux_bytes"`
-
-	AudioPackets uint64 `json:"audio_packets"`
-	AudioBytes   uint64 `json:"audio_bytes"`
-
-	DTMFPackets uint64 `json:"dtmf_packets"`
-	DTMFBytes   uint64 `json:"dtmf_bytes"`
-
-	Closed bool `json:"closed"`
-}
-
-type RoomStatsSnapshot struct {
-	InputPackets uint64 `json:"input_packets"`
-	InputBytes   uint64 `json:"input_bytes"`
-	DTMFPackets  uint64 `json:"dtmf_packets"`
-
-	MixerSamples uint64 `json:"mixer_samples"`
-	MixerFrames  uint64 `json:"mixer_frames"`
-
-	OutputSamples uint64 `json:"output_samples"`
-	OutputFrames  uint64 `json:"output_frames"`
-
-	Closed bool `json:"closed"`
-}
-
 type MixerStatsSnapshot struct {
-	Tracks      int64  `json:"tracks"`
-	TracksTotal uint64 `json:"tracks_total"`
-	Restarts    uint64 `json:"restarts"`
+	Tracks       int64  `json:"tracks"`
+	TracksTotal  uint64 `json:"tracks_total"`
+	Restarts     uint64 `json:"restarts"`
+	TimingResets uint64 `json:"timing_resets"`
 
-	Mixes      uint64 `json:"mixes"`
-	TimedMixes uint64 `json:"mixes_timed"`
-	JumpMixes  uint64 `json:"mixes_jump"`
-	ZeroMixes  uint64 `json:"mixes_zero"`
+	Mixes         uint64 `json:"mixes"`
+	TimedMixes    uint64 `json:"mixes_timed"`
+	JumpMixes     uint64 `json:"mixes_jump"`
+	ZeroMixes     uint64 `json:"mixes_zero"`
+	NegativeMixes uint64 `json:"mixes_negative"`
 
 	InputSamples uint64 `json:"input_samples"`
 	InputFrames  uint64 `json:"input_frames"`
@@ -95,6 +67,17 @@ type MixerStatsSnapshot struct {
 
 	OutputSamples uint64 `json:"output_samples"`
 	OutputFrames  uint64 `json:"output_frames"`
+
+	WriteErrors  uint64 `json:"write_errors"`
+	BlockedMixes uint64 `json:"blocked_mixes"`
+}
+
+func (s *Stats) Update() {
+	if s == nil {
+		return
+	}
+	s.Port.Update()
+	s.Room.Update()
 }
 
 func (s *Stats) Load() StatsSnapshot {
@@ -102,50 +85,53 @@ func (s *Stats) Load() StatsSnapshot {
 	r := &s.Room
 	m := &r.Mixer
 	return StatsSnapshot{
-		Port: PortStatsSnapshot{
-			Streams:        p.Streams.Load(),
-			Packets:        p.Packets.Load(),
-			IgnoredPackets: p.IgnoredPackets.Load(),
-			InputPackets:   p.InputPackets.Load(),
-			MuxPackets:     p.MuxPackets.Load(),
-			MuxBytes:       p.MuxBytes.Load(),
-			AudioPackets:   p.AudioPackets.Load(),
-			AudioBytes:     p.AudioBytes.Load(),
-			DTMFPackets:    p.DTMFPackets.Load(),
-			DTMFBytes:      p.DTMFBytes.Load(),
-			Closed:         p.Closed.Load(),
-		},
-		Room: RoomStatsSnapshot{
-			InputPackets:  r.InputPackets.Load(),
-			InputBytes:    r.InputBytes.Load(),
-			DTMFPackets:   r.DTMFPackets.Load(),
-			MixerSamples:  r.MixerSamples.Load(),
-			MixerFrames:   r.MixerFrames.Load(),
-			OutputSamples: r.OutputSamples.Load(),
-			OutputFrames:  r.OutputFrames.Load(),
-			Closed:        r.Closed.Load(),
-		},
+		Port: p.Load(),
+		Room: r.Load(),
 		Mixer: MixerStatsSnapshot{
 			Tracks:        m.Tracks.Load(),
 			TracksTotal:   m.TracksTotal.Load(),
 			Restarts:      m.Restarts.Load(),
+			TimingResets:  m.TimingResets.Load(),
 			Mixes:         m.Mixes.Load(),
 			TimedMixes:    m.TimedMixes.Load(),
 			JumpMixes:     m.JumpMixes.Load(),
 			ZeroMixes:     m.ZeroMixes.Load(),
+			NegativeMixes: m.NegativeMixes.Load(),
 			InputSamples:  m.InputSamples.Load(),
 			InputFrames:   m.InputFrames.Load(),
 			MixedSamples:  m.MixedSamples.Load(),
 			MixedFrames:   m.MixedFrames.Load(),
 			OutputSamples: m.OutputSamples.Load(),
 			OutputFrames:  m.OutputFrames.Load(),
+			WriteErrors:   m.WriteErrors.Load(),
+			BlockedMixes:  m.BlockedMixes.Load(),
 		},
 		Closed: s.Closed.Load(),
 	}
 }
 
+func (s *Stats) Log(log logger.Logger, callStart time.Time) {
+	const expectedSampleRate = RoomSampleRate
+	st := s.Load()
+	log.Infow("call statistics",
+		"stats", st,
+		"durMin", int(time.Since(callStart).Minutes()),
+		"sip_rx_ppm", ratePPM(st.Port.AudioRX, expectedSampleRate),
+		"sip_tx_ppm", ratePPM(st.Port.AudioTX, expectedSampleRate),
+		"lk_publish_ppm", ratePPM(st.Room.PublishTX, expectedSampleRate),
+		"expected_pcm_hz", expectedSampleRate,
+	)
+}
+
 func (s *Stats) MarshalJSON() ([]byte, error) {
 	return json.Marshal(s.Load())
+}
+
+func ratePPM(rate float64, expected int) float64 {
+	if expected <= 0 {
+		return 0
+	}
+	return (rate - float64(expected)) / float64(expected) * 1_000_000
 }
 
 const (

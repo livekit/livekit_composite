@@ -338,6 +338,7 @@ func (r *RoomManager) StartSession(
 						Leave: leave,
 					},
 				})
+				prometheus.IncrementParticipantRtcCanceled(1)
 				return errors.New("could not restart closed participant")
 			}
 
@@ -395,6 +396,7 @@ func (r *RoomManager) StartSession(
 				Leave: leave,
 			},
 		})
+		prometheus.IncrementParticipantRtcCanceled(1)
 		return errors.New("could not restart participant")
 	}
 
@@ -479,27 +481,30 @@ func (r *RoomManager) StartSession(
 		AdaptiveStream:          pi.AdaptiveStream,
 		AllowTCPFallback:        allowFallback,
 		TURNSEnabled:            r.config.IsTURNSEnabled(),
+		ParticipantListener:     room.LocalParticipantListener(),
 		ParticipantHelper: &roomManagerParticipantHelper{
 			room:                     room,
 			codecRegressionThreshold: r.config.Video.CodecRegressionThreshold,
 		},
-		ReconnectOnPublicationError:   reconnectOnPublicationError,
-		ReconnectOnSubscriptionError:  reconnectOnSubscriptionError,
-		ReconnectOnDataChannelError:   reconnectOnDataChannelError,
-		VersionGenerator:              r.versionGenerator,
-		SubscriberAllowPause:          subscriberAllowPause,
-		SubscriptionLimitAudio:        r.config.Limit.SubscriptionLimitAudio,
-		SubscriptionLimitVideo:        r.config.Limit.SubscriptionLimitVideo,
-		PlayoutDelay:                  roomInternal.GetPlayoutDelay(),
-		SyncStreams:                   roomInternal.GetSyncStreams(),
-		ForwardStats:                  r.forwardStats,
-		MetricConfig:                  r.config.Metric,
-		UseOneShotSignallingMode:      useOneShotSignallingMode,
-		DataChannelMaxBufferedAmount:  r.config.RTC.DataChannelMaxBufferedAmount,
-		DatachannelSlowThreshold:      r.config.RTC.DatachannelSlowThreshold,
-		DatachannelLossyTargetLatency: r.config.RTC.DatachannelLossyTargetLatency,
-		FireOnTrackBySdp:              true,
-		UseSinglePeerConnection:       pi.UseSinglePeerConnection,
+		ReconnectOnPublicationError:     reconnectOnPublicationError,
+		ReconnectOnSubscriptionError:    reconnectOnSubscriptionError,
+		ReconnectOnDataChannelError:     reconnectOnDataChannelError,
+		VersionGenerator:                r.versionGenerator,
+		SubscriberAllowPause:            subscriberAllowPause,
+		SubscriptionLimitAudio:          r.config.Limit.SubscriptionLimitAudio,
+		SubscriptionLimitVideo:          r.config.Limit.SubscriptionLimitVideo,
+		PlayoutDelay:                    roomInternal.GetPlayoutDelay(),
+		SyncStreams:                     roomInternal.GetSyncStreams(),
+		ForwardStats:                    r.forwardStats,
+		MetricConfig:                    r.config.Metric,
+		UseOneShotSignallingMode:        useOneShotSignallingMode,
+		DataChannelMaxBufferedAmount:    r.config.RTC.DataChannelMaxBufferedAmount,
+		DatachannelSlowThreshold:        r.config.RTC.DatachannelSlowThreshold,
+		DatachannelLossyTargetLatency:   r.config.RTC.DatachannelLossyTargetLatency,
+		FireOnTrackBySdp:                true,
+		UseSinglePeerConnection:         pi.UseSinglePeerConnection,
+		EnableDataTracks:                r.config.EnableDataTracks,
+		EnableRTPStreamRestartDetection: r.config.RTC.EnableRTPStreamRestartDetection,
 	})
 	if err != nil {
 		return err
@@ -662,7 +667,7 @@ func (r *RoomManager) getOrCreateRoom(ctx context.Context, createRoom *livekit.C
 		}
 	})
 
-	newRoom.OnParticipantChanged(func(p types.LocalParticipant) {
+	newRoom.OnParticipantChanged(func(p types.Participant) {
 		if !p.IsDisconnected() {
 			if err := r.roomStore.StoreParticipant(ctx, roomName, p.ToProto()); err != nil {
 				newRoom.Logger().Errorw("could not handle participant change", err)
@@ -1114,6 +1119,10 @@ func (h *roomManagerParticipantHelper) GetSubscriberForwarderState(lp types.Loca
 
 func (h *roomManagerParticipantHelper) ResolveMediaTrack(lp types.LocalParticipant, trackID livekit.TrackID) types.MediaResolverResult {
 	return h.room.ResolveMediaTrackForSubscriber(lp, trackID)
+}
+
+func (h *roomManagerParticipantHelper) ResolveDataTrack(lp types.LocalParticipant, trackID livekit.TrackID) types.DataResolverResult {
+	return h.room.ResolveDataTrackForSubscriber(lp, trackID)
 }
 
 func (h *roomManagerParticipantHelper) ShouldRegressCodec() bool {

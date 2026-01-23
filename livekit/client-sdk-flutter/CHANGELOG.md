@@ -1,5 +1,21 @@
 # CHANGELOG
 
+## 2.6.0
+
+* Session API
+* Allow customizing screen share dialog labels for localization
+
+## 2.5.4
+
+* Added pre-connect audio buffering
+* Added token source API with caching and endpoint helpers
+* Enabled software AEC/NS/AGC for Linux
+* Added event logging with public/internal tagging
+* Migrated manual JSON serialization to json_serializable code generation
+* Re-enabled Flutter lint warnings and fixed existing issues
+* Improved reliable data channel buffering, sequencing, and added integration tests
+* Fixed race condition with pending tracks
+
 ## 2.5.3
 
 * Feat: Data Packet Cryptor (#873)
@@ -46,7 +62,7 @@
 * fix: memory leak visualizer stop android (#831)
 * fix: ensure engine always has correct device id if switching camera fails (#820)
 * fix: Always emit RoomDisconnectedEvent when the reason is clientInitiated. (#821)
-* fix: sif frame enqueing with e2ee (#822)
+* fix: sif frame enqueuing with e2ee (#822)
 * fix: update camera `deviceId` when track is null (#814)
 * feat: Audio Visualizer for Windows/Linux. (#739)
 

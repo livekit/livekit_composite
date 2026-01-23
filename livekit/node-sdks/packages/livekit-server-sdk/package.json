@@ -1,13 +1,14 @@
 {
   "name": "livekit-server-sdk",
-  "version": "2.14.1",
+  "version": "2.15.0",
   "description": "Server-side SDK for LiveKit",
   "main": "dist/index.js",
   "require": "dist/index.cjs",
   "types": "dist/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/livekit/server-sdk-js.git"
+    "url": "https://github.com/livekit/node-sdks.git",
+    "directory": "packages/livekit-server-sdk"
   },
   "author": "David Zhao <david@davidzhao.com>",
   "license": "Apache-2.0",
@@ -43,7 +44,7 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "^1.10.1",
-    "@livekit/protocol": "^1.42.0",
+    "@livekit/protocol": "^1.43.1",
     "camelcase-keys": "^9.0.0",
     "jose": "^5.1.2"
   },

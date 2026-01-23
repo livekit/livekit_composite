@@ -4,17 +4,15 @@
 import {
   type JobContext,
   type JobProcess,
-  WorkerOptions,
+  ServerOptions,
   cli,
   defineAgent,
   llm,
   voice,
 } from '@livekit/agents';
-import * as deepgram from '@livekit/agents-plugin-deepgram';
-import * as elevenlabs from '@livekit/agents-plugin-elevenlabs';
 import * as livekit from '@livekit/agents-plugin-livekit';
-import * as openai from '@livekit/agents-plugin-openai';
 import * as silero from '@livekit/agents-plugin-silero';
+import { BackgroundVoiceCancellation } from '@livekit/noise-cancellation-node';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
@@ -138,21 +136,24 @@ export default defineAgent({
 
     const session = new voice.AgentSession({
       vad,
-      stt: new deepgram.STT(),
-      tts: new elevenlabs.TTS(),
-      // strictToolSchema = true requires tool schema to use `.nullable()` instead of `.optional()` in the schema.
-      llm: new openai.LLM({ strictToolSchema: true }),
-      // to use realtime model, replace the stt, llm, tts and vad with the following
-      // llm: new openai.realtime.RealtimeModel(),
+      stt: 'assemblyai/universal-streaming:en',
+      llm: 'openai/gpt-4.1-mini',
+      tts: 'cartesia/sonic-2:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc',
+      turnDetection: new livekit.turnDetector.MultilingualModel(),
       userData: { number: 0 },
-      turnDetection: new livekit.turnDetector.EnglishModel(),
+      voiceOptions: {
+        preemptiveGeneration: true,
+      },
     });
 
     await session.start({
       agent: routerAgent,
       room: ctx.room,
+      inputOptions: {
+        noiseCancellation: BackgroundVoiceCancellation(),
+      },
     });
   },
 });
 
-cli.runApp(new WorkerOptions({ agent: fileURLToPath(import.meta.url) }));
+cli.runApp(new ServerOptions({ agent: fileURLToPath(import.meta.url) }));

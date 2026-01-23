@@ -50,9 +50,9 @@ public class CameraCapturer: VideoCapturer, @unchecked Sendable {
     public var isMultitaskingAccessSupported: Bool {
         #if (os(iOS) || os(tvOS)) && !targetEnvironment(macCatalyst)
         if #available(iOS 16, *, tvOS 17, *) {
-            self.capturer.captureSession.beginConfiguration()
-            defer { self.capturer.captureSession.commitConfiguration() }
-            return self.capturer.captureSession.isMultitaskingCameraAccessSupported
+            capturer.captureSession.beginConfiguration()
+            defer { capturer.captureSession.commitConfiguration() }
+            return capturer.captureSession.isMultitaskingCameraAccessSupported
         }
         #endif
         return false
@@ -62,7 +62,7 @@ public class CameraCapturer: VideoCapturer, @unchecked Sendable {
         get {
             #if (os(iOS) || os(tvOS)) && !targetEnvironment(macCatalyst)
             if #available(iOS 16, *, tvOS 17, *) {
-                return self.capturer.captureSession.isMultitaskingCameraAccessEnabled
+                return capturer.captureSession.isMultitaskingCameraAccessEnabled
             }
             #endif
             return false
@@ -70,7 +70,7 @@ public class CameraCapturer: VideoCapturer, @unchecked Sendable {
         set {
             #if (os(iOS) || os(tvOS)) && !targetEnvironment(macCatalyst)
             if #available(iOS 16, *, tvOS 17, *) {
-                self.capturer.captureSession.isMultitaskingCameraAccessEnabled = newValue
+                capturer.captureSession.isMultitaskingCameraAccessEnabled = newValue
             }
             #endif
         }
@@ -88,6 +88,14 @@ public class CameraCapturer: VideoCapturer, @unchecked Sendable {
 
     public var captureSession: AVCaptureSession {
         capturer.captureSession
+    }
+
+    private var isMultiCamSession: Bool {
+        #if os(iOS) || os(tvOS)
+        captureSession is AVCaptureMultiCamSession
+        #else
+        false
+        #endif
     }
 
     // RTCCameraVideoCapturer used internally for now
@@ -154,21 +162,17 @@ public class CameraCapturer: VideoCapturer, @unchecked Sendable {
         var device: AVCaptureDevice? = options.device
 
         if device == nil {
-            #if os(iOS) || os(tvOS)
             var devices: [AVCaptureDevice]
-            if AVCaptureMultiCamSession.isMultiCamSupported {
+            if isMultiCamSession {
                 // Get the list of devices already on the shared multi-cam session.
                 let existingDevices = captureSession.inputs.compactMap { $0 as? AVCaptureDeviceInput }.map(\.device)
-                log("Existing multicam devices: \(existingDevices)")
+                log("Existing multiCam devices: \(existingDevices)")
                 // Compute other multi-cam compatible devices.
                 devices = try await DeviceManager.shared.multiCamCompatibleDevices(for: Set(existingDevices))
-                log("Compabible multicam devices: \(devices)")
+                log("Compatible multiCam devices: \(devices)")
             } else {
                 devices = try await CameraCapturer.captureDevices()
             }
-            #else
-            var devices = try await CameraCapturer.captureDevices()
-            #endif
 
             #if !os(visionOS)
             // Filter by deviceType if specified in options.
@@ -217,26 +221,27 @@ public class CameraCapturer: VideoCapturer, @unchecked Sendable {
 
             let any: (FormatTuple) -> Bool = { _ in true }
             let matchesFps: (FormatTuple) -> Bool = { $0.format.fpsRange().contains(targetFps) }
-            let supportsMulticam: (FormatTuple) -> Bool = { $0.format.filterForMulticamSupport }
+            let matchesAspectRatio: (FormatTuple) -> Bool = {
+                let sourceRatio = Double($0.dimensions.width) / Double($0.dimensions.height)
+                let targetRatio = Double(targetDimensions.width) / Double(targetDimensions.height)
+                return abs(sourceRatio - targetRatio) / targetRatio < CGFloat.aspectRatioTolerance
+            }
+            let supportsMultiCam: (FormatTuple) -> Bool = { $0.format.filterForMultiCamSupport }
             let byManhattanDistance: (FormatTuple, FormatTuple) -> Bool = { manhattanDistance($0) < manhattanDistance($1) }
 
-            #if os(iOS) || os(tvOS)
-            let isMulticamActive = AVCaptureMultiCamSession.isMultiCamSupported && !captureSession.inputs.isEmpty
-            let criteria: [(name: String, filter: (FormatTuple) -> Bool)] = isMulticamActive ? [
-                (name: "fps, multicam", filter: { matchesFps($0) && supportsMulticam($0) }),
-                (name: "multicam", filter: supportsMulticam),
+            var criteria: [(name: String, filter: (FormatTuple) -> Bool)] = isMultiCamSession ? [
+                (name: "multiCam, aspectRatio, fps", filter: { supportsMultiCam($0) && matchesAspectRatio($0) && matchesFps($0) }),
+                (name: "multiCam, aspectRatio", filter: { supportsMultiCam($0) && matchesAspectRatio($0) }),
+                (name: "multiCam, fps", filter: { supportsMultiCam($0) && matchesFps($0) }),
+                (name: "multiCam", filter: supportsMultiCam),
+            ] : []
+
+            criteria.append(contentsOf: [
+                (name: "aspectRatio, fps", filter: { matchesAspectRatio($0) && matchesFps($0) }),
+                (name: "aspectRatio", filter: matchesAspectRatio),
                 (name: "fps", filter: matchesFps),
                 (name: "(fallback)", filter: any),
-            ] : [
-                (name: "fps", filter: matchesFps),
-                (name: "(fallback)", filter: any),
-            ]
-            #else
-            let criteria: [(name: String, filter: (FormatTuple) -> Bool)] = [
-                (name: "fps", filter: matchesFps),
-                (name: "(fallback)", filter: any),
-            ]
-            #endif
+            ])
 
             for (name, filter) in criteria {
                 if let foundFormat = sortedFormats.sorted(by: byManhattanDistance).first(where: filter) {
@@ -384,7 +389,7 @@ extension AVCaptureDevice.Format {
 
     // Used for filtering.
     // Only include multi-cam supported devices if in multi-cam mode. Otherwise, always include the devices.
-    var filterForMulticamSupport: Bool {
+    var filterForMultiCamSupport: Bool {
         #if os(iOS) || os(tvOS)
         return AVCaptureMultiCamSession.isMultiCamSupported ? isMultiCamSupported : true
         #else
@@ -419,6 +424,8 @@ extension LKRTCVideoFrame {
         // Calculate aspect ratios
         let sourceRatio = Double(width) / Double(height)
         let targetRatio = Double(scaleWidth) / Double(scaleHeight)
+
+        guard targetRatio.isFinite else { return nil }
 
         // Calculate crop dimensions
         let (cropWidth, cropHeight): (Int32, Int32)

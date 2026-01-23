@@ -28,6 +28,12 @@ export type TTSNode = (
   text: ReadableStream<string>,
   modelSettings: ModelSettings,
 ) => Promise<ReadableStream<AudioFrame> | null>;
+
+export interface AudioOutputCapabilities {
+  /** Whether this output supports pause/resume functionality */
+  pause: boolean;
+}
+
 export abstract class AudioInput {
   protected deferredStream: DeferredReadableStream<AudioFrame> =
     new DeferredReadableStream<AudioFrame>();
@@ -53,17 +59,27 @@ export abstract class AudioOutput extends EventEmitter {
     interrupted: false,
   };
   protected logger = log();
+  protected readonly capabilities: AudioOutputCapabilities;
 
   constructor(
     public sampleRate?: number,
     protected readonly nextInChain?: AudioOutput,
+    capabilities: AudioOutputCapabilities = { pause: false },
   ) {
     super();
+    this.capabilities = capabilities;
     if (this.nextInChain) {
       this.nextInChain.on(AudioOutput.EVENT_PLAYBACK_FINISHED, (ev: PlaybackFinishedEvent) =>
         this.onPlaybackFinished(ev),
       );
     }
+  }
+
+  /**
+   * Whether this output and all outputs in the chain support pause/resume.
+   */
+  get canPause(): boolean {
+    return this.capabilities.pause && (this.nextInChain?.canPause ?? true);
   }
 
   /**
@@ -126,6 +142,24 @@ export abstract class AudioOutput extends EventEmitter {
   onDetached(): void {
     if (this.nextInChain) {
       this.nextInChain.onDetached();
+    }
+  }
+
+  /**
+   * Pause the audio playback
+   */
+  pause(): void {
+    if (this.nextInChain) {
+      this.nextInChain.pause();
+    }
+  }
+
+  /**
+   * Resume the audio playback
+   */
+  resume(): void {
+    if (this.nextInChain) {
+      this.nextInChain.resume();
     }
   }
 }

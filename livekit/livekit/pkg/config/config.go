@@ -83,6 +83,8 @@ type Config struct {
 	Metric metric.MetricConfig `yaml:"metric,omitempty"`
 
 	NodeStats NodeStatsConfig `yaml:"node_stats,omitempty"`
+
+	EnableDataTracks bool `yaml:"enable_data_tracks,omitempty"`
 }
 
 type RTCConfig struct {
@@ -128,6 +130,9 @@ type RTCConfig struct {
 	DatachannelLossyTargetLatency time.Duration `yaml:"datachannel_lossy_target_latency,omitempty"`
 
 	ForwardStats ForwardStatsConfig `yaml:"forward_stats,omitempty"`
+
+	// enable rtp stream restart detection for published tracks
+	EnableRTPStreamRestartDetection bool `yaml:"enable_rtp_stream_restart_detection,omitempty"`
 }
 
 type TURNServer struct {

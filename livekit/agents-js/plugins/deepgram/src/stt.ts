@@ -2,15 +2,18 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 import {
+  type APIConnectOptions,
   type AudioBuffer,
   AudioByteStream,
   AudioEnergyFilter,
   Future,
+  Task,
   log,
   stt,
+  waitForAbort,
 } from '@livekit/agents';
 import type { AudioFrame } from '@livekit/rtc-node';
-import { type RawData, WebSocket } from 'ws';
+import { WebSocket } from 'ws';
 import { PeriodicCollector } from './_utils.js';
 import type { STTLanguages, STTModels } from './models.js';
 
@@ -35,6 +38,7 @@ export interface STTOptions {
   dictation: boolean;
   diarize: boolean;
   numerals: boolean;
+  mipOptOut: boolean;
 }
 
 const defaultSTTOptions: STTOptions = {
@@ -56,12 +60,14 @@ const defaultSTTOptions: STTOptions = {
   dictation: false,
   diarize: false,
   numerals: false,
+  mipOptOut: false,
 };
 
 export class STT extends stt.STT {
   #opts: STTOptions;
   #logger = log();
   label = 'deepgram.STT';
+  private abortController = new AbortController();
 
   constructor(opts: Partial<STTOptions> = defaultSTTOptions) {
     super({
@@ -110,8 +116,12 @@ export class STT extends stt.STT {
     this.#opts = { ...this.#opts, ...opts };
   }
 
-  stream(): SpeechStream {
-    return new SpeechStream(this, this.#opts);
+  stream(options?: { connOptions?: APIConnectOptions }): SpeechStream {
+    return new SpeechStream(this, this.#opts, options?.connOptions);
+  }
+
+  async close() {
+    this.abortController.abort();
   }
 }
 
@@ -125,8 +135,8 @@ export class SpeechStream extends stt.SpeechStream {
   #audioDurationCollector: PeriodicCollector<number>;
   label = 'deepgram.SpeechStream';
 
-  constructor(stt: STT, opts: STTOptions) {
-    super(stt, opts.sampleRate);
+  constructor(stt: STT, opts: STTOptions, connOptions?: APIConnectOptions) {
+    super(stt, opts.sampleRate, connOptions);
     this.#opts = opts;
     this.closed = false;
     this.#audioEnergyFilter = new AudioEnergyFilter();
@@ -140,7 +150,8 @@ export class SpeechStream extends stt.SpeechStream {
     const maxRetry = 32;
     let retries = 0;
     let ws: WebSocket;
-    while (!this.input.closed) {
+
+    while (!this.input.closed && !this.closed) {
       const streamURL = new URL(API_BASE_URL_V1);
       const params = {
         model: this.#opts.model,
@@ -161,6 +172,7 @@ export class SpeechStream extends stt.SpeechStream {
         keyterm: this.#opts.keyterm,
         profanity_filter: this.#opts.profanityFilter,
         language: this.#opts.language,
+        mip_opt_out: this.#opts.mipOptOut,
       };
       Object.entries(params).forEach(([k, v]) => {
         if (v !== undefined) {
@@ -185,17 +197,23 @@ export class SpeechStream extends stt.SpeechStream {
 
         await this.#runWS(ws);
       } catch (e) {
-        if (retries >= maxRetry) {
-          throw new Error(`failed to connect to Deepgram after ${retries} attempts: ${e}`);
+        if (!this.closed && !this.input.closed) {
+          if (retries >= maxRetry) {
+            throw new Error(`failed to connect to Deepgram after ${retries} attempts: ${e}`);
+          }
+
+          const delay = Math.min(retries * 5, 10);
+          retries++;
+
+          this.#logger.warn(
+            `failed to connect to Deepgram, retrying in ${delay} seconds: ${e} (${retries}/${maxRetry})`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, delay * 1000));
+        } else {
+          this.#logger.warn(
+            `Deepgram disconnected, connection is closed: ${e} (inputClosed: ${this.input.closed}, isClosed: ${this.closed})`,
+          );
         }
-
-        const delay = Math.min(retries * 5, 10);
-        retries++;
-
-        this.#logger.warn(
-          `failed to connect to Deepgram, retrying in ${delay} seconds: ${e} (${retries}/${maxRetry})`,
-        );
-        await new Promise((resolve) => setTimeout(resolve, delay * 1000));
       }
     }
 
@@ -220,6 +238,20 @@ export class SpeechStream extends stt.SpeechStream {
       }
     }, 5000);
 
+    // gets cancelled also when sendTask is complete
+    const wsMonitor = Task.from(async (controller) => {
+      const closed = new Promise<void>(async (_, reject) => {
+        ws.once('close', (code, reason) => {
+          if (!closing) {
+            this.#logger.error(`WebSocket closed with code ${code}: ${reason}`);
+            reject(new Error('WebSocket closed'));
+          }
+        });
+      });
+
+      await Promise.race([closed, waitForAbort(controller.signal)]);
+    });
+
     const sendTask = async () => {
       const samples100Ms = Math.floor(this.#opts.sampleRate / 10);
       const stream = new AudioByteStream(
@@ -228,48 +260,63 @@ export class SpeechStream extends stt.SpeechStream {
         samples100Ms,
       );
 
-      for await (const data of this.input) {
-        let frames: AudioFrame[];
-        if (data === SpeechStream.FLUSH_SENTINEL) {
-          frames = stream.flush();
-          this.#audioDurationCollector.flush();
-        } else if (
-          data.sampleRate === this.#opts.sampleRate ||
-          data.channels === this.#opts.numChannels
-        ) {
-          frames = stream.write(data.data.buffer);
-        } else {
-          throw new Error(`sample rate or channel count of frame does not match`);
-        }
+      // waitForAbort internally sets up an abort listener on the abort signal
+      // we need to put it outside loop to avoid constant re-registration of the listener
+      const abortPromise = waitForAbort(this.abortSignal);
 
-        for await (const frame of frames) {
-          if (this.#audioEnergyFilter.pushFrame(frame)) {
-            const frameDuration = frame.samplesPerChannel / frame.sampleRate;
-            this.#audioDurationCollector.push(frameDuration);
-            ws.send(frame.data.buffer);
+      try {
+        while (!this.closed) {
+          const result = await Promise.race([this.input.next(), abortPromise]);
+
+          if (result === undefined) return; // aborted
+          if (result.done) {
+            break;
+          }
+
+          const data = result.value;
+
+          let frames: AudioFrame[];
+          if (data === SpeechStream.FLUSH_SENTINEL) {
+            frames = stream.flush();
+            this.#audioDurationCollector.flush();
+          } else if (
+            data.sampleRate === this.#opts.sampleRate ||
+            data.channels === this.#opts.numChannels
+          ) {
+            frames = stream.write(data.data.buffer as ArrayBuffer);
+          } else {
+            throw new Error(`sample rate or channel count of frame does not match`);
+          }
+
+          for await (const frame of frames) {
+            if (this.#audioEnergyFilter.pushFrame(frame)) {
+              const frameDuration = frame.samplesPerChannel / frame.sampleRate;
+              this.#audioDurationCollector.push(frameDuration);
+              ws.send(frame.data.buffer);
+            }
           }
         }
+      } finally {
+        closing = true;
+        ws.send(JSON.stringify({ type: 'CloseStream' }));
+        wsMonitor.cancel();
       }
-
-      closing = true;
-      ws.send(JSON.stringify({ type: 'CloseStream' }));
     };
 
-    const wsMonitor = new Promise<void>((_, reject) =>
-      ws.once('close', (code, reason) => {
-        if (!closing) {
-          this.#logger.error(`WebSocket closed with code ${code}: ${reason}`);
-          reject(new Error('WebSocket closed'));
+    const listenTask = Task.from(async (controller) => {
+      const putMessage = (message: stt.SpeechEvent) => {
+        if (!this.queue.closed) {
+          try {
+            this.queue.put(message);
+          } catch (e) {
+            // ignore
+          }
         }
-      }),
-    );
+      };
 
-    const listenTask = async () => {
-      while (!this.closed && !closing) {
-        try {
-          await new Promise<RawData>((resolve) => {
-            ws.once('message', (data) => resolve(data));
-          }).then((msg) => {
+      const listenMessage = new Promise<void>((resolve, reject) => {
+        ws.on('message', (msg) => {
+          try {
             const json = JSON.parse(msg.toString());
             switch (json['type']) {
               case 'SpeechStarted': {
@@ -279,7 +326,7 @@ export class SpeechStream extends stt.SpeechStream {
                 // It's also possible we receive a transcript without a SpeechStarted event.
                 if (this.#speaking) return;
                 this.#speaking = true;
-                this.queue.put({ type: stt.SpeechEventType.START_OF_SPEECH });
+                putMessage({ type: stt.SpeechEventType.START_OF_SPEECH });
                 break;
               }
               // see this page:
@@ -300,16 +347,18 @@ export class SpeechStream extends stt.SpeechStream {
                 if (alternatives[0] && alternatives[0].text) {
                   if (!this.#speaking) {
                     this.#speaking = true;
-                    this.queue.put({ type: stt.SpeechEventType.START_OF_SPEECH });
+                    putMessage({
+                      type: stt.SpeechEventType.START_OF_SPEECH,
+                    });
                   }
 
                   if (isFinal) {
-                    this.queue.put({
+                    putMessage({
                       type: stt.SpeechEventType.FINAL_TRANSCRIPT,
                       alternatives: [alternatives[0], ...alternatives.slice(1)],
                     });
                   } else {
-                    this.queue.put({
+                    putMessage({
                       type: stt.SpeechEventType.INTERIM_TRANSCRIPT,
                       alternatives: [alternatives[0], ...alternatives.slice(1)],
                     });
@@ -321,7 +370,7 @@ export class SpeechStream extends stt.SpeechStream {
                 // a non-empty transcript (deepgram doesn't have a SpeechEnded event)
                 if (isEndpoint && this.#speaking) {
                   this.#speaking = false;
-                  this.queue.put({ type: stt.SpeechEventType.END_OF_SPEECH });
+                  putMessage({ type: stt.SpeechEventType.END_OF_SPEECH });
                 }
 
                 break;
@@ -334,15 +383,24 @@ export class SpeechStream extends stt.SpeechStream {
                 break;
               }
             }
-          });
-        } catch (error) {
-          this.#logger.child({ error }).warn('unrecoverable error, exiting');
-          break;
-        }
-      }
-    };
 
-    await Promise.race([this.#resetWS.await, Promise.all([sendTask(), listenTask(), wsMonitor])]);
+            if (this.closed || closing) {
+              resolve();
+            }
+          } catch (err) {
+            this.#logger.error(`STT: Error processing message: ${msg}`);
+            reject(err);
+          }
+        });
+      });
+
+      await Promise.race([listenMessage, waitForAbort(controller.signal)]);
+    }, this.abortController);
+
+    await Promise.race([
+      this.#resetWS.await,
+      Promise.all([sendTask(), listenTask.result, wsMonitor]),
+    ]);
     closing = true;
     ws.close();
     clearInterval(keepalive);

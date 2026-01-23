@@ -99,7 +99,18 @@ const startJob = (
     }, 10000);
 
     // Run the job function within the AsyncLocalStorage context
-    await runWithJobContextAsync(ctx, () => func(ctx)).finally(() => {
+    await runWithJobContextAsync(ctx, async () => {
+      const { tracer, traceTypes } = await import('../telemetry/index.js');
+      return tracer.startActiveSpan(
+        async (span) => {
+          span.setAttribute(traceTypes.ATTR_JOB_ID, info.job.id);
+          span.setAttribute(traceTypes.ATTR_AGENT_NAME, info.job.agentName);
+          span.setAttribute(traceTypes.ATTR_ROOM_NAME, info.job.room?.name ?? '');
+          return func(ctx);
+        },
+        { name: 'job_entrypoint' },
+      );
+    }).finally(() => {
       clearTimeout(unconnectedTimeout);
     });
 
@@ -178,7 +189,7 @@ const startJob = (
     let logger = log().child({ pid: proc.pid });
 
     process.on('unhandledRejection', (reason) => {
-      logger.error(reason);
+      logger.debug({ error: reason }, 'Unhandled promise rejection');
     });
 
     logger.debug('initializing job runner');

@@ -1010,7 +1010,10 @@ constructor(
             builder.participantSid = participant.sid.value
             for (trackPub in participant.trackPublications.values) {
                 val remoteTrackPub = (trackPub as? RemoteTrackPublication) ?: continue
-                if (remoteTrackPub.subscribed != sendUnsub) {
+
+                // Use isDesired (subscription intent) instead of isSubscribed (actual state)
+                // to avoid race condition during quick reconnect where tracks aren't attached yet.
+                if (remoteTrackPub.isDesired != sendUnsub) {
                     builder.addTrackSids(remoteTrackPub.sid)
                 }
             }
@@ -1156,7 +1159,7 @@ constructor(
      * @suppress
      */
     override fun onAddTrack(receiver: RtpReceiver, track: MediaStreamTrack, streams: Array<out MediaStream>) {
-        if (streams.count() < 0) {
+        if (streams.isEmpty()) {
             LKLog.i { "add track with empty streams?" }
             return
         }
@@ -1266,7 +1269,7 @@ constructor(
     override fun onConnectionQuality(updates: List<LivekitRtc.ConnectionQualityInfo>) {
         updates.forEach { info ->
             val quality = ConnectionQuality.fromProto(info.quality)
-            val participant = getParticipantBySid(info.participantSid) ?: return
+            val participant = getParticipantBySid(info.participantSid) ?: return@forEach
             participant.connectionQuality = quality
             eventBus.postEvent(RoomEvent.ConnectionQualityChanged(this, participant, quality), coroutineScope)
         }

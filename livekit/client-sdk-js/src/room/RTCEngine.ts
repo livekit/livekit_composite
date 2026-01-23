@@ -51,6 +51,7 @@ import type { BaseE2EEManager } from '../e2ee/E2eeManager';
 import { asEncryptablePacket } from '../e2ee/utils';
 import log, { LoggerNames, getLogger } from '../logger';
 import type { InternalRoomOptions } from '../options';
+import TypedPromise from '../utils/TypedPromise';
 import { DataPacketBuffer } from '../utils/dataPacketBuffer';
 import { TTLMap } from '../utils/ttlmap';
 import PCTransport, { PCEvents } from './PCTransport';
@@ -62,6 +63,7 @@ import {
   ConnectionError,
   ConnectionErrorReason,
   NegotiationError,
+  SignalReconnectError,
   TrackInvalidError,
   UnexpectedConnectionState,
 } from './errors';
@@ -381,10 +383,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       const publicationTimeout = setTimeout(() => {
         delete this.pendingTrackResolvers[req.cid];
         reject(
-          new ConnectionError(
-            'publication of local track timed out, no response from server',
-            ConnectionErrorReason.Timeout,
-          ),
+          ConnectionError.timeout('publication of local track timed out, no response from server'),
         );
       }, 10_000);
       this.pendingTrackResolvers[req.cid] = {
@@ -1228,10 +1227,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     } catch (e: any) {
       // TODO do we need a `failed` state here for the PC?
       this.pcState = PCState.Disconnected;
-      throw new ConnectionError(
-        `could not establish PC connection, ${e.message}`,
-        ConnectionErrorReason.InternalError,
-      );
+      throw ConnectionError.internal(`could not establish PC connection, ${e.message}`);
     }
   }
 
@@ -1383,12 +1379,12 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     }
   };
 
-  waitForBufferStatusLow(kind: DataPacket_Kind): Promise<void> {
-    return new Promise(async (resolve, reject) => {
+  waitForBufferStatusLow(kind: DataPacket_Kind): TypedPromise<void, UnexpectedConnectionState> {
+    return new TypedPromise(async (resolve, reject) => {
       if (this.isBufferStatusLow(kind)) {
         resolve();
       } else {
-        const onClosing = () => reject('Engine closed');
+        const onClosing = () => reject(new UnexpectedConnectionState('engine closed'));
         this.once(EngineEvent.Closing, onClosing);
         while (!this.dcBufferStatus.get(kind)) {
           await sleep(10);
@@ -1412,10 +1408,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     const transport = subscriber ? this.pcManager.subscriber : this.pcManager.publisher;
     const transportName = subscriber ? 'Subscriber' : 'Publisher';
     if (!transport) {
-      throw new ConnectionError(
-        `${transportName} connection not set`,
-        ConnectionErrorReason.InternalError,
-      );
+      throw ConnectionError.internal(`${transportName} connection not set`);
     }
 
     let needNegotiation = false;
@@ -1456,9 +1449,8 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       await sleep(50);
     }
 
-    throw new ConnectionError(
+    throw ConnectionError.internal(
       `could not establish ${transportName} connection, state: ${transport.getICEConnectionState()}`,
-      ConnectionErrorReason.InternalError,
     );
   }
 
@@ -1489,7 +1481,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
   /** @internal */
   async negotiate(): Promise<void> {
     // observe signal state
-    return new Promise<void>(async (resolve, reject) => {
+    return new TypedPromise<void, NegotiationError | Error>(async (resolve, reject) => {
       if (!this.pcManager) {
         reject(new NegotiationError('PC manager is closed'));
         return;
@@ -1515,7 +1507,7 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       };
 
       if (this.isClosed) {
-        reject('cannot negotiate on closed engine');
+        reject(new NegotiationError('cannot negotiate on closed engine'));
       }
       this.on(EngineEvent.Closing, handleClosed);
 
@@ -1536,12 +1528,16 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
       try {
         await this.pcManager.negotiate(abortController);
         resolve();
-      } catch (e: any) {
+      } catch (e: unknown) {
         if (e instanceof NegotiationError) {
           this.fullReconnectOnNext = true;
         }
         this.handleDisconnect('negotiation', ReconnectReason.RR_UNKNOWN);
-        reject(e);
+        if (e instanceof Error) {
+          reject(e);
+        } else {
+          reject(new Error(String(e)));
+        }
       } finally {
         this.off(EngineEvent.Closing, handleClosed);
       }
@@ -1747,8 +1743,6 @@ export default class RTCEngine extends (EventEmitter as new () => TypedEventEmit
     }
   }
 }
-
-class SignalReconnectError extends Error {}
 
 export type EngineEventCallbacks = {
   connected: (joinResp: JoinResponse) => void;

@@ -23,10 +23,11 @@ import (
 
 	"github.com/go-gst/go-gst/gst"
 
+	"github.com/livekit/protocol/logger"
+
 	"github.com/livekit/egress/pkg/errors"
 	"github.com/livekit/egress/pkg/pipeline/builder"
 	"github.com/livekit/egress/pkg/pipeline/source"
-	"github.com/livekit/protocol/logger"
 )
 
 const (
@@ -195,6 +196,7 @@ func (c *Controller) handleMessageError(gErr *gst.GError) error {
 			if err != nil {
 				logger.Errorw("failed to reset stream", err)
 			} else if ok {
+				c.trackStreamRetry(context.Background(), stream)
 				return nil
 			}
 		}
@@ -237,20 +239,31 @@ func (c *Controller) handleMessageError(gErr *gst.GError) error {
 
 func (c *Controller) handleMessageStateChanged(msg *gst.Message) {
 	_, newState := msg.ParseStateChanged()
+	s := msg.Source()
+	if s == pipelineName {
+		if newState == gst.StatePaused {
+			c.paused.Once(func() {
+				logger.Infow("pipeline paused")
+				c.callbacks.OnPipelinePaused()
+			})
+		}
+		if newState == gst.StatePlaying {
+			c.playing.Once(func() {
+				logger.Infow("pipeline playing")
+				c.updateStartTime(c.src.GetStartedAt())
+			})
+		}
+		return
+	}
+
 	if newState != gst.StatePlaying {
 		return
 	}
 
-	s := msg.Source()
-	if s == pipelineName {
-		c.playing.Once(func() {
-			logger.Infow("pipeline playing")
-			c.updateStartTime(c.src.GetStartedAt())
-		})
-	} else if strings.HasPrefix(s, "app_") {
-		s = s[4:]
-		logger.Infow(fmt.Sprintf("%s playing", s))
-		c.src.(*source.SDKSource).Playing(s)
+	if strings.HasPrefix(s, "app_") {
+		trackID := s[4:]
+		logger.Infow(fmt.Sprintf("%s playing", trackID))
+		c.src.(*source.SDKSource).Playing(trackID)
 	}
 }
 
@@ -345,6 +358,10 @@ var gstDebug = regexp.MustCompile("(?s)(.*?)GstPipeline:pipeline/GstBin:(.*?)/(.
 
 func parseDebugInfo(gErr *gst.GError) (element, name, message string) {
 	match := gstDebug.FindStringSubmatch(gErr.DebugString())
+
+	if len(match) == 0 {
+		return
+	}
 
 	element = match[3]
 	name = match[4]

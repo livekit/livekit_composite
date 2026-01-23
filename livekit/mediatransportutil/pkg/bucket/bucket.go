@@ -21,47 +21,101 @@ import (
 )
 
 const (
-	MaxPktSize     = 1500
-	pktSizeHeader  = 2
-	seqNumOffset   = 2
-	seqNumSize     = 2
-	invalidPktSize = uint16(65535)
+	pktSizeLimit = 256 * 1024
+
+	RTPMaxPktSize   = 1500
+	RTPSeqNumOffset = 2
 )
 
 type number interface {
 	uint16 | uint32 | uint64
 }
 
-type Bucket[T number] struct {
-	halfRange          T
+type Bucket[ET number, T number] struct {
+	maxPktSize   int
+	seqNumOffset int
+
+	pktSizeHeader  int
+	invalidPktSize uint64
+	putSize        func(buf []byte, value uint64)
+	getSize        func(buf []byte) uint64
+	putSeqNum      func(buf []byte, value uint64)
+	getSeqNum      func(buf []byte) uint64
+
+	halfRange          ET
 	slots              [][]byte
 	init               bool
 	resyncOnNextPacket bool
 	step               int
-	headSN             T
+	headSN             ET
 	initCapacity       int
 	maxSteps           int
 }
 
-func NewBucket[T number](capacity int) *Bucket[T] {
-	var t T
-	b := &Bucket[T]{
-		halfRange:    1 << ((unsafe.Sizeof(t) * 8) - 1),
+func NewBucket[ET number, T number](capacity int, maxPktSize int, seqNumOffset int) *Bucket[ET, T] {
+	if maxPktSize > pktSizeLimit {
+		return nil
+	}
+
+	var et ET
+	b := &Bucket[ET, T]{
+		maxPktSize:   maxPktSize,
+		seqNumOffset: seqNumOffset,
+		halfRange:    1 << ((unsafe.Sizeof(et) * 8) - 1),
 		initCapacity: capacity,
 		maxSteps:     capacity,
 	}
 
-	b.slots = createSlots(capacity)
+	switch {
+	case maxPktSize < 256:
+		b.pktSizeHeader = 1
+		b.invalidPktSize = uint64(0xff)
+		b.putSize = put8
+		b.getSize = get8
+
+	case maxPktSize < 65536:
+		b.pktSizeHeader = 2
+		b.invalidPktSize = uint64(0xffff)
+		b.putSize = put16
+		b.getSize = get16
+
+	default:
+		b.pktSizeHeader = 4
+		b.invalidPktSize = uint64(0xffffffff)
+		b.putSize = put32
+		b.getSize = get32
+	}
+
+	var t T
+	switch unsafe.Sizeof(t) {
+	case 1:
+		b.putSeqNum = put8
+		b.getSeqNum = get8
+
+	case 2:
+		b.putSeqNum = put16
+		b.getSeqNum = get16
+
+	case 4:
+		b.putSeqNum = put32
+		b.getSeqNum = get32
+
+	default:
+		b.putSeqNum = put64
+		b.getSeqNum = get64
+	}
+
+	b.slots = b.createSlots()
 	return b
 }
 
 // Grow increases the capacity of the bucket by adding initial capacity to the buffer
-func (b *Bucket[T]) Grow() int {
-	newSlots := createSlots(b.initCapacity)
+func (b *Bucket[ET, T]) Grow() int {
+	newSlots := b.createSlots()
 	growedSlots := append(b.slots, newSlots...)
 	// move wrapped slots to new slots
 	for i := b.maxSteps - 1; i >= b.step; i-- {
-		if binary.BigEndian.Uint16(b.slots[i]) != invalidPktSize {
+		if b.getSize(b.slots[i]) != b.invalidPktSize {
 			growedSlots[i+b.initCapacity], growedSlots[i] = growedSlots[i], growedSlots[i+b.initCapacity]
 		}
 	}
@@ -70,20 +124,20 @@ func (b *Bucket[T]) Grow() int {
 	return b.maxSteps
 }
 
-func (b *Bucket[T]) ResyncOnNextPacket() {
+func (b *Bucket[ET, T]) ResyncOnNextPacket() {
 	b.resyncOnNextPacket = true
 }
 
-func (b *Bucket[T]) HeadSequenceNumber() T {
+func (b *Bucket[ET, T]) HeadSequenceNumber() ET {
 	return b.headSN
 }
 
-func (b *Bucket[T]) Capacity() int {
+func (b *Bucket[ET, T]) Capacity() int {
 	return b.maxSteps
 }
 
-func (b *Bucket[T]) addPacket(pkt []byte, sn T) ([]byte, error) {
-	if len(pkt) > MaxPktSize-pktSizeHeader {
+func (b *Bucket[ET, T]) addPacket(pkt []byte, sn ET) ([]byte, error) {
+	if len(pkt) > b.maxPktSize-b.pktSizeHeader {
 		return nil, ErrPacketTooLarge
 	}
 
@@ -108,22 +162,22 @@ func (b *Bucket[T]) addPacket(pkt []byte, sn T) ([]byte, error) {
 	return b.push(sn, int(diff)-1, pkt)
 }
 
-func (b *Bucket[T]) AddPacket(pkt []byte) ([]byte, error) {
-	return b.addPacket(pkt, T(binary.BigEndian.Uint16(pkt[seqNumOffset:seqNumOffset+seqNumSize])))
+func (b *Bucket[ET, T]) AddPacket(pkt []byte) ([]byte, error) {
+	return b.addPacket(pkt, ET(b.getSeqNum(pkt[b.seqNumOffset:])))
 }
 
-func (b *Bucket[T]) AddPacketWithSequenceNumber(pkt []byte, sn T) ([]byte, error) {
+func (b *Bucket[ET, T]) AddPacketWithSequenceNumber(pkt []byte, sn ET) ([]byte, error) {
 	storedPkt, err := b.addPacket(pkt, sn)
 	if err != nil {
 		return nil, err
 	}
 
 	// overwrite sequence number in packet
-	binary.BigEndian.PutUint16(storedPkt[seqNumOffset:seqNumOffset+seqNumSize], uint16(sn))
+	b.putSeqNum(storedPkt[b.seqNumOffset:], uint64(sn))
 	return storedPkt, nil
 }
 
-func (b *Bucket[T]) GetPacket(buf []byte, sn T) (int, error) {
+func (b *Bucket[ET, T]) GetPacket(buf []byte, sn ET) (int, error) {
 	if b == nil {
 		return 0, ErrNoBucket
 	}
@@ -154,7 +208,7 @@ func (b *Bucket[T]) GetPacket(buf []byte, sn T) (int, error) {
 	return n, nil
 }
 
-func (b *Bucket[T]) push(sn T, diff int, pkt []byte) ([]byte, error) {
+func (b *Bucket[ET, T]) push(sn ET, diff int, pkt []byte) ([]byte, error) {
 	b.headSN = sn
 
 	// invalidate slots if there is a gap in the sequence number
@@ -170,7 +224,7 @@ func (b *Bucket[T]) push(sn T, diff int, pkt []byte) ([]byte, error) {
 	return storedPkt, nil
 }
 
-func (b *Bucket[T]) get(sn T, diff int) ([]byte, error) {
+func (b *Bucket[ET, T]) get(sn ET, diff int) ([]byte, error) {
 	if diff < 0 {
 		// asking for something ahead of headSN
 		return nil, fmt.Errorf("%w, headSN %d, sn %d", ErrPacketTooNew, b.headSN, sn)
@@ -182,35 +236,34 @@ func (b *Bucket[T]) get(sn T, diff int) ([]byte, error) {
 
 	idx := b.wrap(b.step - diff - 1)
 	slot := b.slots[idx]
-	sz := binary.BigEndian.Uint16(slot)
-	if sz == invalidPktSize {
+	sz := b.getSize(slot)
+	if sz == b.invalidPktSize {
 		return nil, fmt.Errorf("%w, headSN %d, sn %d, size %d", ErrPacketSizeInvalid, b.headSN, sn, sz)
 	}
 
-	cacheSN := binary.BigEndian.Uint16(slot[pktSizeHeader+seqNumOffset:])
-	if cacheSN != uint16(sn) {
+	if cacheSN := b.getSeqNum(slot[b.pktSizeHeader+b.seqNumOffset:]); T(cacheSN) != T(sn) {
 		return nil, fmt.Errorf("%w, headSN %d, sn %d, cacheSN %d", ErrPacketMismatch, b.headSN, sn, cacheSN)
 	}
 
-	return slot[pktSizeHeader : pktSizeHeader+int(sz)], nil
+	return slot[b.pktSizeHeader : b.pktSizeHeader+int(sz)], nil
 }
 
-func (b *Bucket[T]) set(sn T, diff int, pkt []byte) ([]byte, error) {
+func (b *Bucket[ET, T]) set(sn ET, diff int, pkt []byte) ([]byte, error) {
 	if diff >= b.maxSteps {
 		return nil, fmt.Errorf("%w, headSN %d, sn %d", ErrPacketTooOld, b.headSN, sn)
 	}
 
 	idx := b.wrap(b.step - diff - 1)
 	slot := b.slots[idx]
-	size := binary.BigEndian.Uint16(slot)
-	if size != invalidPktSize {
+	size := b.getSize(slot)
+	if size != b.invalidPktSize {
 		// Do not overwrite if duplicate
 		if int(size) != len(pkt) {
 			return nil, fmt.Errorf("%w, incorrect RTX size, expected %d, actual %d", ErrRTXPacketSize, size, len(pkt))
 		}
 
-		storedSN := binary.BigEndian.Uint16(slot[pktSizeHeader+seqNumOffset:])
-		if storedSN == uint16(sn) {
+		storedSN := b.getSeqNum(slot[b.pktSizeHeader+b.seqNumOffset:])
+		if T(storedSN) == T(sn) {
 			return nil, ErrRTXPacket
 		}
 
@@ -221,18 +274,18 @@ func (b *Bucket[T]) set(sn T, diff int, pkt []byte) ([]byte, error) {
 	return b.store(idx, pkt), nil
 }
 
-func (b *Bucket[T]) store(idx int, pkt []byte) []byte {
+func (b *Bucket[ET, T]) store(idx int, pkt []byte) []byte {
 	// store packet size
 	slot := b.slots[idx]
-	binary.BigEndian.PutUint16(slot, uint16(len(pkt)))
+	b.putSize(slot, uint64(len(pkt)))
 
 	// store packet
-	copy(slot[pktSizeHeader:], pkt)
+	copy(slot[b.pktSizeHeader:], pkt)
 
-	return slot[pktSizeHeader : pktSizeHeader+len(pkt)]
+	return slot[b.pktSizeHeader : b.pktSizeHeader+len(pkt)]
 }
 
-func (b *Bucket[T]) wrap(slot int) int {
+func (b *Bucket[ET, T]) wrap(slot int) int {
 	for slot < 0 {
 		slot += b.maxSteps
 	}
@@ -244,26 +297,58 @@ func (b *Bucket[T]) wrap(slot int) int {
 	return slot
 }
 
-func (b *Bucket[T]) invalidate(startSlot int, numSlots int) {
+func (b *Bucket[ET, T]) invalidate(startSlot int, numSlots int) {
 	if numSlots > b.maxSteps {
 		numSlots = b.maxSteps
 	}
 
-	for i := 0; i < numSlots; i++ {
+	for i := range numSlots {
 		idx := b.wrap(startSlot + i)
-		binary.BigEndian.PutUint16(b.slots[idx], invalidPktSize)
+		b.putSize(b.slots[idx], b.invalidPktSize)
 	}
+}
+
+func (b *Bucket[ET, T]) createSlots() [][]byte {
+	pktSize := b.maxPktSize + b.pktSizeHeader
+	buf := make([]byte, pktSize*b.initCapacity)
+	slots := make([][]byte, b.initCapacity)
+	for i := range b.initCapacity {
+		slots[i] = buf[i*pktSize : (i+1)*pktSize]
+		b.putSize(slots[i], b.invalidPktSize)
+	}
+	return slots
 }
 
 // -------------------------------------------------------------
 
-func createSlots(capacity int) [][]byte {
-	pktSize := MaxPktSize + pktSizeHeader
-	buf := make([]byte, pktSize*capacity)
-	slots := make([][]byte, capacity)
-	for i := 0; i < capacity; i++ {
-		slots[i] = buf[i*pktSize : (i+1)*pktSize]
-		binary.BigEndian.PutUint16(slots[i], invalidPktSize)
-	}
-	return slots
+func put8(buf []byte, value uint64) {
+	buf[0] = uint8(value)
+}
+
+func get8(buf []byte) uint64 {
+	return uint64(buf[0])
+}
+
+func put16(buf []byte, value uint64) {
+	binary.BigEndian.PutUint16(buf, uint16(value))
+}
+
+func get16(buf []byte) uint64 {
+	return uint64(binary.BigEndian.Uint16(buf))
+}
+
+func put32(buf []byte, value uint64) {
+	binary.BigEndian.PutUint32(buf, uint32(value))
+}
+
+func get32(buf []byte) uint64 {
+	return uint64(binary.BigEndian.Uint32(buf))
+}
+
+func put64(buf []byte, value uint64) {
+	binary.BigEndian.PutUint64(buf, value)
+}
+
+func get64(buf []byte) uint64 {
+	return binary.BigEndian.Uint64(buf)
 }

@@ -9,6 +9,9 @@
     "BEY_API_KEY",
     "BEY_API_URL",
     "BEY_AVATAR_ID",
+    "BASETEN_API_KEY",
+    "BASETEN_MODEL_ENDPOINT",
+    "BASETEN_STT_MODEL_ID",
     "CARTESIA_API_KEY",
     "CAL_API_KEY",
     "CEREBRAS_API_KEY",
@@ -46,7 +49,9 @@
     "ANAM_PERSONA_NAME",
     "ANAM_AVATAR_ID",
     "RIME_API_KEY",
-    "LK_OPENAI_DEBUG"
+    "LK_OPENAI_DEBUG",
+    "OVHCLOUD_API_KEY",
+    "INWORLD_API_KEY"
   ],
   "pipeline": {
     "build": {

@@ -1,5 +1,53 @@
 # @livekit/protocol
 
+## 1.43.4
+
+### Patch Changes
+
+- Use string constant as parameter to twirp.NewErrorf - [#1326](https://github.com/livekit/protocol/pull/1326) ([@biglittlebigben](https://github.com/biglittlebigben))
+
+- add tags to agent recording proto - [#1328](https://github.com/livekit/protocol/pull/1328) ([@paulwe](https://github.com/paulwe))
+
+## 1.43.3
+
+### Patch Changes
+
+- Data tracks initial protocol definition. - [#1327](https://github.com/livekit/protocol/pull/1327) ([@boks1971](https://github.com/boks1971))
+
+- Cancellation counts for join/publish/subscribe. - [#1321](https://github.com/livekit/protocol/pull/1321) ([@boks1971](https://github.com/boks1971))
+
+- Add ai coustics feature usage - [#1324](https://github.com/livekit/protocol/pull/1324) ([@lukasIO](https://github.com/lukasIO))
+
+## 1.43.2
+
+### Patch Changes
+
+- fix call depth for override logger - [#1313](https://github.com/livekit/protocol/pull/1313) ([@paulwe](https://github.com/paulwe))
+
+- Generate agent protos - [#1318](https://github.com/livekit/protocol/pull/1318) ([@toubatbrian](https://github.com/toubatbrian))
+
+- add missing proto import - [#1317](https://github.com/livekit/protocol/pull/1317) ([@paulwe](https://github.com/paulwe))
+
+## 1.43.1
+
+### Patch Changes
+
+- add session features to room observability - [#1298](https://github.com/livekit/protocol/pull/1298) ([@paulwe](https://github.com/paulwe))
+
+- Redact metadata, attribute, participant name from logs. - [#1309](https://github.com/livekit/protocol/pull/1309) ([@boks1971](https://github.com/boks1971))
+
+- update room observability codegen - [#1307](https://github.com/livekit/protocol/pull/1307) ([@paulwe](https://github.com/paulwe))
+
+- Add redacted field options to egress fields - [#1286](https://github.com/livekit/protocol/pull/1286) ([@biglittlebigben](https://github.com/biglittlebigben))
+
+- update psrpc - [#1303](https://github.com/livekit/protocol/pull/1303) ([@paulwe](https://github.com/paulwe))
+
+- feat(connector): export protos from JS package - [#1311](https://github.com/livekit/protocol/pull/1311) ([@anunaym14](https://github.com/anunaym14))
+
+- add test for client middleware options - [#1306](https://github.com/livekit/protocol/pull/1306) ([@paulwe](https://github.com/paulwe))
+
+- add redact format option - [#1308](https://github.com/livekit/protocol/pull/1308) ([@paulwe](https://github.com/paulwe))
+
 ## 1.43.0
 
 ### Minor Changes

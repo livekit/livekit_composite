@@ -65,7 +65,7 @@ import java.util.UUID
 class Chat(
     private val localParticipant: LocalParticipant,
     private val dataHandler: DataHandler,
-    private val serverSupportsDataStreams: () -> Boolean, // TODO
+    private val serverSupportsDataStreams: () -> Boolean,
 ) {
     private val stateLock = Mutex()
 
@@ -183,6 +183,7 @@ class Chat(
 @Deprecated(message = "Deprecated in favor of ReceivedChatMessage")
 @Serializable
 data class LegacyChatMessage(
+    /** The identifier for the message */
     val id: String? = null,
     /** Millis since UNIX epoch */
     val timestamp: Long,

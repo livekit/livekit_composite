@@ -37,6 +37,7 @@ import (
 	"github.com/livekit/livekit-server/pkg/sfu/mime"
 	"github.com/livekit/livekit-server/pkg/sfu/rtpstats"
 	"github.com/livekit/livekit-server/pkg/sfu/streamtracker"
+	sfuutils "github.com/livekit/livekit-server/pkg/sfu/utils"
 )
 
 var (
@@ -121,7 +122,7 @@ type TrackReceiver interface {
 	DeleteDownTrack(participantID livekit.ParticipantID)
 	GetDownTracks() []TrackSender
 
-	DebugInfo() map[string]interface{}
+	DebugInfo() map[string]any
 
 	TrackInfo() *livekit.TrackInfo
 	UpdateTrackInfo(ti *livekit.TrackInfo)
@@ -155,6 +156,7 @@ type REDTransformer interface {
 		publisherSRData *livekit.RTCPSenderReportState,
 	)
 	ResyncDownTracks()
+	OnStreamRestart()
 	CanClose() bool
 	Close()
 }
@@ -165,8 +167,9 @@ var _ TrackReceiver = (*WebRTCReceiver)(nil)
 type WebRTCReceiver struct {
 	logger logger.Logger
 
-	pliThrottleConfig PLIThrottleConfig
-	audioConfig       AudioConfig
+	pliThrottleConfig               PLIThrottleConfig
+	audioConfig                     AudioConfig
+	enableRTPStreamRestartDetection bool
 
 	trackID            livekit.TrackID
 	streamID           string
@@ -197,7 +200,7 @@ type WebRTCReceiver struct {
 
 	streamTrackerManager *StreamTrackerManager
 
-	downTrackSpreader *DownTrackSpreader
+	downTrackSpreader *sfuutils.DownTrackSpreader[TrackSender]
 
 	connectionStats *connectionquality.ConnectionStats
 
@@ -223,6 +226,13 @@ func WithPliThrottleConfig(pliThrottleConfig PLIThrottleConfig) ReceiverOpts {
 func WithAudioConfig(audioConfig AudioConfig) ReceiverOpts {
 	return func(w *WebRTCReceiver) *WebRTCReceiver {
 		w.audioConfig = audioConfig
+		return w
+	}
+}
+
+func WithEnableRTPStreamRestartDetection(enable bool) ReceiverOpts {
+	return func(w *WebRTCReceiver) *WebRTCReceiver {
+		w.enableRTPStreamRestartDetection = enable
 		return w
 	}
 }
@@ -274,7 +284,7 @@ func NewWebRTCReceiver(
 	}
 	w.trackInfo.Store(utils.CloneProto(trackInfo))
 
-	w.downTrackSpreader = NewDownTrackSpreader(DownTrackSpreaderParams{
+	w.downTrackSpreader = sfuutils.NewDownTrackSpreader[TrackSender](sfuutils.DownTrackSpreaderParams{
 		Threshold: w.lbThreshold,
 		Logger:    logger,
 	})
@@ -411,6 +421,7 @@ func (w *WebRTCReceiver) AddUpTrack(track TrackRemote, buff *buffer.Buffer) erro
 		Config: w.audioConfig.AudioLevelConfig,
 	})
 	buff.SetAudioLossProxying(w.audioConfig.EnableLossProxying)
+	buff.SetStreamRestartDetection(w.enableRTPStreamRestartDetection)
 	buff.OnRtcpFeedback(w.sendRTCP)
 	buff.OnRtcpSenderReport(func() {
 		srData := buff.GetSenderReportData()
@@ -437,7 +448,6 @@ func (w *WebRTCReceiver) AddUpTrack(track TrackRemote, buff *buffer.Buffer) erro
 			cb()
 		}
 	})
-
 	if w.Kind() == webrtc.RTPCodecTypeVideo && layer == 0 {
 		buff.OnCodecChange(w.handleCodecChange)
 	}
@@ -785,7 +795,7 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 		return
 	}
 
-	pktBuf := make([]byte, bucket.MaxPktSize)
+	pktBuf := make([]byte, bucket.RTPMaxPktSize)
 	w.logger.Debugw("starting forwarding", "layer", layer)
 	for {
 		pkt, err := buff.ReadExtended(pktBuf)
@@ -793,6 +803,17 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 			return
 		}
 		dequeuedAt := mono.UnixNano()
+
+		if pkt.IsRestart {
+			w.logger.Infow("stream restarted", "layer", layer)
+			w.downTrackSpreader.Broadcast(func(dt TrackSender) {
+				dt.ReceiverRestart()
+			})
+
+			if rt := w.redTransformer.Load(); rt != nil {
+				rt.(REDTransformer).OnStreamRestart()
+			}
+		}
 
 		if pkt.Packet.PayloadType != uint8(w.codec.PayloadType) {
 			// drop packets as we don't support codec fallback directly
@@ -832,7 +853,7 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 		// track delay/jitter
 		if writeCount.Load() > 0 && w.forwardStats != nil && !pkt.IsBuffered {
 			if latency, isHigh := w.forwardStats.Update(pkt.Arrival, mono.UnixNano()); isHigh {
-				w.logger.Infow(
+				w.logger.Debugw(
 					"high forwarding latency",
 					"latency", time.Duration(latency),
 					"queuingLatency", time.Duration(dequeuedAt-pkt.Arrival),
@@ -868,7 +889,7 @@ func (w *WebRTCReceiver) forwardRTP(layer int32, buff *buffer.Buffer) {
 
 		numPacketsForwarded++
 
-		buff.ReleaseExtPacket(pkt)
+		buffer.ReleaseExtPacket(pkt)
 	}
 }
 
@@ -921,7 +942,7 @@ func (w *WebRTCReceiver) GetPrimaryReceiverForRed() TrackReceiver {
 
 	rt := w.redTransformer.Load()
 	if rt == nil {
-		pr := NewRedPrimaryReceiver(w, DownTrackSpreaderParams{
+		pr := NewRedPrimaryReceiver(w, sfuutils.DownTrackSpreaderParams{
 			Threshold: w.lbThreshold,
 			Logger:    w.logger,
 		})
@@ -945,7 +966,7 @@ func (w *WebRTCReceiver) GetRedReceiver() TrackReceiver {
 
 	rt := w.redTransformer.Load()
 	if rt == nil {
-		pr := NewRedReceiver(w, DownTrackSpreaderParams{
+		pr := NewRedReceiver(w, sfuutils.DownTrackSpreaderParams{
 			Threshold: w.lbThreshold,
 			Logger:    w.logger,
 		})

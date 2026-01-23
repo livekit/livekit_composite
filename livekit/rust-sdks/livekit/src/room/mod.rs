@@ -234,6 +234,9 @@ pub enum RoomEvent {
     ParticipantsUpdated {
         participants: Vec<Participant>,
     },
+    TokenRefreshed {
+        token: String,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -910,6 +913,9 @@ impl RoomSession {
             EngineEvent::RefreshToken { url, token } => {
                 self.handle_refresh_token(url, token);
             }
+            EngineEvent::TrackMuted { sid, muted } => {
+                self.handle_server_initiated_mute_track(sid, muted);
+            }
             _ => {}
         }
 
@@ -1186,11 +1192,13 @@ impl RoomSession {
                 sdp: answer.to_string(),
                 r#type: answer.sdp_type().to_string(),
                 id: 0,
+                mid_to_track_id: Default::default(),
             }),
             offer: Some(proto::SessionDescription {
                 sdp: offer.to_string(),
                 r#type: offer.sdp_type().to_string(),
                 id: 0,
+                mid_to_track_id: Default::default(),
             }),
             track_sids_disabled: Vec::default(), // TODO: New protocol version
             subscription: Some(proto::UpdateSubscription {
@@ -1572,6 +1580,28 @@ impl RoomSession {
         self.dispatcher.dispatch(&event);
     }
 
+    fn handle_server_initiated_mute_track(&self, sid: String, muted: bool) {
+        let sid_for_log = sid.clone();
+        let track_sid = match sid.try_into() {
+            Ok(sid) => sid,
+            Err(_) => {
+                log::warn!("Invalid track sid in mute request: {}", sid_for_log);
+                return;
+            }
+        };
+
+        if let Some(publication) = self.local_participant.get_track_publication(&track_sid) {
+            if muted {
+                publication.mute();
+            } else {
+                publication.unmute();
+            }
+            return;
+        }
+
+        log::warn!("Track not found in mute request: {}", sid_for_log);
+    }
+
     /// Create a new participant
     /// Also add it to the participants list
     fn create_participant(
@@ -1741,6 +1771,8 @@ impl RoomSession {
         for filter in registered_audio_filter_plugins().into_iter() {
             filter.update_token(url.clone(), token.clone());
         }
+        let event = RoomEvent::TokenRefreshed { token };
+        self.dispatcher.dispatch(&event);
     }
 }
 

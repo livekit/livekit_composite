@@ -1,0 +1,17 @@
+[package]
+name = "uniffi-bindgen-node"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = { version = "1.0.100", features = ["backtrace"] }
+askama = "0.14.0"
+camino = "1.2.1"
+cargo_metadata = "0.19.2" # NOTE: keep this version up to date with the version used by uniffi_bindgen
+clap = { version = "4.5.51", features = ["derive"] }
+heck = "0.5.0"
+serde = "1.0.228"
+textwrap = "0.16.2"
+toml = "0.9.8"
+uniffi = "0.30.0"
+uniffi_bindgen = "0.30.0"

@@ -27,6 +27,7 @@ from ._proto import ffi_pb2 as proto_ffi
 from ._proto import participant_pb2 as proto_participant
 from ._proto import room_pb2 as proto_room
 from ._proto import stats_pb2 as proto_stats
+from ._proto.participant_pb2 import DisconnectReason
 from ._proto.room_pb2 import ConnectionState
 from ._proto.track_pb2 import TrackKind
 from ._proto.rpc_pb2 import RpcMethodInvocationEvent
@@ -75,6 +76,7 @@ EventTypes = Literal[
     "reconnected",
     "room_updated",
     "moved",
+    "token_refreshed",
 ]
 
 
@@ -167,6 +169,9 @@ class Room(EventEmitter[EventTypes]):
         self._byte_stream_readers: Dict[str, ByteStreamReader] = {}
         self._text_stream_handlers: Dict[str, TextStreamHandler] = {}
         self._byte_stream_handlers: Dict[str, ByteStreamHandler] = {}
+
+        self._token: str | None = None
+        self._server_url: str | None = None
 
     def __del__(self) -> None:
         if self._ffi_handle is not None:
@@ -416,6 +421,8 @@ class Room(EventEmitter[EventTypes]):
             await room.connect("ws://localhost:7880", "your_token")
             ```
         """
+        self._server_url = url
+        self._token = token
         req = proto_ffi.FfiRequest()
         req.connect.url = url
         req.connect.token = token
@@ -574,6 +581,14 @@ class Room(EventEmitter[EventTypes]):
 
         await self._task
         FfiClient.instance.queue.unsubscribe(self._ffi_queue)
+
+        # we should manually flip the state, since the connection could have been torn down before
+        # the callbacks were processed
+        if self._connection_state != ConnectionState.CONN_DISCONNECTED:
+            self.local_participant._info.disconnect_reason = DisconnectReason.CLIENT_INITIATED
+            self._connection_state = ConnectionState.CONN_DISCONNECTED
+            self.emit("connection_state_changed", self._connection_state)
+            self.emit("disconnected", DisconnectReason.CLIENT_INITIATED)
 
     async def _listen_task(self) -> None:
         # listen to incoming room events
@@ -811,7 +826,7 @@ class Room(EventEmitter[EventTypes]):
                 ).contents
 
                 data = bytes(native_data)
-                FfiHandle(owned_buffer_info.handle.id)
+                FfiHandle(owned_buffer_info.handle.id).dispose()
                 rparticipant = cast(
                     RemoteParticipant,
                     self._retrieve_remote_participant(packet.participant_identity),
@@ -847,8 +862,6 @@ class Room(EventEmitter[EventTypes]):
             connection_state = event.connection_state_changed.state
             self._connection_state = connection_state
             self.emit("connection_state_changed", connection_state)
-        elif which == "connected":
-            self.emit("connected")
         elif which == "disconnected":
             self.emit("disconnected", event.disconnected.reason)
         elif which == "reconnecting":
@@ -885,6 +898,10 @@ class Room(EventEmitter[EventTypes]):
                 participant = self._retrieve_participant(info.identity)
                 if participant:
                     participant._info = info
+
+        elif which == "token_refreshed":
+            self._token = event.token_refreshed.token
+            self.emit("token_refreshed")
 
     def _handle_stream_header(
         self, header: proto_room.DataStream.Header, participant_identity: str

@@ -2,6 +2,54 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.8] - 2025-12-10
+
+### Added
+- Mark RTCP buffer Write as noinline. (for better heap attribution) (#4138)
+- add debug metric for tracking references (#4134)
+
+### Changed
+- Use isEnding to indicate if down track could be resumed. (#4132)
+- switch participant callbacks to room to listener interface (#4136)
+- protocol deps to get inactive file adjusted memory usage. (#4137)
+- update webrtc to 4.1.8 to pick up DTLS fingerprint check during handshake (#4140)
+
+### Fixed
+- Do not pause rid in SDP to prevent race with adaptive streaming (#4129)
+- leak fixes (#4131, #4141, #4142, #4143, #4144)
+
+## [1.9.7] - 2025-12-05
+
+### Added
+- Data tracks (experimental and not ready for use) (#4089)
+
+### Changed
+- log bucket growth (#4122)
+- Update pion/ice to stop gather first on close (#4123)
+- move utils.WrapAround to mediatransportutil (#4124)
+- Let participant close remove the published tracks. (#4125)
+
+### Fixed
+- Fix concurrent map access for https://github.com/livekit/livekit/issues/4126. (#4127)
+
+## [1.9.6] - 2025-12-01
+
+### Added
+- Control latency of lossy data channel (#4088)
+- logger proto redaction. (#4090)
+- Record join/publish/subscribe cancellations (#4102, #4104)
+
+### Fixed
+- Fix "address" typo in transport logs (addddress → address) (#4097)
+- Clear stereo=1 if stereo is not enabled. (#4101)
+- Participant session close deadlock fixes (#4107, #4113, #4116)
+
+### Changed
+- Switch forwarding latency log to Debugw (#4098)
+- Update mediatransportutil to get OWD estimator relocation (#4115)
+
+## [1.9.5] - 2025-12-01 - scratched
+
 ## [1.9.4] - 2025-11-15
 
 ### Added

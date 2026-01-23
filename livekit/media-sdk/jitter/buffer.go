@@ -288,7 +288,7 @@ func (b *Buffer) popReady() {
 
 		if b.head.extPacket.SequenceNumber == b.prevSN+1 || b.head.discont || !b.initialized {
 			// normal
-		} else if b.head.extPacket.ReceivedAt.Before(expiry) {
+		} else if !expiry.Before(b.head.extPacket.ReceivedAt) {
 			// max latency reached
 			loss = true
 			b.stats.PacketsLost += uint64(b.head.extPacket.SequenceNumber - b.prevSN - 1)

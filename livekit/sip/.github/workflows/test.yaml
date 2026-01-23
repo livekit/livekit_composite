@@ -27,7 +27,7 @@ jobs:
     runs-on: namespace-profile-8vcpu-cache
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
 
       - name: Install Opus dependencies
         run: sudo apt-get update && sudo apt-get install -y libopus-dev libopusfile-dev libsoxr-dev
@@ -63,7 +63,7 @@ jobs:
           go test -coverpkg=./... -json -v -coverprofile=coverage2.out -covermode=atomic ./test/integration/... 2>&1 | tee -a /tmp/gotest.log | tparse
 
       - name: Upload test log
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         if: always()
         with:
           name: test-log

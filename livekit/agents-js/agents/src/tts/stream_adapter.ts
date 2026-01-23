@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 import type { SentenceStream, SentenceTokenizer } from '../tokenize/index.js';
+import type { APIConnectOptions } from '../types.js';
 import { Task } from '../utils.js';
 import type { ChunkedStream } from './tts.js';
 import { SynthesizeStream, TTS } from './tts.js';
@@ -21,14 +22,21 @@ export class StreamAdapter extends TTS {
     this.#tts.on('metrics_collected', (metrics) => {
       this.emit('metrics_collected', metrics);
     });
+    this.#tts.on('error', (error) => {
+      this.emit('error', error);
+    });
   }
 
-  synthesize(text: string): ChunkedStream {
-    return this.#tts.synthesize(text);
+  synthesize(
+    text: string,
+    connOptions?: APIConnectOptions,
+    abortSignal?: AbortSignal,
+  ): ChunkedStream {
+    return this.#tts.synthesize(text, connOptions, abortSignal);
   }
 
-  stream(): StreamAdapterWrapper {
-    return new StreamAdapterWrapper(this.#tts, this.#sentenceTokenizer);
+  stream(options?: { connOptions?: APIConnectOptions }): StreamAdapterWrapper {
+    return new StreamAdapterWrapper(this.#tts, this.#sentenceTokenizer, options?.connOptions);
   }
 }
 
@@ -37,8 +45,8 @@ export class StreamAdapterWrapper extends SynthesizeStream {
   #sentenceStream: SentenceStream;
   label: string;
 
-  constructor(tts: TTS, sentenceTokenizer: SentenceTokenizer) {
-    super(tts);
+  constructor(tts: TTS, sentenceTokenizer: SentenceTokenizer, connOptions?: APIConnectOptions) {
+    super(tts, connOptions);
     this.#tts = tts;
     this.#sentenceStream = sentenceTokenizer.stream();
     this.label = `tts.StreamAdapterWrapper<${this.#tts.label}>`;
@@ -84,7 +92,7 @@ export class StreamAdapterWrapper extends SynthesizeStream {
       prevTask: Task<void> | undefined,
       controller: AbortController,
     ) => {
-      const audioStream = this.#tts.synthesize(token);
+      const audioStream = this.#tts.synthesize(token, this.connOptions, this.abortSignal);
 
       // wait for previous audio transcription to complete before starting
       // to queuing audio frames of the current token

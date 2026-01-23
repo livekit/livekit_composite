@@ -226,7 +226,7 @@ public class Room: NSObject, @unchecked Sendable, ObservableObject, Loggable {
 
         super.init()
         // log sdk & os versions
-        log("sdk: \(LiveKitSDK.version), os: \(String(describing: Utils.os()))(\(Utils.osVersionString())), modelId: \(String(describing: Utils.modelIdentifier() ?? "unknown"))")
+        log("sdk: \(LiveKitSDK.version), ffi: \(LiveKitSDK.ffiVersion), os: \(String(describing: Utils.os()))(\(Utils.osVersionString())), modelId: \(String(describing: Utils.modelIdentifier() ?? "unknown"))")
 
         signalClient._delegate.set(delegate: self)
 
@@ -635,9 +635,12 @@ extension Room: DataChannelDelegate {
         case let .rpcResponse(response): room(didReceiveRpcResponse: response)
         case let .rpcAck(ack): room(didReceiveRpcAck: ack)
         case let .rpcRequest(request): room(didReceiveRpcRequest: request, from: dataPacket.participantIdentity)
-        case let .streamHeader(header): Task { await incomingStreamManager.handle(header: header, from: dataPacket.participantIdentity, encryptionType: dataPacket.encryptedPacket.encryptionType.toLKType()) }
-        case let .streamChunk(chunk): Task { await incomingStreamManager.handle(chunk: chunk, encryptionType: dataPacket.encryptedPacket.encryptionType.toLKType()) }
-        case let .streamTrailer(trailer): Task { await incomingStreamManager.handle(trailer: trailer, encryptionType: dataPacket.encryptedPacket.encryptionType.toLKType()) }
+        case let .streamHeader(header):
+            incomingStreamManager.handle(.header(header, dataPacket.participantIdentity, dataPacket.encryptedPacket.encryptionType.toLKType()))
+        case let .streamChunk(chunk):
+            incomingStreamManager.handle(.chunk(chunk, dataPacket.encryptedPacket.encryptionType.toLKType()))
+        case let .streamTrailer(trailer):
+            incomingStreamManager.handle(.trailer(trailer, dataPacket.encryptedPacket.encryptionType.toLKType()))
         default: return
         }
     }

@@ -80,6 +80,37 @@ export class STT extends stt.STT {
     });
   }
 
+  /**
+   * Create a new instance of OVHcloud AI Endpoints STT.
+   *
+   * @remarks
+   * `apiKey` must be set to your OVHcloud AI Endpoints API key, either using the argument or by setting the
+   * `OVHCLOUD_API_KEY` environment variable.
+   */
+  static withOVHcloud(
+    opts: Partial<{
+      model: string;
+      apiKey?: string;
+      baseURL?: string;
+      client: OpenAI;
+      language: string;
+      detectLanguage: boolean;
+    }> = {},
+  ): STT {
+    opts.apiKey = opts.apiKey || process.env.OVHCLOUD_API_KEY;
+    if (opts.apiKey === undefined) {
+      throw new Error(
+        'OVHcloud AI Endpoints API key is required, whether as an argument or as $OVHCLOUD_API_KEY',
+      );
+    }
+
+    return new STT({
+      model: 'whisper-large-v3-turbo',
+      baseURL: 'https://oai.endpoints.kepler.ai.cloud.ovh.net/v1',
+      ...opts,
+    });
+  }
+
   #sanitizeOptions(language?: string): STTOptions {
     if (language) {
       return { ...this.#opts, language };
@@ -110,24 +141,31 @@ export class STT extends stt.STT {
     return Buffer.concat([header, Buffer.from(frame.data.buffer)]);
   }
 
-  async _recognize(buffer: AudioBuffer, language?: string): Promise<stt.SpeechEvent> {
-    const config = this.#sanitizeOptions(language);
+  async _recognize(buffer: AudioBuffer, abortSignal?: AbortSignal): Promise<stt.SpeechEvent> {
+    const config = this.#sanitizeOptions();
     buffer = mergeFrames(buffer);
-    const file = new File([this.#createWav(buffer)], 'audio.wav', { type: 'audio/wav' });
-    const resp = await this.#client.audio.transcriptions.create({
-      file,
-      model: this.#opts.model,
-      language: config.language,
-      prompt: config.prompt,
-      response_format: 'json',
-    });
+    const wavBuffer = this.#createWav(buffer);
+    const file = new File([new Uint8Array(wavBuffer)], 'audio.wav', { type: 'audio/wav' });
+
+    const resp = await this.#client.audio.transcriptions.create(
+      {
+        file,
+        model: this.#opts.model,
+        language: config.language,
+        prompt: config.prompt,
+        response_format: 'json',
+      },
+      {
+        signal: abortSignal,
+      },
+    );
 
     return {
       type: stt.SpeechEventType.FINAL_TRANSCRIPT,
       alternatives: [
         {
           text: resp.text || '',
-          language: language || '',
+          language: config.language || '',
           startTime: 0,
           endTime: 0,
           confidence: 0,

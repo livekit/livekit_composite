@@ -3,13 +3,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import type { AudioFrame } from '@livekit/rtc-node';
 import type { TypedEventEmitter as TypedEmitter } from '@livekit/typed-emitter';
+import type { Span } from '@opentelemetry/api';
 import { EventEmitter } from 'node:events';
 import type { ReadableStream } from 'node:stream/web';
 import { APIConnectionError, APIError } from '../_exceptions.js';
 import { log } from '../log.js';
 import type { TTSMetrics } from '../metrics/base.js';
 import { DeferredReadableStream } from '../stream/deferred_stream.js';
-import { type APIConnectOptions, DEFAULT_API_CONNECT_OPTIONS } from '../types.js';
+import { recordException, traceTypes, tracer } from '../telemetry/index.js';
+import { type APIConnectOptions, DEFAULT_API_CONNECT_OPTIONS, intervalForRetry } from '../types.js';
 import { AsyncIterableQueue, delay, mergeFrames, startSoon, toError } from '../utils.js';
 
 /** SynthesizedAudio is a packet of speech synthesis as returned by the TTS. */
@@ -88,12 +90,22 @@ export abstract class TTS extends (EventEmitter as new () => TypedEmitter<TTSCal
   /**
    * Receives text and returns synthesis in the form of a {@link ChunkedStream}
    */
-  abstract synthesize(text: string): ChunkedStream;
+  abstract synthesize(
+    text: string,
+    connOptions?: APIConnectOptions,
+    abortSignal?: AbortSignal,
+  ): ChunkedStream;
 
   /**
    * Returns a {@link SynthesizeStream} that can be used to push text and receive audio data
+   *
+   * @param options - Optional configuration including connection options
    */
-  abstract stream(): SynthesizeStream;
+  abstract stream(options?: { connOptions?: APIConnectOptions }): SynthesizeStream;
+
+  async close(): Promise<void> {
+    return;
+  }
 }
 
 /**
@@ -123,12 +135,7 @@ export abstract class SynthesizeStream
     SynthesizedAudio | typeof SynthesizeStream.END_OF_STREAM
   >();
   protected closed = false;
-  abstract label: string;
-  #tts: TTS;
-  #metricsPendingTexts: string[] = [];
-  #metricsText = '';
-  #monitorMetricsTask?: Promise<void>;
-  private _connOptions: APIConnectOptions;
+  protected connOptions: APIConnectOptions;
   protected abortController = new AbortController();
 
   private deferredInputStream: DeferredReadableStream<
@@ -136,16 +143,25 @@ export abstract class SynthesizeStream
   >;
   private logger = log();
 
+  abstract label: string;
+
+  #tts: TTS;
+  #metricsPendingTexts: string[] = [];
+  #metricsText = '';
+  #monitorMetricsTask?: Promise<void>;
+  #ttsRequestSpan?: Span;
+
   constructor(tts: TTS, connOptions: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS) {
     this.#tts = tts;
-    this._connOptions = connOptions;
+    this.connOptions = connOptions;
     this.deferredInputStream = new DeferredReadableStream();
     this.pumpInput();
+
     this.abortController.signal.addEventListener('abort', () => {
       this.deferredInputStream.detachSource();
       // TODO (AJS-36) clean this up when we refactor with streams
-      this.input.close();
-      this.output.close();
+      if (!this.input.closed) this.input.close();
+      if (!this.output.closed) this.output.close();
       this.closed = true;
     });
 
@@ -156,23 +172,38 @@ export abstract class SynthesizeStream
     startSoon(() => this.mainTask().then(() => this.queue.close()));
   }
 
-  private async mainTask() {
-    // TODO(brian): PR3 - Add span wrapping: tracer.startActiveSpan('tts_request', ..., { endOnExit: false })
-    for (let i = 0; i < this._connOptions.maxRetry + 1; i++) {
+  private _mainTaskImpl = async (span: Span) => {
+    this.#ttsRequestSpan = span;
+    span.setAttributes({
+      [traceTypes.ATTR_TTS_STREAMING]: true,
+      [traceTypes.ATTR_TTS_LABEL]: this.#tts.label,
+    });
+
+    for (let i = 0; i < this.connOptions.maxRetry + 1; i++) {
       try {
-        // TODO(brian): PR3 - Add span for retry attempts: tracer.startActiveSpan('tts_request_run', ...)
-        return await this.run();
+        return await tracer.startActiveSpan(
+          async (attemptSpan) => {
+            attemptSpan.setAttribute(traceTypes.ATTR_RETRY_COUNT, i);
+            try {
+              return await this.run();
+            } catch (error) {
+              recordException(attemptSpan, toError(error));
+              throw error;
+            }
+          },
+          { name: 'tts_request_run' },
+        );
       } catch (error) {
         if (error instanceof APIError) {
-          const retryInterval = this._connOptions._intervalForRetry(i);
+          const retryInterval = intervalForRetry(this.connOptions, i);
 
-          if (this._connOptions.maxRetry === 0 || !error.retryable) {
+          if (this.connOptions.maxRetry === 0 || !error.retryable) {
             this.emitError({ error, recoverable: false });
             throw error;
-          } else if (i === this._connOptions.maxRetry) {
+          } else if (i === this.connOptions.maxRetry) {
             this.emitError({ error, recoverable: false });
             throw new APIConnectionError({
-              message: `failed to generate TTS completion after ${this._connOptions.maxRetry + 1} attempts`,
+              message: `failed to generate TTS completion after ${this.connOptions.maxRetry + 1} attempts`,
               options: { retryable: false },
             });
           } else {
@@ -193,7 +224,13 @@ export abstract class SynthesizeStream
         }
       }
     }
-  }
+  };
+
+  private mainTask = async () =>
+    tracer.startActiveSpan(async (span) => this._mainTaskImpl(span), {
+      name: 'tts_request',
+      endOnExit: false,
+    });
 
   private emitError({ error, recoverable }: { error: Error; recoverable: boolean }) {
     this.#tts.emit('error', {
@@ -205,7 +242,16 @@ export abstract class SynthesizeStream
     });
   }
 
-  // TODO(AJS-37) Remove when refactoring TTS to use streams
+  // NOTE(AJS-37): The implementation below uses an AsyncIterableQueue (`this.input`)
+  // bridged from a DeferredReadableStream (`this.deferredInputStream`) rather than
+  // consuming the stream directly.
+  //
+  // A full refactor to native Web Streams was considered but is currently deferred.
+  // The primary reason is to maintain architectural parity with the Python SDK,
+  // which is a key design goal for the project. This ensures a consistent developer
+  // experience across both platforms.
+  //
+  // For more context, see the discussion in GitHub issue # 844.
   protected async pumpInput() {
     const reader = this.deferredInputStream.stream.getReader();
     try {
@@ -252,6 +298,9 @@ export abstract class SynthesizeStream
           label: this.#tts.label,
           streamed: false,
         };
+        if (this.#ttsRequestSpan) {
+          this.#ttsRequestSpan.setAttribute(traceTypes.ATTR_TTS_METRICS, JSON.stringify(metrics));
+        }
         this.#tts.emit('metrics_collected', metrics);
       }
     };
@@ -276,6 +325,11 @@ export abstract class SynthesizeStream
     if (requestId) {
       emit();
     }
+
+    if (this.#ttsRequestSpan) {
+      this.#ttsRequestSpan.end();
+      this.#ttsRequestSpan = undefined;
+    }
   }
 
   protected abstract run(): Promise<void>;
@@ -294,12 +348,11 @@ export abstract class SynthesizeStream
     }
     this.#metricsText += text;
 
-    if (this.input.closed) {
-      throw new Error('Input is closed');
+    if (this.input.closed || this.closed) {
+      // Stream was aborted/closed, silently skip
+      return;
     }
-    if (this.closed) {
-      throw new Error('Stream is closed');
-    }
+
     this.input.put(text);
   }
 
@@ -309,29 +362,33 @@ export abstract class SynthesizeStream
       this.#metricsPendingTexts.push(this.#metricsText);
       this.#metricsText = '';
     }
-    if (this.input.closed) {
-      throw new Error('Input is closed');
+
+    if (this.input.closed || this.closed) {
+      // Stream was aborted/closed, silently skip
+      return;
     }
-    if (this.closed) {
-      throw new Error('Stream is closed');
-    }
+
     this.input.put(SynthesizeStream.FLUSH_SENTINEL);
   }
 
   /** Mark the input as ended and forbid additional pushes */
   endInput() {
     this.flush();
-    if (this.input.closed) {
-      throw new Error('Input is closed');
+
+    if (this.input.closed || this.closed) {
+      // Stream was aborted/closed, silently skip
+      return;
     }
-    if (this.closed) {
-      throw new Error('Stream is closed');
-    }
+
     this.input.close();
   }
 
   next(): Promise<IteratorResult<SynthesizedAudio | typeof SynthesizeStream.END_OF_STREAM>> {
     return this.output.next();
+  }
+
+  get abortSignal(): AbortSignal {
+    return this.abortController.signal;
   }
 
   /** Close both the input and output of the TTS stream */
@@ -365,17 +422,25 @@ export abstract class ChunkedStream implements AsyncIterableIterator<Synthesized
   abstract label: string;
   #text: string;
   #tts: TTS;
+  #ttsRequestSpan?: Span;
   private _connOptions: APIConnectOptions;
   private logger = log();
+
+  protected abortController = new AbortController();
 
   constructor(
     text: string,
     tts: TTS,
     connOptions: APIConnectOptions = DEFAULT_API_CONNECT_OPTIONS,
+    abortSignal?: AbortSignal,
   ) {
     this.#text = text;
     this.#tts = tts;
     this._connOptions = connOptions;
+
+    if (abortSignal) {
+      abortSignal.addEventListener('abort', () => this.abortController.abort(), { once: true });
+    }
 
     this.monitorMetrics();
 
@@ -386,15 +451,30 @@ export abstract class ChunkedStream implements AsyncIterableIterator<Synthesized
     Promise.resolve().then(() => this.mainTask().then(() => this.queue.close()));
   }
 
-  private async mainTask() {
-    // TODO(brian): PR3 - Add span wrapping: tracer.startActiveSpan('tts_request', ..., { endOnExit: false })
+  private _mainTaskImpl = async (span: Span) => {
+    this.#ttsRequestSpan = span;
+    span.setAttributes({
+      [traceTypes.ATTR_TTS_STREAMING]: false,
+      [traceTypes.ATTR_TTS_LABEL]: this.#tts.label,
+    });
+
     for (let i = 0; i < this._connOptions.maxRetry + 1; i++) {
       try {
-        // TODO(brian): PR3 - Add span for retry attempts: tracer.startActiveSpan('tts_request_run', ...)
-        return await this.run();
+        return await tracer.startActiveSpan(
+          async (attemptSpan) => {
+            attemptSpan.setAttribute(traceTypes.ATTR_RETRY_COUNT, i);
+            try {
+              return await this.run();
+            } catch (error) {
+              recordException(attemptSpan, toError(error));
+              throw error;
+            }
+          },
+          { name: 'tts_request_run' },
+        );
       } catch (error) {
         if (error instanceof APIError) {
-          const retryInterval = this._connOptions._intervalForRetry(i);
+          const retryInterval = intervalForRetry(this._connOptions, i);
 
           if (this._connOptions.maxRetry === 0 || !error.retryable) {
             this.emitError({ error, recoverable: false });
@@ -423,6 +503,13 @@ export abstract class ChunkedStream implements AsyncIterableIterator<Synthesized
         }
       }
     }
+  };
+
+  private async mainTask() {
+    return tracer.startActiveSpan(async (span) => this._mainTaskImpl(span), {
+      name: 'tts_request',
+      endOnExit: false,
+    });
   }
 
   private emitError({ error, recoverable }: { error: Error; recoverable: boolean }) {
@@ -439,6 +526,10 @@ export abstract class ChunkedStream implements AsyncIterableIterator<Synthesized
 
   get inputText(): string {
     return this.#text;
+  }
+
+  get abortSignal(): AbortSignal {
+    return this.abortController.signal;
   }
 
   protected async monitorMetrics() {
@@ -470,6 +561,13 @@ export abstract class ChunkedStream implements AsyncIterableIterator<Synthesized
       label: this.#tts.label,
       streamed: false,
     };
+
+    if (this.#ttsRequestSpan) {
+      this.#ttsRequestSpan.setAttribute(traceTypes.ATTR_TTS_METRICS, JSON.stringify(metrics));
+      this.#ttsRequestSpan.end();
+      this.#ttsRequestSpan = undefined;
+    }
+
     this.#tts.emit('metrics_collected', metrics);
   }
 
@@ -488,8 +586,9 @@ export abstract class ChunkedStream implements AsyncIterableIterator<Synthesized
 
   /** Close both the input and output of the TTS stream */
   close() {
-    this.queue.close();
-    this.output.close();
+    if (!this.queue.closed) this.queue.close();
+    if (!this.output.closed) this.output.close();
+    if (!this.abortController.signal.aborted) this.abortController.abort();
     this.closed = true;
   }
 

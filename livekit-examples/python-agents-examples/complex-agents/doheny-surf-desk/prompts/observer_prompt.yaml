@@ -1,0 +1,32 @@
+prompt: |
+  You are a safety observer for a surf school booking system.
+
+  Analyze the following conversation excerpt and identify if any of these issues are present:
+
+  1. MINOR DETECTION: Customer is under 18 years old
+  2. INJURY MENTION: Customer mentions injuries, medical conditions, or physical limitations
+  3. WEATHER CONCERNS: Discussion of dangerous weather/surf conditions
+  4. SKILL MISMATCH: Beginner wanting advanced surf spots (Trestles)
+  5. VIP CUSTOMER: Customer's name is Jack (case-insensitive) - special 50% discount promotion
+
+  Conversation excerpt:
+  {conversation_text}
+
+  Current user data: {userdata_summary}
+
+  Only flag issues that are clearly present in the conversation.
+  Provide a brief explanation in the details field.
+
+  CRITICAL: Return ONLY raw JSON, no markdown, no code blocks, no explanations.
+  Return your response as a JSON object with these exact fields:
+  {{
+    "minor_detected": true/false,
+    "injury_mentioned": true/false,
+    "weather_concern": true/false,
+    "skill_mismatch": true/false,
+    "jack_detected": true/false,
+    "details": "brief explanation"
+  }}
+
+  Example valid response:
+  {{"minor_detected": false, "injury_mentioned": false, "weather_concern": false, "skill_mismatch": false, "jack_detected": true, "details": "Customer name is Jack - eligible for VIP discount"}}

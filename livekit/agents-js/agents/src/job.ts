@@ -11,9 +11,13 @@ import type {
 } from '@livekit/rtc-node';
 import { ParticipantKind, RoomEvent, TrackKind } from '@livekit/rtc-node';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import * as os from 'node:os';
+import * as path from 'node:path';
 import type { Logger } from 'pino';
 import type { InferenceExecutor } from './ipc/inference_executor.js';
 import { log } from './log.js';
+import { flushOtelLogs, setupCloudTracer, uploadSessionReport } from './telemetry/index.js';
+import { isCloud } from './utils.js';
 import type { AgentSession } from './voice/agent_session.js';
 import { type SessionReport, createSessionReport } from './voice/report.js';
 
@@ -81,8 +85,6 @@ export class FunctionExistsError extends Error {
 }
 
 /** The job and environment context as seen by the agent, accessible by the entrypoint function. */
-// TODO(brian): PR3 - Add @tracer.startActiveSpan('job_entrypoint') wrapper in entrypoint
-// TODO(brian): PR5 - Add uploadSessionReport() call in cleanup/session end
 export class JobContext {
   #proc: JobProcess;
   #info: RunningJobInfo;
@@ -104,6 +106,9 @@ export class JobContext {
   /** @internal */
   _primaryAgentSession?: AgentSession;
 
+  /** @internal */
+  _sessionDirectory: string;
+
   private connected: boolean = false;
 
   constructor(
@@ -123,6 +128,7 @@ export class JobContext {
     this.#room.on(RoomEvent.ParticipantConnected, this.onParticipantConnected);
     this.#logger = log().child({ info: this.#info });
     this.#inferenceExecutor = inferenceExecutor;
+    this._sessionDirectory = path.join(os.tmpdir(), 'livekit-agents', `job-${this.#info.job.id}`);
   }
 
   get proc(): JobProcess {
@@ -142,6 +148,10 @@ export class JobContext {
     return this.#room;
   }
 
+  get info(): RunningJobInfo {
+    return this.#info;
+  }
+
   /** @returns The agent's participant if connected to the room, otherwise `undefined` */
   get agent(): LocalParticipant | undefined {
     return this.#room.localParticipant;
@@ -150,6 +160,13 @@ export class JobContext {
   /** @returns The global inference executor */
   get inferenceExecutor(): InferenceExecutor {
     return this.#inferenceExecutor;
+  }
+
+  /**
+   * @returns The session directory for storing recordings and session data.
+   */
+  get sessionDirectory(): string {
+    return this._sessionDirectory;
   }
 
   /** Adds a promise to be awaited when {@link JobContext.shutdown | shutdown} is called. */
@@ -246,8 +263,11 @@ export class JobContext {
       throw new Error('Cannot prepare report, no AgentSession was found');
     }
 
-    // TODO(brian): implement and check recorder io
-    // TODO(brian): PR5 - Ensure chat history serialization includes all required fields (use sessionReportToJSON helper)
+    const recorderIO = targetSession._recorderIO;
+
+    if (recorderIO && recorderIO.recording) {
+      throw new Error('Cannot create the AgentSession report, the RecorderIO is still recording');
+    }
 
     return createSessionReport({
       jobId: this.job.id,
@@ -255,8 +275,11 @@ export class JobContext {
       room: this.job.room?.name || '',
       options: targetSession.options,
       events: targetSession._recordedEvents,
-      enableUserDataTraining: true,
+      enableRecording: targetSession._enableRecording,
       chatHistory: targetSession.history.copy(),
+      startedAt: targetSession._startedAt,
+      audioRecordingPath: recorderIO?.outputPath,
+      audioRecordingStartedAt: recorderIO?.recordingStartedAt,
     });
   }
 
@@ -270,14 +293,45 @@ export class JobContext {
 
     // TODO(brian): Implement CLI/console
 
-    // TODO(brian): PR5 - Call uploadSessionReport() if report.enableUserDataTraining is true
-    // TODO(brian): PR5 - Upload includes: multipart form with header (protobuf), chat_history (JSON), and audio recording (if available)
+    // Upload session report to LiveKit Cloud if enabled
+    const url = new URL(this.#info.url);
 
-    this.#logger.debug('Session ended, report generated', {
-      jobId: report.jobId,
-      roomId: report.roomId,
-      eventsCount: report.events.length,
-    });
+    if (report.enableRecording && isCloud(url)) {
+      try {
+        await uploadSessionReport({
+          agentName: this.job.agentName,
+          cloudHostname: url.hostname,
+          report,
+        });
+        this.#logger.info(
+          {
+            jobId: report.jobId,
+            roomId: report.roomId,
+          },
+          'Session report uploaded to LiveKit Cloud',
+        );
+      } catch (error) {
+        this.#logger.error({ error }, 'Failed to upload session report');
+      }
+    }
+
+    this.#logger.debug(
+      {
+        jobId: report.jobId,
+        roomId: report.roomId,
+        eventsCount: report.events.length,
+      },
+      'Session ended, report generated',
+    );
+
+    // Explicitly clear the recorded events to avoid leaking memory
+    session._recordedEvents = [];
+
+    try {
+      await flushOtelLogs();
+    } catch (error) {
+      this.#logger.error({ error }, 'Failed to flush OTEL logs');
+    }
   }
 
   /**
@@ -315,6 +369,20 @@ export class JobContext {
     }
 
     this.#participantEntrypoints.push(callback);
+  }
+
+  async initRecording() {
+    const url = new URL(this.#info.url);
+    if (!isCloud(url)) {
+      return;
+    }
+
+    this.#logger.debug({ hostname: url.hostname }, 'Configuring session recording (cloud tracer)');
+    await setupCloudTracer({
+      roomId: this.job.room!.sid,
+      jobId: this.job.id,
+      cloudHostname: url.hostname,
+    });
   }
 }
 

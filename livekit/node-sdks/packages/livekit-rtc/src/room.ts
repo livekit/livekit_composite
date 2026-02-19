@@ -2,6 +2,27 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 import { Mutex } from '@livekit/mutex';
+import { EncryptionState, type EncryptionType } from '@livekit/rtc-ffi-bindings';
+import type { FfiEvent } from '@livekit/rtc-ffi-bindings';
+import type { DisconnectReason, OwnedParticipant } from '@livekit/rtc-ffi-bindings';
+import type { DataStream_Trailer, DisconnectCallback } from '@livekit/rtc-ffi-bindings';
+import {
+  type ConnectCallback,
+  ConnectRequest,
+  type ConnectResponse,
+  type ConnectionQuality,
+  ConnectionState,
+  ContinualGatheringPolicy,
+  type DataPacketKind,
+  type DataStream_Chunk,
+  type DataStream_Header,
+  type DisconnectResponse,
+  RoomOptions as FfiRoomOptions,
+  type IceServer,
+  IceTransportType,
+  type RoomInfo,
+} from '@livekit/rtc-ffi-bindings';
+import { TrackKind } from '@livekit/rtc-ffi-bindings';
 import type { TypedEventEmitter as TypedEmitter } from '@livekit/typed-emitter';
 import EventEmitter from 'events';
 import { ByteStreamReader, TextStreamReader } from './data_streams/stream_reader.js';
@@ -18,27 +39,6 @@ import { FfiClient, FfiClientEvent, FfiHandle } from './ffi_client.js';
 import { log } from './log.js';
 import type { Participant } from './participant.js';
 import { LocalParticipant, RemoteParticipant } from './participant.js';
-import { EncryptionState, EncryptionType } from './proto/e2ee_pb.js';
-import type { FfiEvent } from './proto/ffi_pb.js';
-import type { DisconnectReason, OwnedParticipant } from './proto/participant_pb.js';
-import type { DataStream_Trailer, DisconnectCallback } from './proto/room_pb.js';
-import {
-  type ConnectCallback,
-  ConnectRequest,
-  type ConnectResponse,
-  type ConnectionQuality,
-  ConnectionState,
-  ContinualGatheringPolicy,
-  type DataPacketKind,
-  type DataStream_Chunk,
-  type DataStream_Header,
-  type DisconnectResponse,
-  RoomOptions as FfiRoomOptions,
-  type IceServer,
-  IceTransportType,
-  type RoomInfo,
-} from './proto/room_pb.js';
-import { TrackKind } from './proto/track_pb.js';
 import type { LocalTrack, RemoteTrack } from './track.js';
 import { RemoteAudioTrack, RemoteVideoTrack } from './track.js';
 import type { LocalTrackPublication, TrackPublication } from './track_publication.js';
@@ -96,6 +96,9 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
 
   private preConnectEvents: FfiEvent[] = [];
 
+  private _token?: string;
+  private _serverUrl?: string;
+
   e2eeManager?: E2EEManager;
   connectionState: ConnectionState = ConnectionState.CONN_DISCONNECTED;
 
@@ -116,6 +119,16 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
 
   get isConnected(): boolean {
     return this.ffiHandle != undefined && this.connectionState != ConnectionState.CONN_DISCONNECTED;
+  }
+
+  /** @internal */
+  get token(): string | undefined {
+    return this._token;
+  }
+
+  /** @internal */
+  get serverUrl(): string | undefined {
+    return this._serverUrl;
   }
 
   /**
@@ -155,7 +168,14 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
   }
 
   get creationTime(): Date {
-    return new Date(Number(this.info?.creationTime ?? 0));
+    // TODO: workaround for Rust SDK bug, remove after updating to:
+    //   https://github.com/livekit/rust-sdks/pull/822
+    // check if creationTime looks like seconds (less than year 3000 in ms), convert to ms if needed
+    let creationTimeMs = Number(this.info?.creationTime ?? 0);
+    if (creationTimeMs > 0 && creationTimeMs < 1e12) {
+      creationTimeMs *= 1000;
+    }
+    return new Date(creationTimeMs);
   }
 
   get isRecording(): boolean {
@@ -179,10 +199,10 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
 
   /**
    * Connects to a LiveKit room using the provided URL and access token.
-   * @param url The WebSocket URL of the LiveKit server
-   * @param token A valid LiveKit access token for authentication
-   * @param opts Optional room configuration options
-   * @throws ConnectError if connection fails
+   * @param url - The WebSocket URL of the LiveKit server
+   * @param token - A valid LiveKit access token for authentication
+   * @param opts - Optional room configuration options
+   * @throws ConnectError - if connection fails
    */
   async connect(url: string, token: string, opts?: RoomOptions) {
     const options = { ...defaultRoomOptions, ...opts };
@@ -217,6 +237,8 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
         this.ffiHandle = new FfiHandle(cb.message.value.room!.handle!.id!);
         this.e2eeManager = e2eeEnabled && new E2EEManager(this.ffiHandle.handle, e2eeOptions);
 
+        this._token = token;
+        this._serverUrl = url;
         this.info = cb.message.value.room!.info;
         this.connectionState = ConnectionState.CONN_CONNECTED;
         this.localParticipant = new LocalParticipant(
@@ -268,9 +290,9 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
   /**
    * Registers a handler for incoming text data streams on a specific topic.
    * Text streams are used for receiving structured text data from other participants.
-   * @param topic The topic to listen for text streams on
-   * @param callback Function to handle incoming text stream data
-   * @throws Error if a handler for this topic is already registered
+   * @param topic - The topic to listen for text streams on
+   * @param callback - Function to handle incoming text stream data
+   * @throws Error - if a handler for this topic is already registered
    */
   registerTextStreamHandler(topic: string, callback: TextStreamHandler) {
     if (this.textStreamHandlers.has(topic)) {
@@ -286,9 +308,9 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
   /**
    * Registers a handler for incoming byte data streams on a specific topic.
    * Byte streams are used for receiving binary data like files from other participants.
-   * @param topic The topic to listen for byte streams on
-   * @param callback Function to handle incoming byte stream data
-   * @throws Error if a handler for this topic is already registered
+   * @param topic - The topic to listen for byte streams on
+   * @param callback - Function to handle incoming byte stream data
+   * @throws Error - if a handler for this topic is already registered
    */
   registerByteStreamHandler(topic: string, callback: ByteStreamHandler) {
     if (this.byteStreamHandlers.has(topic)) {
@@ -362,7 +384,7 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
         participant.info.disconnectReason = ev.value.disconnectReason;
         this.emit(RoomEvent.ParticipantDisconnected, participant);
       } else {
-        console.log(`RoomEvent.ParticipantDisconnected: Could not find participant`);
+        log.warn(`RoomEvent.ParticipantDisconnected: Could not find participant`);
       }
     } else if (ev.case == 'localTrackPublished') {
       const publication = this.localParticipant.trackPublications.get(ev.value.trackSid!);
@@ -377,7 +399,7 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
         publication.resolveFirstSubscription();
         this.emit(RoomEvent.LocalTrackSubscribed, publication!.track!);
       } else {
-        console.warn(`RoomEvent.LocalTrackSubscribed: Publication not found: ${ev.value.trackSid}`);
+        log.warn(`RoomEvent.LocalTrackSubscribed: Publication not found: ${ev.value.trackSid}`);
       }
     } else if (ev.case == 'trackPublished') {
       const participant = this.remoteParticipants.get(ev.value.participantIdentity!);
@@ -385,7 +407,7 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
       if (participant) {
         participant.trackPublications.set(publication.sid!, publication);
       } else {
-        console.warn(
+        log.warn(
           `RoomEvent.TrackPublished: Could not find participant: ${ev.value.participantIdentity}`,
         );
       }
@@ -397,7 +419,7 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
       if (publication) {
         this.emit(RoomEvent.TrackUnpublished, publication, participant);
       } else {
-        console.warn(`RoomEvent.TrackUnpublished: Could not find publication`);
+        log.warn(`RoomEvent.TrackUnpublished: Could not find publication`);
       }
     } else if (ev.case == 'trackSubscribed') {
       const ownedTrack = ev.value.track!;
@@ -415,8 +437,8 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
         }
 
         this.emit(RoomEvent.TrackSubscribed, publication.track!, publication, participant);
-      } catch (e: any) {
-        console.warn(`RoomEvent.TrackSubscribed: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.TrackSubscribed: ${(e as Error).message}`);
       }
     } else if (ev.case == 'trackUnsubscribed') {
       try {
@@ -428,8 +450,8 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
         publication.track = undefined;
         publication.subscribed = false;
         this.emit(RoomEvent.TrackUnsubscribed, track, publication, participant);
-      } catch (e: any) {
-        console.warn(`RoomEvent.TrackUnsubscribed: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.TrackUnsubscribed: ${(e as Error).message}`);
       }
     } else if (ev.case == 'trackSubscriptionFailed') {
       try {
@@ -440,8 +462,8 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
           participant,
           ev.value.error,
         );
-      } catch (e: any) {
-        console.warn(`RoomEvent.TrackSubscriptionFailed: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.TrackSubscriptionFailed: ${(e as Error).message}`);
       }
     } else if (ev.case == 'trackMuted') {
       try {
@@ -454,8 +476,8 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
           publication.track.info!.muted = true;
         }
         this.emit(RoomEvent.TrackMuted, publication, participant);
-      } catch (e: any) {
-        console.warn(`RoomEvent.TrackMuted: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.TrackMuted: ${(e as Error).message}`);
       }
     } else if (ev.case == 'trackUnmuted') {
       try {
@@ -468,8 +490,8 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
           publication.track.info!.muted = false;
         }
         this.emit(RoomEvent.TrackUnmuted, publication, participant);
-      } catch (e: any) {
-        console.warn(`RoomEvent.TrackUnmuted: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.TrackUnmuted: ${(e as Error).message}`);
       }
     } else if (ev.case == 'activeSpeakersChanged') {
       try {
@@ -477,8 +499,8 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
           this.requireParticipantByIdentity(identity),
         );
         this.emit(RoomEvent.ActiveSpeakersChanged, activeSpeakers);
-      } catch (e: any) {
-        console.warn(`RoomEvent.ActiveSpeakersChanged: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.ActiveSpeakersChanged: ${(e as Error).message}`);
       }
     } else if (ev.case == 'roomMetadataChanged') {
       this.info.metadata = ev.value.metadata ?? '';
@@ -488,16 +510,16 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
         const participant = this.requireParticipantByIdentity(ev.value.participantIdentity!);
         participant.info.metadata = ev.value.metadata;
         this.emit(RoomEvent.ParticipantMetadataChanged, participant.metadata, participant);
-      } catch (e: any) {
-        console.warn(`RoomEvent.ParticipantMetadataChanged: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.ParticipantMetadataChanged: ${(e as Error).message}`);
       }
     } else if (ev.case == 'participantNameChanged') {
       try {
         const participant = this.requireParticipantByIdentity(ev.value.participantIdentity!);
         participant.info.name = ev.value.name;
         this.emit(RoomEvent.ParticipantNameChanged, participant.name!, participant);
-      } catch (e: any) {
-        console.warn(`RoomEvent.ParticipantNameChanged: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.ParticipantNameChanged: ${(e as Error).message}`);
       }
     } else if (ev.case == 'participantAttributesChanged') {
       try {
@@ -519,15 +541,15 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
           );
           this.emit(RoomEvent.ParticipantAttributesChanged, changedAttributes, participant);
         }
-      } catch (e: any) {
-        console.warn(`RoomEvent.ParticipantAttributesChanged: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.ParticipantAttributesChanged: ${(e as Error).message}`);
       }
     } else if (ev.case == 'connectionQualityChanged') {
       try {
         const participant = this.requireParticipantByIdentity(ev.value.participantIdentity!);
         this.emit(RoomEvent.ConnectionQualityChanged, ev.value.quality!, participant);
-      } catch (e: any) {
-        console.warn(`RoomEvent.ConnectionQualityChanged: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.ConnectionQualityChanged: ${(e as Error).message}`);
       }
     } else if (ev.case == 'chatMessage') {
       const participant = this.retrieveParticipantByIdentity(ev.value.participantIdentity!);
@@ -611,9 +633,12 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
           !!ev.value.isEncrypted,
           participant,
         );
-      } catch (e: any) {
-        console.warn(`RoomEvent.ParticipantEncryptionStatusChanged: ${e.message}`);
+      } catch (e: unknown) {
+        log.warn(`RoomEvent.ParticipantEncryptionStatusChanged: ${(e as Error).message}`);
       }
+    } else if (ev.case === 'tokenRefreshed') {
+      this._token = ev.value.token;
+      this.emit('tokenRefreshed');
     }
   };
 
@@ -767,7 +792,7 @@ export class Room extends (EventEmitter as new () => TypedEmitter<RoomCallbacks>
     const textBuffer = this.textStreamControllers.get(streamId);
     if (textBuffer) {
       textBuffer.controller.close();
-      this.byteStreamControllers.delete(streamId);
+      this.textStreamControllers.delete(streamId);
     }
   }
 }
@@ -835,6 +860,7 @@ export type RoomCallbacks = {
   roomSidChanged: (sid: string) => void;
   roomUpdated: () => void;
   moved: () => void;
+  tokenRefreshed: () => void;
 };
 
 export enum RoomEvent {
@@ -869,4 +895,5 @@ export enum RoomEvent {
   Reconnected = 'reconnected',
   RoomUpdated = 'roomUpdated',
   Moved = 'moved',
+  TokenRefreshed = 'tokenRefreshed',
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,39 +16,29 @@
 
 import Foundation
 
-@objc
+@objcMembers
 public final class VideoPublishOptions: NSObject, TrackPublishOptions, Sendable {
-    @objc
     public let name: String?
 
     /// preferred encoding parameters
-    @objc
     public let encoding: VideoEncoding?
 
     /// encoding parameters for for screen share
-    @objc
     public let screenShareEncoding: VideoEncoding?
 
     /// true to enable simulcasting, publishes three tracks at different sizes
-    @objc
     public let simulcast: Bool
 
-    @objc
     public let simulcastLayers: [VideoParameters]
 
-    @objc
     public let screenShareSimulcastLayers: [VideoParameters]
 
-    @objc
     public let preferredCodec: VideoCodec?
 
-    @objc
     public let preferredBackupCodec: VideoCodec?
 
-    @objc
     public let degradationPreference: DegradationPreference
 
-    @objc
     public let streamName: String?
 
     public init(name: String? = nil,

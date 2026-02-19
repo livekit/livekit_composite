@@ -4584,13 +4584,14 @@ func (x *TrackSubscribed) GetTrackSid() string {
 }
 
 type ConnectionSettings struct {
-	state                protoimpl.MessageState `protogen:"open.v1"`
-	AutoSubscribe        bool                   `protobuf:"varint,1,opt,name=auto_subscribe,json=autoSubscribe,proto3" json:"auto_subscribe,omitempty"`
-	AdaptiveStream       bool                   `protobuf:"varint,2,opt,name=adaptive_stream,json=adaptiveStream,proto3" json:"adaptive_stream,omitempty"`
-	SubscriberAllowPause *bool                  `protobuf:"varint,3,opt,name=subscriber_allow_pause,json=subscriberAllowPause,proto3,oneof" json:"subscriber_allow_pause,omitempty"`
-	DisableIceLite       bool                   `protobuf:"varint,4,opt,name=disable_ice_lite,json=disableIceLite,proto3" json:"disable_ice_lite,omitempty"`
-	unknownFields        protoimpl.UnknownFields
-	sizeCache            protoimpl.SizeCache
+	state                  protoimpl.MessageState `protogen:"open.v1"`
+	AutoSubscribe          bool                   `protobuf:"varint,1,opt,name=auto_subscribe,json=autoSubscribe,proto3" json:"auto_subscribe,omitempty"`
+	AdaptiveStream         bool                   `protobuf:"varint,2,opt,name=adaptive_stream,json=adaptiveStream,proto3" json:"adaptive_stream,omitempty"`
+	SubscriberAllowPause   *bool                  `protobuf:"varint,3,opt,name=subscriber_allow_pause,json=subscriberAllowPause,proto3,oneof" json:"subscriber_allow_pause,omitempty"`
+	DisableIceLite         bool                   `protobuf:"varint,4,opt,name=disable_ice_lite,json=disableIceLite,proto3" json:"disable_ice_lite,omitempty"`
+	AutoSubscribeDataTrack *bool                  `protobuf:"varint,5,opt,name=auto_subscribe_data_track,json=autoSubscribeDataTrack,proto3,oneof" json:"auto_subscribe_data_track,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *ConnectionSettings) Reset() {
@@ -4647,6 +4648,13 @@ func (x *ConnectionSettings) GetSubscriberAllowPause() bool {
 func (x *ConnectionSettings) GetDisableIceLite() bool {
 	if x != nil {
 		return x.DisableIceLite
+	}
+	return false
+}
+
+func (x *ConnectionSettings) GetAutoSubscribeDataTrack() bool {
+	if x != nil && x.AutoSubscribeDataTrack != nil {
+		return *x.AutoSubscribeDataTrack
 	}
 	return false
 }
@@ -5202,21 +5210,21 @@ const file_livekit_rtc_proto_rawDesc = "" +
 	"\ttrack_sid\x18\x01 \x01(\tR\btrackSid\x12+\n" +
 	"\x06layers\x18\x02 \x03(\v2\x13.livekit.VideoLayerR\x06layers:\x02\x18\x01\"\xf5\x02\n" +
 	"\x19UpdateParticipantMetadata\x12B\n" +
-	"\bmetadata\x18\x01 \x01(\tB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12:\n" +
-	"\x04name\x18\x02 \x01(\tB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\x04name\x12z\n" +
+	"\bmetadata\x18\x01 \x01(\tB&\x88\xec,\x01\x92\xec,\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12:\n" +
+	"\x04name\x18\x02 \x01(\tB&\x88\xec,\x01\x92\xec,\x1e<redacted ({{ .Size }} bytes)>R\x04name\x12z\n" +
 	"\n" +
-	"attributes\x18\x03 \x03(\v22.livekit.UpdateParticipantMetadata.AttributesEntryB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\n" +
+	"attributes\x18\x03 \x03(\v22.livekit.UpdateParticipantMetadata.AttributesEntryB&\x88\xec,\x01\x92\xec,\x1e<redacted ({{ .Size }} bytes)>R\n" +
 	"attributes\x12\x1d\n" +
 	"\n" +
 	"request_id\x18\x04 \x01(\rR\trequestId\x1a=\n" +
 	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"[\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"g\n" +
 	"\tICEServer\x12\x12\n" +
-	"\x04urls\x18\x01 \x03(\tR\x04urls\x12\x1a\n" +
-	"\busername\x18\x02 \x01(\tR\busername\x12\x1e\n" +
+	"\x04urls\x18\x01 \x03(\tR\x04urls\x12 \n" +
+	"\busername\x18\x02 \x01(\tB\x04\x88\xec,\x01R\busername\x12$\n" +
 	"\n" +
-	"credential\x18\x03 \x01(\tR\n" +
+	"credential\x18\x03 \x01(\tB\x04\x88\xec,\x01R\n" +
 	"credential\"C\n" +
 	"\x0fSpeakersChanged\x120\n" +
 	"\bspeakers\x18\x01 \x03(\v2\x14.livekit.SpeakerInfoR\bspeakers\"/\n" +
@@ -5341,19 +5349,21 @@ const file_livekit_rtc_proto_rawDesc = "" +
 	"B\t\n" +
 	"\arequest\".\n" +
 	"\x0fTrackSubscribed\x12\x1b\n" +
-	"\ttrack_sid\x18\x01 \x01(\tR\btrackSid\"\xe4\x01\n" +
+	"\ttrack_sid\x18\x01 \x01(\tR\btrackSid\"\xc2\x02\n" +
 	"\x12ConnectionSettings\x12%\n" +
 	"\x0eauto_subscribe\x18\x01 \x01(\bR\rautoSubscribe\x12'\n" +
 	"\x0fadaptive_stream\x18\x02 \x01(\bR\x0eadaptiveStream\x129\n" +
 	"\x16subscriber_allow_pause\x18\x03 \x01(\bH\x00R\x14subscriberAllowPause\x88\x01\x01\x12(\n" +
-	"\x10disable_ice_lite\x18\x04 \x01(\bR\x0edisableIceLiteB\x19\n" +
-	"\x17_subscriber_allow_pause\"\xfd\x05\n" +
+	"\x10disable_ice_lite\x18\x04 \x01(\bR\x0edisableIceLite\x12>\n" +
+	"\x19auto_subscribe_data_track\x18\x05 \x01(\bH\x01R\x16autoSubscribeDataTrack\x88\x01\x01B\x19\n" +
+	"\x17_subscriber_allow_pauseB\x1c\n" +
+	"\x1a_auto_subscribe_data_track\"\xfd\x05\n" +
 	"\vJoinRequest\x124\n" +
 	"\vclient_info\x18\x01 \x01(\v2\x13.livekit.ClientInfoR\n" +
 	"clientInfo\x12L\n" +
 	"\x13connection_settings\x18\x02 \x01(\v2\x1b.livekit.ConnectionSettingsR\x12connectionSettings\x12B\n" +
-	"\bmetadata\x18\x03 \x01(\tB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12\x8e\x01\n" +
-	"\x16participant_attributes\x18\x04 \x03(\v2/.livekit.JoinRequest.ParticipantAttributesEntryB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\x15participantAttributes\x12F\n" +
+	"\bmetadata\x18\x03 \x01(\tB&\x88\xec,\x01\x92\xec,\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12\x8e\x01\n" +
+	"\x16participant_attributes\x18\x04 \x03(\v2/.livekit.JoinRequest.ParticipantAttributesEntryB&\x88\xec,\x01\x92\xec,\x1e<redacted ({{ .Size }} bytes)>R\x15participantAttributes\x12F\n" +
 	"\x12add_track_requests\x18\x05 \x03(\v2\x18.livekit.AddTrackRequestR\x10addTrackRequests\x12D\n" +
 	"\x0fpublisher_offer\x18\x06 \x01(\v2\x1b.livekit.SessionDescriptionR\x0epublisherOffer\x12\x1c\n" +
 	"\treconnect\x18\a \x01(\bR\treconnect\x12C\n" +

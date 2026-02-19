@@ -77,8 +77,8 @@ func NewRTPMunger(logger logger.Logger) *RTPMunger {
 	}
 }
 
-func (r *RTPMunger) DebugInfo() map[string]interface{} {
-	return map[string]interface{}{
+func (r *RTPMunger) DebugInfo() map[string]any {
+	return map[string]any{
 		"ExtHighestIncomingSN": r.extHighestIncomingSN,
 		"ExtLastSN":            r.extLastSN,
 		"ExtSecondLastSN":      r.extSecondLastSN,
@@ -185,7 +185,7 @@ func (r *RTPMunger) UpdateAndGetSnTs(extPkt *buffer.ExtPacket, marker bool) (Tra
 		r.secondLastMarker = r.lastMarker
 		r.lastMarker = marker
 
-		if extPkt.KeyFrame {
+		if extPkt.IsKeyFrame {
 			r.extRtxGateSn = extMungedSN
 			r.isInRtxGateRegion = true
 		}

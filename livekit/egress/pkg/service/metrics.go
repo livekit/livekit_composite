@@ -25,10 +25,11 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"golang.org/x/exp/maps"
 
 	"github.com/livekit/protocol/logger"
-	"github.com/livekit/protocol/tracer"
+	"go.opentelemetry.io/otel"
 )
 
 type MetricsService struct {
@@ -38,8 +39,12 @@ type MetricsService struct {
 	pendingMetrics []*dto.MetricFamily
 }
 
+var (
+	tracer = otel.Tracer("github.com/livekit/egress/pkg/service")
+)
+
 func NewMetricsService(pm *ProcessManager) *MetricsService {
-	prometheus.Unregister(prometheus.NewGoCollector())
+	prometheus.Unregister(collectors.NewGoCollector())
 	prometheus.MustRegister(collectors.NewGoCollector(collectors.WithGoCollectorRuntimeMetrics(collectors.MetricsAll)))
 
 	return &MetricsService{
@@ -90,7 +95,7 @@ func (s *MetricsService) StoreProcessEndedMetrics(egressID string, metrics strin
 }
 
 func deserializeMetrics(egressID string, s string) ([]*dto.MetricFamily, error) {
-	parser := &expfmt.TextParser{}
+	parser := expfmt.NewTextParser(model.LegacyValidation)
 	families, err := parser.TextToMetricFamilies(strings.NewReader(s))
 	if err != nil {
 		logger.Warnw("failed to parse ms from handler", err, "egress_id", egressID)

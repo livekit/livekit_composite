@@ -19,7 +19,7 @@ import (
 	"slices"
 	"sync"
 
-	"github.com/livekit/livekit-server/pkg/sfu/mime"
+	"github.com/livekit/protocol/codecs/mime"
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
 	"github.com/pion/webrtc/v4"
@@ -27,7 +27,6 @@ import (
 
 	"github.com/livekit/livekit-server/pkg/rtc/types"
 	"github.com/livekit/livekit-server/pkg/sfu"
-	"github.com/livekit/livekit-server/pkg/telemetry"
 )
 
 var (
@@ -54,7 +53,7 @@ type MediaTrackSubscriptionsParams struct {
 	ReceiverConfig   ReceiverConfig
 	SubscriberConfig DirectionConfig
 
-	Telemetry telemetry.TelemetryService
+	TelemetryListener types.ParticipantTelemetryListener
 
 	Logger logger.Logger
 }
@@ -112,7 +111,7 @@ func (t *MediaTrackSubscriptions) AddSubscriber(sub types.LocalParticipant, wr *
 		Subscriber:         sub,
 		MediaTrack:         t.params.MediaTrack,
 		AdaptiveStream:     sub.GetAdaptiveStream(),
-		Telemetry:          t.params.Telemetry,
+		TelemetryListener:  t.params.TelemetryListener,
 		WrappedReceiver:    wr,
 		IsRelayed:          t.params.IsRelayed,
 		OnDownTrackCreated: t.onDownTrackCreated,
@@ -355,8 +354,8 @@ func (t *MediaTrackSubscriptions) getAllSubscribedTracksLocked() []types.Subscri
 	return subTracks
 }
 
-func (t *MediaTrackSubscriptions) DebugInfo() []map[string]interface{} {
-	subscribedTrackInfo := make([]map[string]interface{}, 0)
+func (t *MediaTrackSubscriptions) DebugInfo() []map[string]any {
+	subscribedTrackInfo := make([]map[string]any, 0)
 	for _, val := range t.getAllSubscribedTracks() {
 		if st, ok := val.(*SubscribedTrack); ok {
 			subscribedTrackInfo = append(subscribedTrackInfo, st.DownTrack().DebugInfo())

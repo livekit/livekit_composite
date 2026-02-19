@@ -15,6 +15,7 @@ import {
 import type { APIConnectOptions } from '@livekit/agents';
 import {
   APIConnectionError,
+  APIStatusError,
   AudioByteStream,
   DEFAULT_API_CONNECT_OPTIONS,
   Event,
@@ -43,6 +44,10 @@ const INPUT_AUDIO_CHANNELS = 1;
 const OUTPUT_AUDIO_SAMPLE_RATE = 24000;
 const OUTPUT_AUDIO_CHANNELS = 1;
 
+const LK_GOOGLE_DEBUG = Number(process.env.LK_GOOGLE_DEBUG ?? 0);
+
+// WebSocket close codes (RFC 6455)
+const WS_CLOSE_NORMAL = 1000;
 /**
  * Default image encoding options for Google Realtime API
  */
@@ -102,6 +107,7 @@ interface RealtimeOptions {
   contextWindowCompression?: ContextWindowCompressionConfig;
   apiVersion?: string;
   geminiTools?: LLMTools;
+  thinkingConfig?: types.ThinkingConfig;
 }
 
 /**
@@ -135,6 +141,10 @@ interface ResponseGeneration {
 export class RealtimeModel extends llm.RealtimeModel {
   /** @internal */
   _options: RealtimeOptions;
+
+  get model(): string {
+    return this._options.model;
+  }
 
   constructor(
     options: {
@@ -273,6 +283,14 @@ export class RealtimeModel extends llm.RealtimeModel {
        * Gemini-specific tools to use for the session
        */
       geminiTools?: LLMTools;
+
+      /**
+       * Thinking configuration for native audio models.
+       * If not set, the model's default thinking behavior is used.
+       * Use `\{ thinkingBudget: 0 \}` to disable thinking.
+       * Use `\{ thinkingBudget: -1 \}` for automatic/dynamic thinking.
+       */
+      thinkingConfig?: types.ThinkingConfig;
     } = {},
   ) {
     const inputAudioTranscription =
@@ -300,7 +318,9 @@ export class RealtimeModel extends llm.RealtimeModel {
     const vertexai = options.vertexai ?? false;
 
     // Model selection based on API type
-    const defaultModel = vertexai ? 'gemini-2.0-flash-exp' : 'gemini-2.0-flash-live-001';
+    const defaultModel = vertexai
+      ? 'gemini-live-2.5-flash-native-audio'
+      : 'gemini-2.5-flash-native-audio-preview-12-2025';
 
     this._options = {
       model: options.model || defaultModel,
@@ -330,6 +350,7 @@ export class RealtimeModel extends llm.RealtimeModel {
       contextWindowCompression: options.contextWindowCompression,
       apiVersion: options.apiVersion,
       geminiTools: options.geminiTools,
+      thinkingConfig: options.thinkingConfig,
     };
   }
 
@@ -392,6 +413,8 @@ export class RealtimeSession extends llm.RealtimeSession {
   private sessionLock = new Mutex();
   private numRetries = 0;
   private hasReceivedAudioInput = false;
+  private pendingInterruptText = false;
+  private earlyCompletionPending = false;
 
   #client: GoogleGenAI;
   #task: Promise<void>;
@@ -450,6 +473,8 @@ export class RealtimeSession extends llm.RealtimeSession {
         this.activeSession = undefined;
       }
     }
+    this.earlyCompletionPending = false;
+    this.pendingInterruptText = false;
 
     unlock();
   }
@@ -550,6 +575,27 @@ export class RealtimeSession extends llm.RealtimeSession {
       const toolResults = this.getToolResultsForRealtime(appendCtx, this.options.vertexai);
 
       if (turns.length > 0) {
+        const shouldSendRealtimeText = this.pendingInterruptText;
+
+        if (shouldSendRealtimeText) {
+          for (const turn of turns as types.Content[]) {
+            if (turn.role !== 'user') continue;
+            // Realtime text drives live activity/interrupts
+            // { type: content:  turnComplete: true } alone does not reliably preempt a streaming response in Gemini Live.
+            const text = (turn.parts || [])
+              .map((part) => (part as { text?: string }).text)
+              .filter((value): value is string => !!value)
+              .join('');
+            if (text) {
+              this.sendClientEvent({
+                type: 'realtime_input',
+                value: { text },
+              });
+              this.pendingInterruptText = false;
+            }
+          }
+        }
+
         this.sendClientEvent({
           type: 'content',
           value: {
@@ -699,10 +745,24 @@ export class RealtimeSession extends llm.RealtimeSession {
     }
   }
 
+  private generationHasOutput(gen: ResponseGeneration): boolean {
+    return Boolean(gen.outputText) || gen._firstTokenTimestamp !== undefined;
+  }
+
   async interrupt() {
     // Gemini Live treats activity start as interruption, so we rely on startUserActivity to handle it
     if (this.options.realtimeInputConfig?.activityHandling === ActivityHandling.NO_INTERRUPTION) {
+      if (LK_GOOGLE_DEBUG) {
+        this.#logger.debug('interrupt skipped (activityHandling = NO_INTERRUPTION)');
+      }
       return;
+    }
+    if (this.currentGeneration && !this.currentGeneration._done) {
+      this.pendingInterruptText = true;
+      if (this.generationHasOutput(this.currentGeneration)) {
+        this.earlyCompletionPending = true;
+        this.markCurrentGenerationDone();
+      }
     }
     this.startUserActivity();
   }
@@ -756,6 +816,8 @@ export class RealtimeSession extends llm.RealtimeSession {
             onmessage: (message: types.LiveServerMessage) => {
               this.onReceiveMessage(session, message);
             },
+            // onerror is called for network-level errors (connection refused, DNS failure, TLS errors).
+            // Application-level errors (e.g., invalid model name) come through onclose with error codes.
             onerror: (error: ErrorEvent) => {
               this.#logger.error('Gemini Live session error:', error);
               if (!this.sessionShouldClose.isSet) {
@@ -763,7 +825,33 @@ export class RealtimeSession extends llm.RealtimeSession {
               }
             },
             onclose: (event: CloseEvent) => {
-              this.#logger.debug('Gemini Live session closed:', event.code, event.reason);
+              // Surface WebSocket close errors to the user instead of silently swallowing them
+              if (event.code !== WS_CLOSE_NORMAL) {
+                // Note: WebSocket close reasons are limited to 123 bytes by RFC 6455,
+                // so Google's error messages may be truncated at the protocol level
+                const isTruncated = event.reason && event.reason.length >= 120;
+                const truncationNote = isTruncated
+                  ? ' (message may be truncated - check model name and API permissions)'
+                  : '';
+                const errorMsg = event.reason || `WebSocket closed with code ${event.code}`;
+                this.#logger.error(`Gemini Live session error: ${errorMsg}${truncationNote}`);
+
+                this.emitError(
+                  new APIStatusError({
+                    message: `${errorMsg}${truncationNote}`,
+                    options: {
+                      statusCode: event.code,
+                      retryable: false,
+                      body: event.reason
+                        ? { reason: event.reason, code: event.code, truncated: isTruncated }
+                        : null,
+                    },
+                  }),
+                  false,
+                );
+              } else {
+                this.#logger.debug('Gemini Live session closed:', event.code, event.reason);
+              }
               this.markCurrentGenerationDone();
             },
           },
@@ -865,7 +953,9 @@ export class RealtimeSession extends llm.RealtimeSession {
         switch (msg.type) {
           case 'content':
             const { turns, turnComplete } = msg.value;
-            this.#logger.debug(`(client) -> ${JSON.stringify(this.loggableClientEvent(msg))}`);
+            if (LK_GOOGLE_DEBUG) {
+              this.#logger.debug(`(client) -> ${JSON.stringify(this.loggableClientEvent(msg))}`);
+            }
             await session.sendClientContent({
               turns,
               turnComplete: turnComplete ?? true,
@@ -874,18 +964,23 @@ export class RealtimeSession extends llm.RealtimeSession {
           case 'tool_response':
             const { functionResponses } = msg.value;
             if (functionResponses) {
-              this.#logger.debug(`(client) -> ${JSON.stringify(this.loggableClientEvent(msg))}`);
+              if (LK_GOOGLE_DEBUG) {
+                this.#logger.debug(`(client) -> ${JSON.stringify(this.loggableClientEvent(msg))}`);
+              }
               await session.sendToolResponse({
                 functionResponses,
               });
             }
             break;
           case 'realtime_input':
-            const { mediaChunks, activityStart, activityEnd } = msg.value;
+            const { mediaChunks, activityStart, activityEnd, text } = msg.value;
             if (mediaChunks) {
               for (const mediaChunk of mediaChunks) {
                 await session.sendRealtimeInput({ media: mediaChunk });
               }
+            }
+            if (text) {
+              await session.sendRealtimeInput({ text });
             }
             if (activityStart) await session.sendRealtimeInput({ activityStart });
             if (activityEnd) await session.sendRealtimeInput({ activityEnd });
@@ -920,7 +1015,9 @@ export class RealtimeSession extends llm.RealtimeSession {
     const hasAudioData = response.serverContent?.modelTurn?.parts?.some(
       (part) => part.inlineData?.data,
     );
-    if (!hasAudioData) {
+    if (LK_GOOGLE_DEBUG) {
+      this.#logger.debug(`(server) <- ${JSON.stringify(this.loggableServerMessage(response))}`);
+    } else if (!hasAudioData) {
       this.#logger.debug(`(server) <- ${JSON.stringify(this.loggableServerMessage(response))}`);
     }
     const unlock = await this.sessionLock.lock();
@@ -934,13 +1031,45 @@ export class RealtimeSession extends llm.RealtimeSession {
       unlock();
     }
 
-    if (
-      (!this.currentGeneration || this.currentGeneration._done) &&
-      (response.serverContent || response.toolCall)
-    ) {
-      this.startNewGeneration();
-    }
+    const shouldStartNewGeneration =
+      !this.currentGeneration || this.currentGeneration._done || !!this.pendingGenerationFut;
+    if (shouldStartNewGeneration) {
+      if (response.serverContent?.interrupted) {
+        // Two cases when an interrupted event is sent without an active generation:
+        // 1) generation done but playout not finished (turnComplete -> interrupted)
+        // 2) generation not started (interrupted -> turnComplete)
+        if (!this.pendingGenerationFut) {
+          this.handleInputSpeechStarted();
+        }
 
+        response.serverContent = {
+          ...response.serverContent,
+          interrupted: undefined,
+        };
+
+        const sc = response.serverContent;
+        const hasServerContent =
+          !!sc?.modelTurn ||
+          sc?.outputTranscription != null ||
+          sc?.inputTranscription != null ||
+          sc?.generationComplete != null ||
+          sc?.turnComplete != null;
+        if (!hasServerContent) {
+          response.serverContent = undefined;
+          if (LK_GOOGLE_DEBUG) {
+            this.#logger.debug('ignoring empty server content');
+          }
+        }
+      }
+
+      // start new generation for serverContent or for standalone toolCalls
+      if (this.isNewGeneration(response)) {
+        this.startNewGeneration();
+        if (LK_GOOGLE_DEBUG) {
+          this.#logger.debug(`new generation started: ${this.currentGeneration?.responseId}`);
+        }
+      }
+    }
     if (response.sessionResumptionUpdate) {
       if (
         response.sessionResumptionUpdate.resumable &&
@@ -1034,7 +1163,7 @@ export class RealtimeSession extends llm.RealtimeSession {
     return obj;
   }
 
-  private markCurrentGenerationDone(): void {
+  private markCurrentGenerationDone(keepFunctionChannelOpen: boolean = false): void {
     if (!this.currentGeneration || this.currentGeneration._done) {
       return;
     }
@@ -1076,7 +1205,9 @@ export class RealtimeSession extends llm.RealtimeSession {
 
     gen.textChannel.close();
     gen.audioChannel.close();
-    gen.functionChannel.close();
+    if (!keepFunctionChannelOpen) {
+      gen.functionChannel.close();
+    }
     gen.messageChannel.close();
     gen._done = true;
   }
@@ -1095,6 +1226,7 @@ export class RealtimeSession extends llm.RealtimeSession {
     const opts = this.options;
 
     const config: types.LiveConnectConfig = {
+      thinkingConfig: opts.thinkingConfig,
       responseModalities: opts.responseModalities,
       systemInstruction: opts.instructions
         ? {
@@ -1156,6 +1288,11 @@ export class RealtimeSession extends llm.RealtimeSession {
   }
 
   private startNewGeneration(): void {
+    // close functionChannel of previous generation if still open (no toolCall arrived)
+    if (this.currentGeneration && !this.currentGeneration.functionChannel.closed) {
+      this.currentGeneration.functionChannel.close();
+    }
+
     if (this.currentGeneration && !this.currentGeneration._done) {
       this.#logger.warn('Starting new generation while another is active. Finalizing previous.');
       this.markCurrentGenerationDone();
@@ -1196,6 +1333,7 @@ export class RealtimeSession extends llm.RealtimeSession {
       messageStream: this.currentGeneration.messageChannel.stream(),
       functionStream: this.currentGeneration.functionChannel.stream(),
       userInitiated: false,
+      responseId,
     };
 
     if (this.pendingGenerationFut && !this.pendingGenerationFut.done) {
@@ -1229,10 +1367,17 @@ export class RealtimeSession extends llm.RealtimeSession {
 
     const gen = this.currentGeneration;
 
-    if (serverContent.modelTurn) {
+    const discardOutput = this.earlyCompletionPending;
+
+    if (serverContent.modelTurn && !discardOutput) {
       const turn = serverContent.modelTurn;
 
       for (const part of turn.parts || []) {
+        // bypass reasoning/thought output
+        if (part.thought) {
+          continue;
+        }
+
         if (part.text) {
           gen.outputText += part.text;
           gen.textChannel.write(part.text);
@@ -1286,7 +1431,11 @@ export class RealtimeSession extends llm.RealtimeSession {
       } as llm.InputTranscriptionCompleted);
     }
 
-    if (serverContent.outputTranscription && serverContent.outputTranscription.text) {
+    if (
+      !discardOutput &&
+      serverContent.outputTranscription &&
+      serverContent.outputTranscription.text
+    ) {
       const text = serverContent.outputTranscription.text;
       gen.outputText += text;
       gen.textChannel.write(text);
@@ -1296,12 +1445,21 @@ export class RealtimeSession extends llm.RealtimeSession {
       gen._completedTimestamp = Date.now();
     }
 
-    if (serverContent.interrupted) {
+    if (serverContent.interrupted && !this.pendingGenerationFut) {
       this.handleInputSpeechStarted();
     }
 
-    if (serverContent.turnComplete) {
+    if (serverContent.turnComplete && !this.earlyCompletionPending) {
       this.markCurrentGenerationDone();
+    }
+
+    // Assume Gemini emits turnComplete/generationComplete before any new generation content.
+    // We keep discarding until that signal to avoid old stream spillover after interrupts.
+    if (
+      this.earlyCompletionPending &&
+      (serverContent.turnComplete || serverContent.generationComplete)
+    ) {
+      this.earlyCompletionPending = false;
     }
   }
 
@@ -1313,14 +1471,26 @@ export class RealtimeSession extends llm.RealtimeSession {
 
     const gen = this.currentGeneration;
 
-    for (const fc of toolCall.functionCalls || []) {
-      gen.functionChannel.write({
-        callId: fc.id || shortuuid('fnc-call-'),
-        name: fc.name,
-        args: fc.args ? JSON.stringify(fc.args) : '',
-      } as llm.FunctionCall);
+    if (gen.functionChannel.closed) {
+      this.#logger.warn('received tool call but functionChannel is already closed.');
+      return;
     }
 
+    for (const fc of toolCall.functionCalls || []) {
+      if (!fc.name) {
+        this.#logger.warn('received function call without name, skipping');
+        continue;
+      }
+      gen.functionChannel.write(
+        llm.FunctionCall.create({
+          callId: fc.id || shortuuid('fnc-call-'),
+          name: fc.name,
+          args: fc.args ? JSON.stringify(fc.args) : '',
+        }),
+      );
+    }
+
+    gen.functionChannel.close();
     this.markCurrentGenerationDone();
   }
 
@@ -1443,5 +1613,24 @@ export class RealtimeSession extends llm.RealtimeSession {
     } else {
       yield frame;
     }
+  }
+
+  private isNewGeneration(response: types.LiveServerMessage) {
+    if (this.earlyCompletionPending) {
+      return false;
+    }
+    if (response.toolCall) {
+      return true;
+    }
+
+    const serverContent = response.serverContent;
+    return (
+      !!serverContent &&
+      (serverContent.modelTurn ||
+        serverContent.outputTranscription != null ||
+        serverContent.inputTranscription != null ||
+        serverContent.generationComplete != null ||
+        serverContent.turnComplete != null)
+    );
   }
 }

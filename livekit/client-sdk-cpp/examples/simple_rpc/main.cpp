@@ -33,7 +33,6 @@
 #include <vector>
 
 #include "livekit/livekit.h"
-#include "livekit_ffi.h"
 
 using namespace livekit;
 using namespace std::chrono_literals;
@@ -67,12 +66,12 @@ inline double nowMs() {
 
 // Poll the room until a remote participant with the given identity appears,
 // or until 'timeout' elapses. Returns true if found, false on timeout.
-bool waitForParticipant(Room &room, const std::string &identity,
+bool waitForParticipant(Room *room, const std::string &identity,
                         std::chrono::milliseconds timeout) {
   auto start = std::chrono::steady_clock::now();
 
   while (std::chrono::steady_clock::now() - start < timeout) {
-    if (room.remoteParticipant(identity) != nullptr) {
+    if (room->remoteParticipant(identity) != nullptr) {
       return true;
     }
     std::this_thread::sleep_for(100ms);
@@ -82,7 +81,7 @@ bool waitForParticipant(Room &room, const std::string &identity,
 
 // For the caller: wait for a specific peer, and if they don't show up,
 // explain why and how to start them in another terminal.
-bool ensurePeerPresent(Room &room, const std::string &identity,
+bool ensurePeerPresent(Room *room, const std::string &identity,
                        const std::string &friendly_role, const std::string &url,
                        std::chrono::seconds timeout) {
   std::cout << "[Caller] Waiting up to " << timeout.count() << "s for "
@@ -96,7 +95,7 @@ bool ensurePeerPresent(Room &room, const std::string &identity,
     return true;
   }
   // Timed out
-  auto info = room.room_info();
+  auto info = room->room_info();
   const std::string room_name = info.name;
   std::cout << "[Caller] Timed out after " << timeout.count()
             << "s waiting for " << friendly_role << " (identity=\"" << identity
@@ -232,9 +231,9 @@ std::string parseStringFromJson(const std::string &json) {
 }
 
 // RPC handler registration
-void registerReceiverMethods(Room &greeters_room, Room &math_genius_room) {
-  LocalParticipant *greeter_lp = greeters_room.localParticipant();
-  LocalParticipant *math_genius_lp = math_genius_room.localParticipant();
+void registerReceiverMethods(Room *greeters_room, Room *math_genius_room) {
+  LocalParticipant *greeter_lp = greeters_room->localParticipant();
+  LocalParticipant *math_genius_lp = math_genius_room->localParticipant();
 
   // arrival
   greeter_lp->registerRpcMethod(
@@ -308,11 +307,11 @@ void registerReceiverMethods(Room &greeters_room, Room &math_genius_room) {
   // so the caller sees UNSUPPORTED_METHOD
 }
 
-void performGreeting(Room &room) {
+void performGreeting(Room *room) {
   std::cout << "[Caller] Letting the greeter know that I've arrived\n";
   double t0 = nowMs();
   try {
-    std::string response = room.localParticipant()->performRpc(
+    std::string response = room->localParticipant()->performRpc(
         "greeter", "arrival", "Hello", std::nullopt);
     double t1 = nowMs();
     std::cout << "[Caller] RTT: " << (t1 - t0) << " ms\n";
@@ -326,12 +325,12 @@ void performGreeting(Room &room) {
   }
 }
 
-void performSquareRoot(Room &room) {
+void performSquareRoot(Room *room) {
   std::cout << "[Caller] What's the square root of 16?\n";
   double t0 = nowMs();
   try {
     std::string payload = makeNumberJson("number", 16.0);
-    std::string response = room.localParticipant()->performRpc(
+    std::string response = room->localParticipant()->performRpc(
         "math-genius", "square-root", payload, std::nullopt);
     double t1 = nowMs();
     std::cout << "[Caller] RTT: " << (t1 - t0) << " ms\n";
@@ -345,7 +344,7 @@ void performSquareRoot(Room &room) {
   }
 }
 
-void performQuantumHyperGeometricSeries(Room &room) {
+void performQuantumHyperGeometricSeries(Room *room) {
   std::cout << "\n=== Unsupported Method Example ===\n";
   std::cout
       << "[Caller] Asking math-genius for 'quantum-hypergeometric-series'. "
@@ -353,7 +352,7 @@ void performQuantumHyperGeometricSeries(Room &room) {
   double t0 = nowMs();
   try {
     std::string payload = makeNumberJson("number", 42.0);
-    std::string response = room.localParticipant()->performRpc(
+    std::string response = room->localParticipant()->performRpc(
         "math-genius", "quantum-hypergeometric-series", payload, std::nullopt);
     double t1 = nowMs();
     std::cout << "[Caller] (Unexpected success) RTT=" << (t1 - t0) << " ms\n";
@@ -373,14 +372,14 @@ void performQuantumHyperGeometricSeries(Room &room) {
   }
 }
 
-void performDivide(Room &room) {
+void performDivide(Room *room) {
   std::cout << "\n=== Divide Example ===\n";
   std::cout << "[Caller] Asking math-genius to divide 10 by 0. "
                "This is EXPECTED to FAIL with an APPLICATION_ERROR.\n";
   double t0 = nowMs();
   try {
     std::string payload = "{\"dividend\":10,\"divisor\":0}";
-    std::string response = room.localParticipant()->performRpc(
+    std::string response = room->localParticipant()->performRpc(
         "math-genius", "divide", payload, std::nullopt);
     double t1 = nowMs();
     std::cout << "[Caller] (Unexpected success) RTT=" << (t1 - t0) << " ms\n";
@@ -401,7 +400,7 @@ void performDivide(Room &room) {
   }
 }
 
-void performLongCalculation(Room &room) {
+void performLongCalculation(Room *room) {
   std::cout << "\n=== Long Calculation Example ===\n";
   std::cout
       << "[Caller] Asking math-genius for a calculation that takes 30s.\n";
@@ -409,7 +408,7 @@ void performLongCalculation(Room &room) {
       << "[Caller] Giving only 10s to respond. EXPECTED RESULT: TIMEOUT.\n";
   double t0 = nowMs();
   try {
-    std::string response = room.localParticipant()->performRpc(
+    std::string response = room->localParticipant()->performRpc(
         "math-genius", "long-calculation", "{}", 10.0);
     double t1 = nowMs();
     std::cout << "[Caller] (Unexpected success) RTT=" << (t1 - t0) << " ms\n";
@@ -452,20 +451,22 @@ int main(int argc, char *argv[]) {
   // Ctrl-C to quit the program
   std::signal(SIGINT, handleSignal);
 
-  Room room{};
+  // Initialize the livekit with logging to console.
+  livekit::initialize(livekit::LogSink::kConsole);
+  auto room = std::make_unique<Room>();
   RoomOptions options;
   options.auto_subscribe = true;
   options.dynacast = false;
 
-  bool res = room.Connect(url, token, options);
+  bool res = room->Connect(url, token, options);
   std::cout << "Connect result is " << std::boolalpha << res << "\n";
   if (!res) {
     std::cerr << "Failed to connect to room\n";
-    FfiClient::instance().shutdown();
+    livekit::shutdown();
     return 1;
   }
 
-  auto info = room.room_info();
+  auto info = room->room_info();
   std::cout << "Connected to room:\n"
             << "  Name: " << info.name << "\n"
             << "  Metadata: " << info.metadata << "\n"
@@ -474,31 +475,32 @@ int main(int argc, char *argv[]) {
   try {
     if (role == "caller") {
       // Check that both peers are present (or explain how to start them).
-      bool has_greeter = ensurePeerPresent(room, "greeter", "greeter", url, 8s);
+      bool has_greeter =
+          ensurePeerPresent(room.get(), "greeter", "greeter", url, 8s);
       bool has_math_genius =
-          ensurePeerPresent(room, "math-genius", "math-genius", url, 8s);
+          ensurePeerPresent(room.get(), "math-genius", "math-genius", url, 8s);
       if (!has_greeter || !has_math_genius) {
         std::cout << "\n[Caller] One or more RPC peers are missing. "
                   << "Some examples may be skipped.\n";
       }
       if (has_greeter) {
         std::cout << "\n\nRunning greeting example...\n";
-        performGreeting(room);
+        performGreeting(room.get());
       } else {
         std::cout << "[Caller] Skipping greeting example because greeter is "
                      "not present.\n";
       }
       if (has_math_genius) {
         std::cout << "\n\nRunning error handling example...\n";
-        performDivide(room);
+        performDivide(room.get());
 
         std::cout << "\n\nRunning math example...\n";
-        performSquareRoot(room);
+        performSquareRoot(room.get());
         std::this_thread::sleep_for(2s);
-        performQuantumHyperGeometricSeries(room);
+        performQuantumHyperGeometricSeries(room.get());
 
         std::cout << "\n\nRunning long calculation with timeout...\n";
-        performLongCalculation(room);
+        performLongCalculation(room.get());
       } else {
         std::cout << "[Caller] Skipping math examples because math-genius is "
                      "not present.\n";
@@ -517,10 +519,10 @@ int main(int argc, char *argv[]) {
 
       if (role == "greeter") {
         // Use the same room object for both arguments; only "arrival" is used.
-        registerReceiverMethods(room, room);
+        registerReceiverMethods(room.get(), room.get());
       } else { // math-genius
         // We only need math handlers; greeter handlers won't be used.
-        registerReceiverMethods(room, room);
+        registerReceiverMethods(room.get(), room.get());
       }
 
       std::cout << "RPC handlers registered for role=" << role
@@ -537,6 +539,9 @@ int main(int argc, char *argv[]) {
     std::cerr << "Unexpected error in main: " << e.what() << "\n";
   }
 
-  FfiClient::instance().shutdown();
+  // It is important to clean up the delegate and room in order.
+  room->setDelegate(nullptr);
+  room.reset();
+  livekit::shutdown();
   return 0;
 }

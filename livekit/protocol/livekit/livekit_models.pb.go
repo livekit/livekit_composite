@@ -1776,8 +1776,10 @@ type ParticipantPermission struct {
 	Agent bool `protobuf:"varint,11,opt,name=agent,proto3" json:"agent,omitempty"`
 	// if a participant can subscribe to metrics
 	CanSubscribeMetrics bool `protobuf:"varint,12,opt,name=can_subscribe_metrics,json=canSubscribeMetrics,proto3" json:"can_subscribe_metrics,omitempty"`
-	unknownFields       protoimpl.UnknownFields
-	sizeCache           protoimpl.SizeCache
+	// if a participant can manage an agent session via RemoteSession (control and access state)
+	CanManageAgentSession bool `protobuf:"varint,13,opt,name=can_manage_agent_session,json=canManageAgentSession,proto3" json:"can_manage_agent_session,omitempty"`
+	unknownFields         protoimpl.UnknownFields
+	sizeCache             protoimpl.SizeCache
 }
 
 func (x *ParticipantPermission) Reset() {
@@ -1875,6 +1877,13 @@ func (x *ParticipantPermission) GetCanSubscribeMetrics() bool {
 	return false
 }
 
+func (x *ParticipantPermission) GetCanManageAgentSession() bool {
+	if x != nil {
+		return x.CanManageAgentSession
+	}
+	return false
+}
+
 type ParticipantInfo struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Sid      string                 `protobuf:"bytes,1,opt,name=sid,proto3" json:"sid,omitempty"`
@@ -1898,8 +1907,10 @@ type ParticipantInfo struct {
 	DisconnectReason DisconnectReason             `protobuf:"varint,16,opt,name=disconnect_reason,json=disconnectReason,proto3,enum=livekit.DisconnectReason" json:"disconnect_reason,omitempty"`
 	KindDetails      []ParticipantInfo_KindDetail `protobuf:"varint,18,rep,packed,name=kind_details,json=kindDetails,proto3,enum=livekit.ParticipantInfo_KindDetail" json:"kind_details,omitempty"`
 	DataTracks       []*DataTrackInfo             `protobuf:"bytes,19,rep,name=data_tracks,json=dataTracks,proto3" json:"data_tracks,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// protocol version used for client feature compatibility
+	ClientProtocol int32 `protobuf:"varint,20,opt,name=client_protocol,json=clientProtocol,proto3" json:"client_protocol,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ParticipantInfo) Reset() {
@@ -2049,6 +2060,13 @@ func (x *ParticipantInfo) GetDataTracks() []*DataTrackInfo {
 		return x.DataTracks
 	}
 	return nil
+}
+
+func (x *ParticipantInfo) GetClientProtocol() int32 {
+	if x != nil {
+		return x.ClientProtocol
+	}
+	return 0
 }
 
 type Encryption struct {
@@ -2571,6 +2589,7 @@ type VideoLayer struct {
 	Ssrc          uint32 `protobuf:"varint,5,opt,name=ssrc,proto3" json:"ssrc,omitempty"`
 	SpatialLayer  int32  `protobuf:"varint,6,opt,name=spatial_layer,json=spatialLayer,proto3" json:"spatial_layer,omitempty"`
 	Rid           string `protobuf:"bytes,7,opt,name=rid,proto3" json:"rid,omitempty"`
+	RepairSsrc    uint32 `protobuf:"varint,8,opt,name=repair_ssrc,json=repairSsrc,proto3" json:"repair_ssrc,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2652,6 +2671,13 @@ func (x *VideoLayer) GetRid() string {
 		return x.Rid
 	}
 	return ""
+}
+
+func (x *VideoLayer) GetRepairSsrc() uint32 {
+	if x != nil {
+		return x.RepairSsrc
+	}
+	return 0
 }
 
 // new DataPacket API
@@ -4163,9 +4189,11 @@ type ClientInfo struct {
 	Network string `protobuf:"bytes,10,opt,name=network,proto3" json:"network,omitempty"`
 	// comma separated list of additional LiveKit SDKs in use of this client, with versions
 	// e.g. "components-js:1.2.3,track-processors-js:1.2.3"
-	OtherSdks     string `protobuf:"bytes,11,opt,name=other_sdks,json=otherSdks,proto3" json:"other_sdks,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	OtherSdks string `protobuf:"bytes,11,opt,name=other_sdks,json=otherSdks,proto3" json:"other_sdks,omitempty"`
+	// client protocol version
+	ClientProtocol int32 `protobuf:"varint,12,opt,name=client_protocol,json=clientProtocol,proto3" json:"client_protocol,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ClientInfo) Reset() {
@@ -4273,6 +4301,13 @@ func (x *ClientInfo) GetOtherSdks() string {
 		return x.OtherSdks
 	}
 	return ""
+}
+
+func (x *ClientInfo) GetClientProtocol() int32 {
+	if x != nil {
+		return x.ClientProtocol
+	}
+	return 0
 }
 
 // server provided client configuration
@@ -6026,7 +6061,7 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\x10creation_time_ms\x18\x0f \x01(\x03R\x0ecreationTimeMs\x12#\n" +
 	"\rturn_password\x18\x06 \x01(\tR\fturnPassword\x125\n" +
 	"\x0eenabled_codecs\x18\a \x03(\v2\x0e.livekit.CodecR\renabledCodecs\x12B\n" +
-	"\bmetadata\x18\b \x01(\tB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12)\n" +
+	"\bmetadata\x18\b \x01(\tB&\x88\xec,\x01\x92\xec,\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12)\n" +
 	"\x10num_participants\x18\t \x01(\rR\x0fnumParticipants\x12%\n" +
 	"\x0enum_publishers\x18\v \x01(\rR\rnumPublishers\x12)\n" +
 	"\x10active_recording\x18\n" +
@@ -6038,7 +6073,7 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\fPlayoutDelay\x12\x18\n" +
 	"\aenabled\x18\x01 \x01(\bR\aenabled\x12\x10\n" +
 	"\x03min\x18\x02 \x01(\rR\x03min\x12\x10\n" +
-	"\x03max\x18\x03 \x01(\rR\x03max\"\x83\x03\n" +
+	"\x03max\x18\x03 \x01(\rR\x03max\"\xbc\x03\n" +
 	"\x15ParticipantPermission\x12#\n" +
 	"\rcan_subscribe\x18\x01 \x01(\bR\fcanSubscribe\x12\x1f\n" +
 	"\vcan_publish\x18\x02 \x01(\bR\n" +
@@ -6050,17 +6085,18 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\x13can_update_metadata\x18\n" +
 	" \x01(\bR\x11canUpdateMetadata\x12\x18\n" +
 	"\x05agent\x18\v \x01(\bB\x02\x18\x01R\x05agent\x122\n" +
-	"\x15can_subscribe_metrics\x18\f \x01(\bR\x13canSubscribeMetrics\"\x8b\t\n" +
+	"\x15can_subscribe_metrics\x18\f \x01(\bR\x13canSubscribeMetrics\x127\n" +
+	"\x18can_manage_agent_session\x18\r \x01(\bR\x15canManageAgentSession\"\xb4\t\n" +
 	"\x0fParticipantInfo\x12\x10\n" +
 	"\x03sid\x18\x01 \x01(\tR\x03sid\x12\x1a\n" +
 	"\bidentity\x18\x02 \x01(\tR\bidentity\x124\n" +
 	"\x05state\x18\x03 \x01(\x0e2\x1e.livekit.ParticipantInfo.StateR\x05state\x12*\n" +
 	"\x06tracks\x18\x04 \x03(\v2\x12.livekit.TrackInfoR\x06tracks\x12B\n" +
-	"\bmetadata\x18\x05 \x01(\tB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12\x1b\n" +
+	"\bmetadata\x18\x05 \x01(\tB&\x88\xec,\x01\x92\xec,\x1e<redacted ({{ .Size }} bytes)>R\bmetadata\x12\x1b\n" +
 	"\tjoined_at\x18\x06 \x01(\x03R\bjoinedAt\x12 \n" +
 	"\fjoined_at_ms\x18\x11 \x01(\x03R\n" +
 	"joinedAtMs\x12\x18\n" +
-	"\x04name\x18\t \x01(\tB\x04\x88\xb5\x18\x01R\x04name\x12\x18\n" +
+	"\x04name\x18\t \x01(\tB\x04\x88\xec,\x01R\x04name\x12\x18\n" +
 	"\aversion\x18\n" +
 	" \x01(\rR\aversion\x12>\n" +
 	"\n" +
@@ -6070,12 +6106,13 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\fis_publisher\x18\r \x01(\bR\visPublisher\x121\n" +
 	"\x04kind\x18\x0e \x01(\x0e2\x1d.livekit.ParticipantInfo.KindR\x04kind\x12p\n" +
 	"\n" +
-	"attributes\x18\x0f \x03(\v2(.livekit.ParticipantInfo.AttributesEntryB&\x88\xb5\x18\x01\x92\xb5\x18\x1e<redacted ({{ .Size }} bytes)>R\n" +
+	"attributes\x18\x0f \x03(\v2(.livekit.ParticipantInfo.AttributesEntryB&\x88\xec,\x01\x92\xec,\x1e<redacted ({{ .Size }} bytes)>R\n" +
 	"attributes\x12F\n" +
 	"\x11disconnect_reason\x18\x10 \x01(\x0e2\x19.livekit.DisconnectReasonR\x10disconnectReason\x12F\n" +
 	"\fkind_details\x18\x12 \x03(\x0e2#.livekit.ParticipantInfo.KindDetailR\vkindDetails\x127\n" +
 	"\vdata_tracks\x18\x13 \x03(\v2\x16.livekit.DataTrackInfoR\n" +
-	"dataTracks\x1a=\n" +
+	"dataTracks\x12'\n" +
+	"\x0fclient_protocol\x18\x14 \x01(\x05R\x0eclientProtocol\x1a=\n" +
 	"\x0fAttributesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\">\n" +
@@ -6120,7 +6157,7 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\tTrackInfo\x12\x10\n" +
 	"\x03sid\x18\x01 \x01(\tR\x03sid\x12&\n" +
 	"\x04type\x18\x02 \x01(\x0e2\x12.livekit.TrackTypeR\x04type\x12\x18\n" +
-	"\x04name\x18\x03 \x01(\tB\x04\x88\xb5\x18\x01R\x04name\x12\x14\n" +
+	"\x04name\x18\x03 \x01(\tB\x04\x88\xec,\x01R\x04name\x12\x14\n" +
 	"\x05muted\x18\x04 \x01(\bR\x05muted\x12\x14\n" +
 	"\x05width\x18\x05 \x01(\rR\x05width\x12\x16\n" +
 	"\x06height\x18\x06 \x01(\rR\x06height\x12 \n" +
@@ -6157,7 +6194,7 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\x1cDataTrackSubscriptionOptions\x12\"\n" +
 	"\n" +
 	"target_fps\x18\x01 \x01(\rH\x00R\ttargetFps\x88\x01\x01B\r\n" +
-	"\v_target_fps\"\xe9\x02\n" +
+	"\v_target_fps\"\x8a\x03\n" +
 	"\n" +
 	"VideoLayer\x12/\n" +
 	"\aquality\x18\x01 \x01(\x0e2\x15.livekit.VideoQualityR\aquality\x12\x14\n" +
@@ -6166,7 +6203,9 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\abitrate\x18\x04 \x01(\rR\abitrate\x12\x12\n" +
 	"\x04ssrc\x18\x05 \x01(\rR\x04ssrc\x12#\n" +
 	"\rspatial_layer\x18\x06 \x01(\x05R\fspatialLayer\x12\x10\n" +
-	"\x03rid\x18\a \x01(\tR\x03rid\"\x96\x01\n" +
+	"\x03rid\x18\a \x01(\tR\x03rid\x12\x1f\n" +
+	"\vrepair_ssrc\x18\b \x01(\rR\n" +
+	"repairSsrc\"\x96\x01\n" +
 	"\x04Mode\x12\x0f\n" +
 	"\vMODE_UNUSED\x10\x00\x12 \n" +
 	"\x1cONE_SPATIAL_LAYER_PER_STREAM\x10\x01\x12&\n" +
@@ -6297,7 +6336,7 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\x0eagent_protocol\x18\a \x01(\x05R\ragentProtocol\"\"\n" +
 	"\aEdition\x12\f\n" +
 	"\bStandard\x10\x00\x12\t\n" +
-	"\x05Cloud\x10\x01\"\x8b\x04\n" +
+	"\x05Cloud\x10\x01\"\xb4\x04\n" +
 	"\n" +
 	"ClientInfo\x12)\n" +
 	"\x03sdk\x18\x01 \x01(\x0e2\x17.livekit.ClientInfo.SDKR\x03sdk\x12\x18\n" +
@@ -6313,7 +6352,8 @@ const file_livekit_models_proto_rawDesc = "" +
 	"\anetwork\x18\n" +
 	" \x01(\tR\anetwork\x12\x1d\n" +
 	"\n" +
-	"other_sdks\x18\v \x01(\tR\totherSdks\"\xb3\x01\n" +
+	"other_sdks\x18\v \x01(\tR\totherSdks\x12'\n" +
+	"\x0fclient_protocol\x18\f \x01(\x05R\x0eclientProtocol\"\xb3\x01\n" +
 	"\x03SDK\x12\v\n" +
 	"\aUNKNOWN\x10\x00\x12\x06\n" +
 	"\x02JS\x10\x01\x12\t\n" +

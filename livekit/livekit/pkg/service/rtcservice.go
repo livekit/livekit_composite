@@ -90,13 +90,25 @@ func NewRTCService(
 }
 
 func (s *RTCService) SetupRoutes(mux *http.ServeMux) {
-	mux.Handle("/rtc", s)
-	mux.HandleFunc("/rtc/validate", s.validate)
+	mux.HandleFunc("/rtc", s.v0)
+	mux.HandleFunc("/rtc/validate", s.v0Validate)
+	mux.HandleFunc("/rtc/v1", s.v1)
+	mux.HandleFunc("/rtc/v1/validate", s.v1Validate)
 }
 
-func (s *RTCService) validate(w http.ResponseWriter, r *http.Request) {
+func (s *RTCService) v0Validate(w http.ResponseWriter, r *http.Request) {
 	lgr := utils.GetLogger(r.Context())
-	_, _, code, err := s.validateInternal(lgr, r, true)
+	_, _, code, err := s.validateInternal(lgr, r, false, true)
+	if err != nil {
+		HandleError(w, r, code, err)
+		return
+	}
+	_, _ = w.Write([]byte("success"))
+}
+
+func (s *RTCService) v1Validate(w http.ResponseWriter, r *http.Request) {
+	lgr := utils.GetLogger(r.Context())
+	_, _, code, err := s.validateInternal(lgr, r, true, true)
 	if err != nil {
 		HandleError(w, r, code, err)
 		return
@@ -120,13 +132,22 @@ var gzipReaderPool = sync.Pool{
 	New: func() any { return &gzip.Reader{} },
 }
 
-func (s *RTCService) validateInternal(lgr logger.Logger, r *http.Request, strict bool) (livekit.RoomName, routing.ParticipantInit, int, error) {
+func (s *RTCService) validateInternal(
+	lgr logger.Logger,
+	r *http.Request,
+	needsJoinRequest bool,
+	strict bool,
+) (livekit.RoomName, routing.ParticipantInit, int, error) {
 	var params ValidateConnectRequestParams
 	useSinglePeerConnection := false
 	joinRequest := &livekit.JoinRequest{}
 
 	wrappedJoinRequestBase64 := r.FormValue("join_request")
 	if wrappedJoinRequestBase64 == "" {
+		if needsJoinRequest {
+			return "", routing.ParticipantInit{}, http.StatusBadRequest, errors.New("join_request is required")
+		}
+
 		params.publish = r.FormValue("publish")
 
 		attributesStrParam := r.FormValue("attributes")
@@ -200,7 +221,17 @@ func (s *RTCService) validateInternal(lgr logger.Logger, r *http.Request, strict
 	if wrappedJoinRequestBase64 == "" {
 		pi.Reconnect = boolValue(r.FormValue("reconnect"))
 		pi.Client = ParseClientInfo(r)
+
 		pi.AutoSubscribe = true
+		if autoSubscribeParam := r.FormValue("auto_subscribe"); autoSubscribeParam != "" {
+			pi.AutoSubscribe = boolValue(autoSubscribeParam)
+		}
+
+		if autoSubscribeDataTrackParam := r.FormValue("auto_subscribe_data_track"); autoSubscribeDataTrackParam != "" {
+			autoSubscribeDataTrack := boolValue(autoSubscribeDataTrackParam)
+			pi.AutoSubscribeDataTrack = &autoSubscribeDataTrack
+		}
+
 		pi.AdaptiveStream = boolValue(r.FormValue("adaptive_stream"))
 		pi.DisableICELite = boolValue(r.FormValue("disable_ice_lite"))
 
@@ -211,12 +242,7 @@ func (s *RTCService) validateInternal(lgr logger.Logger, r *http.Request, strict
 			pi.ID = livekit.ParticipantID(r.FormValue("sid"))
 		}
 
-		if autoSubscribe := r.FormValue("auto_subscribe"); autoSubscribe != "" {
-			pi.AutoSubscribe = boolValue(autoSubscribe)
-		}
-
-		subscriberAllowPauseParam := r.FormValue("subscriber_allow_pause")
-		if subscriberAllowPauseParam != "" {
+		if subscriberAllowPauseParam := r.FormValue("subscriber_allow_pause"); subscriberAllowPauseParam != "" {
 			subscriberAllowPause := boolValue(subscriberAllowPauseParam)
 			pi.SubscriberAllowPause = &subscriberAllowPause
 		}
@@ -227,6 +253,10 @@ func (s *RTCService) validateInternal(lgr logger.Logger, r *http.Request, strict
 		pi.Client = joinRequest.ClientInfo
 
 		pi.AutoSubscribe = joinRequest.GetConnectionSettings().GetAutoSubscribe()
+
+		autoSubscribeDataTrack := joinRequest.GetConnectionSettings().GetAutoSubscribeDataTrack()
+		pi.AutoSubscribeDataTrack = &autoSubscribeDataTrack
+
 		pi.AdaptiveStream = joinRequest.GetConnectionSettings().GetAdaptiveStream()
 		pi.DisableICELite = joinRequest.GetConnectionSettings().GetDisableIceLite()
 
@@ -244,7 +274,15 @@ func (s *RTCService) validateInternal(lgr logger.Logger, r *http.Request, strict
 	return res.roomName, pi, code, err
 }
 
-func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (s *RTCService) v0(w http.ResponseWriter, r *http.Request) {
+	s.serve(w, r, false)
+}
+
+func (s *RTCService) v1(w http.ResponseWriter, r *http.Request) {
+	s.serve(w, r, true)
+}
+
+func (s *RTCService) serve(w http.ResponseWriter, r *http.Request, needsJoinRequest bool) {
 	// reject non websocket requests
 	if !websocket.IsWebSocketUpgrade(r) {
 		w.WriteHeader(404)
@@ -295,7 +333,7 @@ func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		loggerResolved = false
 	}
 
-	roomName, pi, code, err = s.validateInternal(pLogger, r, false)
+	roomName, pi, code, err = s.validateInternal(pLogger, r, needsJoinRequest, false)
 	if err != nil {
 		HandleError(w, r, code, err)
 		return
@@ -344,7 +382,7 @@ func (s *RTCService) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		resolveLogger(false)
 	}
 
-	signalStats := telemetry.NewBytesSignalStats(r.Context(), s.telemetry)
+	signalStats := rtc.NewBytesSignalStats(r.Context(), s.telemetry)
 	if join := initialResponse.GetJoin(); join != nil {
 		signalStats.ResolveRoom(join.GetRoom())
 		signalStats.ResolveParticipant(join.GetParticipant())

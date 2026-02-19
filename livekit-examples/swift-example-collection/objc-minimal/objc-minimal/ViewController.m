@@ -26,7 +26,7 @@
 - (void)room:(Room *)room localParticipant:(LocalParticipant *)participant didPublishTrack:(LocalTrackPublication *)publication {
     id localTrack = publication.track;
     // filter out audio tracks etc
-    if ([localTrack conformsToProtocol:@protocol(VideoTrack)]) {
+    if ([localTrack conformsToProtocol:@protocol(VideoTrackProtocol)]) {
         _localVideoView.track = localTrack;
     }
 }
@@ -34,7 +34,7 @@
 - (void)room:(Room *)room participant:(RemoteParticipant *)participant didSubscribeTrack:(RemoteTrackPublication *)publication {
     id remoteTrack = publication.track;
     // filter out audio tracks etc
-    if ([remoteTrack conformsToProtocol:@protocol(VideoTrack)]) {
+    if ([remoteTrack conformsToProtocol:@protocol(VideoTrackProtocol)]) {
         _remoteVideoView.track = remoteTrack;
     }
 }

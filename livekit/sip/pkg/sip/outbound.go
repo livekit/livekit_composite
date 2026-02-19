@@ -18,7 +18,9 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"net"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -33,11 +35,11 @@ import (
 	"github.com/livekit/media-sdk/tones"
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
-	"github.com/livekit/protocol/tracer"
 	"github.com/livekit/protocol/utils/guid"
 	"github.com/livekit/protocol/utils/traceid"
 	"github.com/livekit/psrpc"
 	lksdk "github.com/livekit/server-sdk-go/v2"
+	"github.com/livekit/sipgo"
 	"github.com/livekit/sipgo/sip"
 
 	"github.com/livekit/sip/pkg/config"
@@ -61,6 +63,7 @@ type sipOutboundConfig struct {
 	ringingTimeout  time.Duration
 	maxCallDuration time.Duration
 	enabledFeatures []livekit.SIPFeature
+	featureFlags    map[string]string
 	mediaEncryption sdp.Encryption
 	displayName     *string
 }
@@ -88,6 +91,7 @@ type outboundCall struct {
 }
 
 func (c *Client) newCall(ctx context.Context, tid traceid.ID, conf *config.Config, log logger.Logger, id LocalTag, room RoomConfig, sipConf sipOutboundConfig, state *CallState, projectID string) (*outboundCall, error) {
+	signalLoggingEnabled, _ := strconv.ParseBool(sipConf.featureFlags[signalLoggingFeatureFlag])
 	if sipConf.maxCallDuration <= 0 || sipConf.maxCallDuration > maxCallDuration {
 		sipConf.maxCallDuration = maxCallDuration
 	}
@@ -96,6 +100,7 @@ func (c *Client) newCall(ctx context.Context, tid traceid.ID, conf *config.Confi
 	}
 	jitterBuf := SelectValueBool(conf.EnableJitterBuffer, conf.EnableJitterBufferProb)
 	room.JitterBuf = jitterBuf
+	room.LogSignalChanges = signalLoggingEnabled
 
 	tr := TransportFrom(sipConf.transport)
 	contact := c.ContactURI(tr)
@@ -140,18 +145,20 @@ func (c *Client) newCall(ctx context.Context, tid traceid.ID, conf *config.Confi
 		MediaTimeoutInitial: c.conf.MediaTimeoutInitial,
 		MediaTimeout:        c.conf.MediaTimeout,
 		EnableJitterBuffer:  call.jitterBuf,
+		LogSignalChanges:    signalLoggingEnabled,
 		Stats:               &call.stats.Port,
 		NoInputResample:     !RoomResample,
+		IgnorePreanswerData: true,
 	}, RoomSampleRate)
 	if err != nil {
-		call.close(errors.Wrap(err, "media failed"), callDropped, "media-failed", livekit.DisconnectReason_UNKNOWN_REASON)
+		call.close(ctx, errors.Wrap(err, "media failed"), callDropped, "media-failed", livekit.DisconnectReason_UNKNOWN_REASON)
 		return nil, err
 	}
 	call.media.SetDTMFAudio(conf.AudioDTMF)
 	call.media.EnableTimeout(false)
 	call.media.DisableOut() // disabled until we get 200
 	if err := call.connectToRoom(ctx, room, c.getRoom); err != nil {
-		call.close(errors.Wrap(err, "room join failed"), callDropped, "join-failed", livekit.DisconnectReason_UNKNOWN_REASON)
+		call.close(ctx, errors.Wrap(err, "room join failed"), callDropped, "join-failed", livekit.DisconnectReason_UNKNOWN_REASON)
 		return nil, fmt.Errorf("update room failed: %w", err)
 	}
 
@@ -192,15 +199,16 @@ func (c *outboundCall) setErrStatus(ctx context.Context, err error) {
 }
 
 func (c *outboundCall) Dial(ctx context.Context) error {
+	ctx, span := Tracer.Start(ctx, "sip.outbound.Dial")
+	defer span.End()
 	ctx, cancel := context.WithTimeout(ctx, c.sipConf.maxCallDuration)
 	defer cancel()
 	c.mon.CallStart()
 	defer c.mon.CallEnd()
 
-	defer c.ensureClosed(ctx)
-
 	err := c.connectSIP(ctx, c.tid)
 	if err != nil {
+		c.ensureClosed(ctx)
 		return err // connectSIP updates the error code on the callInfo
 	}
 
@@ -218,6 +226,8 @@ func (c *outboundCall) Dial(ctx context.Context) error {
 }
 
 func (c *outboundCall) WaitClose(ctx context.Context) error {
+	ctx, span := Tracer.Start(ctx, "sip.outbound.WaitClose")
+	defer span.End()
 	return c.waitClose(ctx, c.tid)
 }
 func (c *outboundCall) waitClose(ctx context.Context, tid traceid.ID) error {
@@ -238,10 +248,10 @@ func (c *outboundCall) waitClose(ctx context.Context, tid traceid.ID) error {
 			c.log.Debugw("sending keep-alive")
 			c.state.ForceFlush(ctx)
 		case <-c.Disconnected():
-			c.CloseWithReason(callDropped, "removed", livekit.DisconnectReason_CLIENT_INITIATED)
+			c.CloseWithReason(ctx, callDropped, "removed", livekit.DisconnectReason_CLIENT_INITIATED)
 			return nil
 		case <-c.media.Timeout():
-			c.closeWithTimeout()
+			c.closeWithTimeout(ctx)
 			err := psrpc.NewErrorf(psrpc.DeadlineExceeded, "media timeout")
 			c.setErrStatus(ctx, err)
 			return err
@@ -252,6 +262,8 @@ func (c *outboundCall) waitClose(ctx context.Context, tid traceid.ID) error {
 }
 
 func (c *outboundCall) DialAsync(ctx context.Context) {
+	ctx, span := Tracer.Start(ctx, "sip.outbound.DialAsync")
+	defer span.End()
 	ctx = context.WithoutCancel(ctx)
 	go func() {
 		if err := c.Dial(ctx); err != nil {
@@ -269,31 +281,32 @@ func (c *outboundCall) Disconnected() <-chan struct{} {
 	return c.lkRoom.Closed()
 }
 
-func (c *outboundCall) Close() error {
+func (c *outboundCall) Close(ctx context.Context) error {
 	c.closing.Break()
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.close(nil, callDropped, "shutdown", livekit.DisconnectReason_SERVER_SHUTDOWN)
+	c.close(ctx, nil, callDropped, "shutdown", livekit.DisconnectReason_SERVER_SHUTDOWN)
 	return nil
 }
 
-func (c *outboundCall) CloseWithReason(status CallStatus, description string, reason livekit.DisconnectReason) {
+func (c *outboundCall) CloseWithReason(ctx context.Context, status CallStatus, description string, reason livekit.DisconnectReason) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.close(nil, status, description, reason)
+	c.close(ctx, nil, status, description, reason)
 }
 
-func (c *outboundCall) closeWithTimeout() {
+func (c *outboundCall) closeWithTimeout(ctx context.Context) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	c.close(psrpc.NewErrorf(psrpc.DeadlineExceeded, "media-timeout"), callDropped, "media-timeout", livekit.DisconnectReason_UNKNOWN_REASON)
+	c.close(ctx, psrpc.NewErrorf(psrpc.DeadlineExceeded, "media-timeout"), callDropped, "media-timeout", livekit.DisconnectReason_UNKNOWN_REASON)
 }
 
 func (c *outboundCall) printStats() {
 	c.stats.Log(c.log, c.callStart)
 }
 
-func (c *outboundCall) close(err error, status CallStatus, description string, reason livekit.DisconnectReason) {
+func (c *outboundCall) close(ctx context.Context, err error, status CallStatus, description string, reason livekit.DisconnectReason) {
+	ctx = context.WithoutCancel(ctx)
 	c.stopped.Once(func() {
 		c.stats.Closed.Store(true)
 		defer func() {
@@ -307,7 +320,7 @@ func (c *outboundCall) close(err error, status CallStatus, description string, r
 		} else {
 			c.log.Infow("Closing outbound call", "reason", description)
 		}
-		c.state.Update(context.Background(), func(info *livekit.SIPCallInfo) {
+		c.state.Update(ctx, func(info *livekit.SIPCallInfo) {
 			if err != nil && info.Error == "" {
 				info.Error = err.Error()
 				info.CallStatus = livekit.SIPCallStatus_SCS_ERROR
@@ -319,7 +332,7 @@ func (c *outboundCall) close(err error, status CallStatus, description string, r
 		// This ensures participant attributes are still available for
 		// attributes_to_headers mapping in the setHeaders callback.
 		// See: https://github.com/livekit/sip/issues/404
-		c.stopSIP(description)
+		c.stopSIP(ctx, description)
 		c.media.Close()
 
 		if r := c.lkRoom; r != nil {
@@ -340,7 +353,10 @@ func (c *outboundCall) close(err error, status CallStatus, description string, r
 		// Call the handler asynchronously to avoid blocking
 		if c.c.handler != nil {
 			go func(tid traceid.ID) {
-				c.c.handler.OnSessionEnd(context.Background(), &CallIdentifier{
+				ctx := context.WithoutCancel(ctx)
+				ctx, span := Tracer.Start(ctx, "sip.outbound.OnSessionEnd")
+				defer span.End()
+				c.c.handler.OnSessionEnd(ctx, &CallIdentifier{
 					TraceID:   tid,
 					ProjectID: c.projectID,
 					CallID:    c.state.callInfo.CallId,
@@ -358,7 +374,7 @@ func (c *outboundCall) Participant() ParticipantInfo {
 }
 
 func (c *outboundCall) connectSIP(ctx context.Context, tid traceid.ID) error {
-	ctx, span := tracer.Start(ctx, "outboundCall.connectSIP")
+	ctx, span := Tracer.Start(ctx, "sip.outbound.connectSIP")
 	defer span.End()
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -377,8 +393,11 @@ func (c *outboundCall) connectSIP(ctx context.Context, tid traceid.ID) error {
 				status, desc, reason = callRejected, "busy", livekit.DisconnectReason_USER_REJECTED
 				reportErr = nil
 			}
+		} else if errors.Is(err, sdp.ErrNoCommonCrypto) {
+			status, desc, reason = callRejected, "encryption-required", livekit.DisconnectReason_MEDIA_FAILURE
+			reportErr = nil
 		}
-		c.close(reportErr, status, desc, reason)
+		c.close(ctx, reportErr, status, desc, reason)
 		return err
 	}
 	c.connectMedia()
@@ -389,7 +408,7 @@ func (c *outboundCall) connectSIP(ctx context.Context, tid traceid.ID) error {
 }
 
 func (c *outboundCall) connectToRoom(ctx context.Context, lkNew RoomConfig, getRoom GetRoomFunc) error {
-	ctx, span := tracer.Start(ctx, "outboundCall.connectToRoom")
+	ctx, span := Tracer.Start(ctx, "sip.outbound.connectToRoom")
 	defer span.End()
 	attrs := lkNew.Participant.Attributes
 	if attrs == nil {
@@ -430,7 +449,7 @@ func (c *outboundCall) dialSIP(ctx context.Context, tid traceid.ID) error {
 
 		// Play dialtone to the room while participant connects
 		go func(tid traceid.ID) {
-			rctx, span := tracer.Start(rctx, "tones.Play")
+			rctx, span := Tracer.Start(rctx, "tones.Play")
 			defer span.End()
 
 			if dst == nil {
@@ -478,10 +497,10 @@ func sipResponse(ctx context.Context, tx sip.ClientTransaction, stop <-chan stru
 		select {
 		case <-ctx.Done():
 			_ = tx.Cancel()
-			return nil, psrpc.NewErrorf(psrpc.Canceled, "canceled")
+			return nil, psrpc.NewErrorf(psrpc.DeadlineExceeded, "sip request timed out")
 		case <-stop:
 			_ = tx.Cancel()
-			return nil, psrpc.NewErrorf(psrpc.Canceled, "canceled")
+			return nil, psrpc.NewErrorf(psrpc.Canceled, "service shutting down")
 		case <-tx.Done():
 			return nil, psrpc.NewErrorf(psrpc.Canceled, "transaction failed to complete (%d intermediate responses)", cnt)
 		case res := <-tx.Responses():
@@ -498,9 +517,21 @@ func sipResponse(ctx context.Context, tx sip.ClientTransaction, stop <-chan stru
 	}
 }
 
-func (c *outboundCall) stopSIP(reason string) {
+func (c *outboundCall) stopSIP(ctx context.Context, reason string) {
+	termCtx, cancel := context.WithCancel(context.Background()) // Do not use ctx
+	defer cancel()
+	go func() {
+		select {
+		case <-termCtx.Done():
+			return
+		case <-time.After(5 * time.Minute):
+			c.mon.CallTerminationFailure()
+			c.log.Errorw("call failed to terminate after 5 minutes", nil) // To be able to get call IDs
+		}
+	}()
+
 	c.mon.CallTerminate(reason)
-	c.cc.Close()
+	c.cc.Close(ctx)
 }
 
 func (c *outboundCall) setStatus(v CallStatus) {
@@ -533,7 +564,7 @@ func (c *outboundCall) setExtraAttrs(hdrToAttr map[string]string, opts livekit.S
 }
 
 func (c *outboundCall) sipSignal(ctx context.Context, tid traceid.ID) error {
-	ctx, span := tracer.Start(ctx, "outboundCall.sipSignal")
+	ctx, span := Tracer.Start(ctx, "sip.outbound.sipSignal")
 	defer span.End()
 
 	if c.sipConf.ringingTimeout > 0 {
@@ -582,6 +613,17 @@ func (c *outboundCall) sipSignal(ctx context.Context, tid traceid.ID) error {
 		}
 		c.setExtraAttrs(nil, 0, nil, hdrs)
 	})
+	// Update SIPCallInfo with the SIP Call-ID after Invite
+	if sipCallID := c.cc.SIPCallID(); sipCallID != "" {
+		c.state.DeferUpdate(func(info *livekit.SIPCallInfo) {
+			info.SipCallId = sipCallID
+			// Set callidfull in participant attributes for backwards compatibility
+			if info.ParticipantAttributes == nil {
+				info.ParticipantAttributes = make(map[string]string)
+			}
+			info.ParticipantAttributes[AttrSIPCallIDFull] = sipCallID
+		})
+	}
 	if err != nil {
 		// TODO: should we retry? maybe new offer will work
 		var e *livekit.SIPStatus
@@ -593,7 +635,7 @@ func (c *outboundCall) sipSignal(ctx context.Context, tid traceid.ID) error {
 		} else {
 			c.mon.InviteError("other")
 		}
-		c.cc.Close()
+		c.cc.Close(ctx)
 		c.log.Infow("SIP invite failed", "error", err)
 		return err
 	}
@@ -606,7 +648,7 @@ func (c *outboundCall) sipSignal(ctx context.Context, tid traceid.ID) error {
 	if err != nil {
 		return err
 	}
-	mc.Processor = c.c.handler.GetMediaProcessor(c.sipConf.enabledFeatures)
+	mc.Processor = c.c.handler.GetMediaProcessor(c.sipConf.enabledFeatures, c.sipConf.featureFlags)
 	if err = c.media.SetConfig(mc); err != nil {
 		return err
 	}
@@ -646,6 +688,8 @@ func (c *outboundCall) handleDTMF(ev dtmf.Event) {
 }
 
 func (c *outboundCall) transferCall(ctx context.Context, transferTo string, headers map[string]string, dialtone bool) (retErr error) {
+	ctx, span := Tracer.Start(ctx, "sip.outbound.transferCall")
+	defer span.End()
 	var err error
 
 	tID := c.state.StartTransfer(ctx, transferTo)
@@ -688,7 +732,9 @@ func (c *outboundCall) transferCall(ctx context.Context, transferTo string, head
 	c.log.Infow("outbound call transferred", "transferTo", transferTo)
 
 	// Give time for the peer to hang up first, but hang up ourselves if this doesn't happen within 1 second
-	time.AfterFunc(referByeTimeout, func() { c.CloseWithReason(CallHangup, "call transferred", livekit.DisconnectReason_CLIENT_INITIATED) })
+	time.AfterFunc(referByeTimeout, func() {
+		c.CloseWithReason(ctx, CallHangup, "call transferred", livekit.DisconnectReason_CLIENT_INITIATED)
+	})
 
 	return nil
 }
@@ -788,7 +834,7 @@ func (c *sipOutbound) RemoteHeaders() Headers {
 }
 
 func (c *sipOutbound) Invite(ctx context.Context, to URI, user, pass string, headers map[string]string, sdpOffer []byte, setState sipRespFunc) ([]byte, error) {
-	ctx, span := tracer.Start(ctx, "sipOutbound.Invite")
+	ctx, span := Tracer.Start(ctx, "sip.outbound.Invite")
 	defer span.End()
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -814,7 +860,7 @@ func (c *sipOutbound) Invite(ctx context.Context, to URI, user, pass string, hea
 authLoop:
 	for try := 0; ; try++ {
 		if try >= 5 {
-			return nil, fmt.Errorf("max auth retry attemps reached")
+			return nil, psrpc.NewError(psrpc.FailedPrecondition, fmt.Errorf("max auth retry attempts reached for SIP invite"))
 		}
 		req, resp, err = c.attemptInvite(ctx, sip.CallIDHeader(c.callID), toHeader, sdpOffer, authHeaderRespName, authHeader, sipHeaders, setState)
 		if err != nil {
@@ -854,11 +900,11 @@ authLoop:
 		c.log.Infow("auth requested", "status", resp.StatusCode, "body", string(resp.Body()))
 		// auth required
 		if user == "" || pass == "" {
-			return nil, errors.New("server required auth, but no username or password was provided")
+			return nil, psrpc.NewError(psrpc.FailedPrecondition, errors.New("sip server required auth, but no username or password was provided"))
 		}
 		headerVal := resp.GetHeader(authHeaderName)
 		if headerVal == nil {
-			return nil, errors.New("no auth header in response")
+			return nil, psrpc.NewError(psrpc.FailedPrecondition, errors.New("no auth header in sip invite response"))
 		}
 		challengeStr := headerVal.Value()
 		challenge, err := digest.ParseChallenge(challengeStr)
@@ -920,7 +966,7 @@ func (c *sipOutbound) AcceptBye(req *sip.Request, tx sip.ServerTransaction) {
 }
 
 func (c *sipOutbound) AckInviteOK(ctx context.Context) error {
-	ctx, span := tracer.Start(ctx, "sipOutbound.AckInviteOK")
+	ctx, span := Tracer.Start(ctx, "sip.outbound.AckInviteOK")
 	defer span.End()
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -931,7 +977,7 @@ func (c *sipOutbound) AckInviteOK(ctx context.Context) error {
 }
 
 func (c *sipOutbound) attemptInvite(ctx context.Context, callID sip.CallIDHeader, to *sip.ToHeader, offer []byte, authHeaderName, authHeader string, headers Headers, setState sipRespFunc) (*sip.Request, *sip.Response, error) {
-	ctx, span := tracer.Start(ctx, "sipOutbound.attemptInvite")
+	ctx, span := Tracer.Start(ctx, "sip.outbound.attemptInvite")
 	defer span.End()
 	req := sip.NewRequest(sip.INVITE, to.Address)
 	c.setCSeq(req)
@@ -959,6 +1005,24 @@ func (c *sipOutbound) attemptInvite(ctx context.Context, callID sip.CallIDHeader
 	}
 	defer tx.Terminate()
 
+	// Log the actual local port used for TCP connections from the DialPort range
+	if req.Transport() == "TCP" {
+		// Type-assert to *sipgo.Client to access the embedded UserAgent
+		if sipClient, ok := c.c.sipCli.(*sipgo.Client); ok {
+			if tpl := sipClient.TransportLayer(); tpl != nil {
+				// Try to get the connection using the destination address
+				// The connection should be available after TransactionRequest creates it
+				if dest := req.Destination(); dest != "" {
+					if conn, err := tpl.GetConnection("tcp", dest); err == nil && conn != nil {
+						if tcpAddr, ok := conn.LocalAddr().(*net.TCPAddr); ok && tcpAddr != nil {
+							c.log.Debugw("TCP connection using port on cloud-sip side", "port", tcpAddr.Port)
+						}
+					}
+				}
+			}
+		}
+	}
+
 	resp, err := sipResponse(ctx, tx, c.c.closing.Watch(), setState)
 	return req, resp, err
 }
@@ -977,12 +1041,12 @@ func (c *sipOutbound) setCSeq(req *sip.Request) {
 	c.nextCSeq++
 }
 
-func (c *sipOutbound) sendBye() {
+func (c *sipOutbound) sendBye(ctx context.Context) {
+	ctx = context.WithoutCancel(ctx)
 	if c.invite == nil || c.inviteOk == nil {
 		return // call wasn't established
 	}
-	ctx := context.Background()
-	_, span := tracer.Start(ctx, "sipOutbound.sendBye")
+	ctx, span := Tracer.Start(ctx, "sip.outbound.sendBye")
 	defer span.End()
 	r := sip.NewByeRequest(c.invite, c.inviteOk, nil)
 	r.AppendHeader(sip.NewHeader("User-Agent", "LiveKit"))
@@ -999,6 +1063,24 @@ func (c *sipOutbound) sendBye() {
 	c.setCSeq(r)
 	c.drop()
 	sendAndACK(ctx, c, r)
+}
+
+func (c *sipOutbound) sendCancel(ctx context.Context) {
+	ctx = context.WithoutCancel(ctx)
+	if c.invite == nil {
+		return
+	}
+	ctx, span := Tracer.Start(ctx, "sip.outbound.sendCancel")
+	defer span.End()
+	r := sip.NewCancelRequest(c.invite)
+	r.AppendHeader(sip.NewHeader("User-Agent", "LiveKit"))
+	if c.getHeaders != nil {
+		for k, v := range c.getHeaders(nil) {
+			r.AppendHeader(sip.NewHeader(k, v))
+		}
+	}
+	_ = c.WriteRequest(r)
+	c.drop()
 }
 
 func (c *sipOutbound) drop() {
@@ -1079,11 +1161,14 @@ func (c *sipOutbound) handleNotify(req *sip.Request, tx sip.ServerTransaction) e
 	}
 }
 
-func (c *sipOutbound) Close() {
+func (c *sipOutbound) Close(ctx context.Context) {
+	ctx = context.WithoutCancel(ctx)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.inviteOk != nil {
-		c.sendBye()
+		c.sendBye(ctx)
+	} else if c.invite != nil {
+		c.sendCancel(ctx)
 	} else {
 		c.drop()
 	}

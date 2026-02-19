@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -191,10 +191,12 @@ extension LKRTCRtpEncodingParameters {
         "RTCRtpEncodingParameters(" +
             "rid: \(String(describing: rid)), " +
             "isActive: \(String(describing: isActive)), " +
-            "minBitrateBps: \(String(describing: minBitrateBps))" +
-            "maxBitrateBps: \(String(describing: maxBitrateBps))" +
-            "maxFramerate: \(String(describing: maxFramerate))" +
-            "scaleResolutionDownBy: \(String(describing: scaleResolutionDownBy))" +
+            "minBitrateBps: \(String(describing: minBitrateBps)), " +
+            "maxBitrateBps: \(String(describing: maxBitrateBps)), " +
+            "maxFramerate: \(String(describing: maxFramerate)), " +
+            "scaleResolutionDownBy: \(String(describing: scaleResolutionDownBy)), " +
+            "bitratePriority: \(bitratePriority), " +
+            "networkPriority: \(networkPriority)" +
             ")"
     }
 }

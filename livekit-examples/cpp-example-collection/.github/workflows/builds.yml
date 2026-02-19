@@ -1,0 +1,160 @@
+name: Build examples against latest LiveKit SDK (via CMake)
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            name: linux-x64
+          - os: macos-latest
+            name: macos-arm64
+          - os: windows-latest
+            name: windows-x64
+
+    name: Build (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ---------- deps ----------
+      - name: Install deps (Ubuntu)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -eux
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake ninja-build pkg-config \
+            protobuf-compiler libprotobuf-dev \
+            libssl-dev \
+            curl
+
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -eux
+          brew update
+          brew install cmake ninja protobuf
+
+      - name: Install deps (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+          choco install -y ninja
+
+      - name: Setup MSVC (Windows)
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      # ---------- configure + build ----------
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -eux
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -eux
+          cmake --build build --config Release
+
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja `
+            -DCMAKE_BUILD_TYPE=Release `
+            -DCMAKE_C_COMPILER=cl `
+            -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cmake --build build --config Release
+
+      # ---------- smoke test ----------
+      - name: Smoke test (Linux/macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          sdk_root="$(ls -d build/_deps/livekit-sdk/* | head -n 1)"
+          echo "SDK root: ${sdk_root}"
+          ls -la "${sdk_root}/lib" || true
+          # Locate executable (it may not be directly under build/)
+          exe="$(find build -type f -name basic_room -perm -111 | head -n 1)"
+          if [[ -z "${exe}" ]]; then
+            echo "basic_room executable not found under build/"
+            find build -maxdepth 3 -type f -print
+            exit 1
+          fi
+          echo "Running: ${exe} --self-test"
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            export LD_LIBRARY_PATH="${sdk_root}/lib:${LD_LIBRARY_PATH:-}"
+          else
+            export DYLD_LIBRARY_PATH="${sdk_root}/lib:${DYLD_LIBRARY_PATH:-}"
+          fi
+          "${exe}" --self-test
+
+
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Locate SDK root
+          $sdkRoot = Get-ChildItem -Directory "build/_deps/livekit-sdk" | Select-Object -First 1
+          if (-not $sdkRoot) {
+          throw "SDK root not found under build/_deps/livekit-sdk"
+          }
+          Write-Host "SDK root: $($sdkRoot.FullName)"
+          # Make sure DLLs are found at runtime
+          $env:PATH = "$($sdkRoot.FullName)\bin;$($sdkRoot.FullName)\lib;$env:PATH"
+          # Locate the built executable
+          $exe = Get-ChildItem -Recurse build -Filter basic_room.exe | Select-Object -First 1
+          if (-not $exe) {
+            throw "basic_room.exe not found in build directory"
+          }
+          Write-Host "Running $($exe.FullName) --help"
+          # Try to execute it. We only care that it launches.
+          $out = & $exe.FullName --self-test 2>&1
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            Write-Host $out
+            throw "basic_room.exe --self-test failed with exit code $code"
+          }
+          Write-Host $out
+
+      # ---------- upload build output ----------
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: basic_room-${{ matrix.name }}
+          path: |
+            build/basic_room*
+            build/basic_room.exe
+          retention-days: 7

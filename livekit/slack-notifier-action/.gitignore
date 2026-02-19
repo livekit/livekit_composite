@@ -1,3 +1,5 @@
 .idea/
 .DS_Store
 slack-notify-config.json
+.claude
+docs/

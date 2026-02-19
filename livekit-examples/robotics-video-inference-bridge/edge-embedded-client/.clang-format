@@ -1,0 +1,9 @@
+BasedOnStyle: LLVM
+BinPackArguments: false
+BinPackParameters: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+BreakBeforeBraces: Attach
+ColumnLimit: 100
+IndentWidth: 4
+UseTab: Never

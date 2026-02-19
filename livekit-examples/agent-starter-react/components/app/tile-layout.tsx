@@ -1,15 +1,17 @@
 import React, { useMemo } from 'react';
+import { useTheme } from 'next-themes';
 import { Track } from 'livekit-client';
 import { AnimatePresence, motion } from 'motion/react';
 import {
-  BarVisualizer,
   type TrackReference,
   VideoTrack,
   useLocalParticipant,
   useTracks,
   useVoiceAssistant,
 } from '@livekit/components-react';
-import { cn } from '@/lib/utils';
+import { AppConfig } from '@/app-config';
+import { AudioVisualizer } from '@/components/app/audio-visualizer';
+import { cn } from '@/lib/shadcn/utils';
 
 const MotionContainer = motion.create('div');
 
@@ -71,14 +73,12 @@ export function useLocalTrackRef(source: Track.Source) {
 
 interface TileLayoutProps {
   chatOpen: boolean;
+  appConfig: AppConfig;
 }
 
-export function TileLayout({ chatOpen }: TileLayoutProps) {
-  const {
-    state: agentState,
-    audioTrack: agentAudioTrack,
-    videoTrack: agentVideoTrack,
-  } = useVoiceAssistant();
+export function TileLayout({ chatOpen, appConfig }: TileLayoutProps) {
+  const { resolvedTheme } = useTheme();
+  const { videoTrack: agentVideoTrack } = useVoiceAssistant();
   const [screenShareTrack] = useTracks([Track.Source.ScreenShare]);
   const cameraTrack: TrackReference | undefined = useLocalTrackRef(Track.Source.Camera);
 
@@ -110,38 +110,36 @@ export function TileLayout({ chatOpen }: TileLayoutProps) {
                 <MotionContainer
                   key="agent"
                   layoutId="agent"
-                  initial={{
-                    opacity: 0,
-                    scale: 0,
-                  }}
-                  animate={{
-                    opacity: 1,
-                    scale: chatOpen ? 1 : 5,
-                  }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{
                     ...ANIMATION_TRANSITION,
                     delay: animationDelay,
                   }}
-                  className={cn(
-                    'bg-background aspect-square h-[90px] rounded-md border border-transparent transition-[border,drop-shadow]',
-                    chatOpen && 'border-input/50 drop-shadow-lg/10 delay-200'
-                  )}
+                  className={cn('relative aspect-square h-[90px]')}
                 >
-                  <BarVisualizer
-                    barCount={5}
-                    state={agentState}
-                    options={{ minHeight: 5 }}
-                    trackRef={agentAudioTrack}
-                    className={cn('flex h-full items-center justify-center gap-1')}
-                  >
-                    <span
-                      className={cn([
-                        'bg-muted min-h-2.5 w-2.5 rounded-full',
-                        'origin-center transition-colors duration-250 ease-linear',
-                        'data-[lk-highlighted=true]:bg-foreground data-[lk-muted=true]:bg-muted',
-                      ])}
-                    />
-                  </BarVisualizer>
+                  <AudioVisualizer
+                    key="audio-visualizer"
+                    initial={{ scale: 1 }}
+                    animate={{ scale: chatOpen ? 0.2 : 1 }}
+                    transition={{
+                      ...ANIMATION_TRANSITION,
+                      delay: animationDelay,
+                    }}
+                    appConfig={appConfig}
+                    isChatOpen={chatOpen}
+                    className={cn(
+                      'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+                      'bg-background rounded-4xl border border-transparent transition-[border,drop-shadow]',
+                      chatOpen && 'border-input shadow-2xl/10 delay-200'
+                    )}
+                    style={{
+                      color:
+                        resolvedTheme === 'dark'
+                          ? appConfig.audioVisualizerColorDark
+                          : appConfig.audioVisualizerColor,
+                    }}
+                  />
                 </MotionContainer>
               )}
 

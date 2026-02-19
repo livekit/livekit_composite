@@ -105,7 +105,9 @@ class STT(stt.STT):
         """  # noqa: E501
 
         super().__init__(
-            capabilities=stt.STTCapabilities(streaming=use_realtime, interim_results=use_realtime)
+            capabilities=stt.STTCapabilities(
+                streaming=use_realtime, interim_results=use_realtime, aligned_transcript=False
+            )
         )
         if detect_language:
             language = ""
@@ -127,6 +129,12 @@ class STT(stt.STT):
         )
         if is_given(noise_reduction_type):
             self._opts.noise_reduction_type = noise_reduction_type
+
+        if is_given(api_key) and not api_key:
+            raise ValueError(
+                "OpenAI API key is required, either as argument or set"
+                " OPENAI_API_KEY environment variable"
+            )
 
         self._client = client or openai.AsyncClient(
             max_retries=0,
@@ -410,7 +418,7 @@ class STT(stt.STT):
             if is_given(language):
                 self._opts.language = language
             data = rtc.combine_audio_frames(buffer).to_wav_bytes()
-            prompt = self._opts.prompt if is_given(self._opts.prompt) else openai.NOT_GIVEN
+            prompt = self._opts.prompt if is_given(self._opts.prompt) else openai.omit
 
             format = "json"
             if self._opts.model == "whisper-1":
@@ -523,7 +531,9 @@ class SpeechStream(stt.SpeechStream):
 
                     # this will trigger a reconnection, see the _run loop
                     raise APIStatusError(
-                        message="OpenAI Realtime STT connection closed unexpectedly"
+                        message="OpenAI Realtime STT connection closed unexpectedly",
+                        status_code=ws.close_code or -1,
+                        body=f"{msg.data=} {msg.extra=}",
                     )
 
                 if msg.type != aiohttp.WSMsgType.TEXT:

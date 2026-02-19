@@ -17,11 +17,13 @@
 #ifndef LIVEKIT_FFI_CLIENT_H
 #define LIVEKIT_FFI_CLIENT_H
 
+#include <atomic>
 #include <functional>
 #include <future>
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <unordered_map>
 
 #include "livekit/stats.h"
@@ -60,6 +62,7 @@ public:
   using Listener = std::function<void(const proto::FfiEvent &)>;
   using AsyncId = std::uint64_t;
 
+  ~FfiClient();
   FfiClient(const FfiClient &) = delete;
   FfiClient &operator=(const FfiClient &) = delete;
   FfiClient(FfiClient &&) = delete;
@@ -70,9 +73,14 @@ public:
     return instance;
   }
 
+  // Must be called before any other FFI usage
+  bool initialize(bool capture_logs);
+
   // Called only once. After calling shutdown(), no further calls into FfiClient
   // are valid.
   void shutdown() noexcept;
+
+  bool isInitialized() const noexcept;
 
   ListenerId AddListener(const Listener &listener);
   void RemoveListener(ListenerId id);
@@ -137,11 +145,15 @@ public:
   proto::FfiResponse sendRequest(const proto::FfiRequest &request) const;
 
 private:
+  FfiClient() = default;
+
   // Base class for type-erased pending ops
   struct PendingBase {
+    AsyncId async_id = 0; // Client-generated async ID for cancellation
     virtual ~PendingBase() = default;
     virtual bool matches(const proto::FfiEvent &event) const = 0;
     virtual void complete(const proto::FfiEvent &event) = 0;
+    virtual void cancel() = 0; // Cancel the pending operation
   };
   template <typename T> struct Pending : PendingBase {
     std::promise<T> promise;
@@ -155,23 +167,39 @@ private:
     void complete(const proto::FfiEvent &event) override {
       handler(event, promise);
     }
+
+    void cancel() override {
+      try {
+        promise.set_exception(std::make_exception_ptr(
+            std::runtime_error("Async operation cancelled")));
+      } catch (const std::future_error &) {
+        // already satisfied
+      }
+    }
   };
 
   template <typename T>
   std::future<T> registerAsync(
-      std::function<bool(const proto::FfiEvent &)> match,
+      AsyncId async_id, std::function<bool(const proto::FfiEvent &)> match,
       std::function<void(const proto::FfiEvent &, std::promise<T> &)> handler);
 
-  std::unordered_map<ListenerId, Listener> listeners_;
-  ListenerId nextListenerId = 1;
-  mutable std::mutex lock_;
-  mutable std::vector<std::unique_ptr<PendingBase>> pending_;
+  // Generate a unique client-side async ID for request correlation
+  AsyncId generateAsyncId();
 
-  FfiClient();
-  ~FfiClient() = default;
+  // Cancel a pending async operation by its async_id. Returns true if found and
+  // removed.
+  bool cancelPendingByAsyncId(AsyncId async_id);
+
+  std::unordered_map<ListenerId, Listener> listeners_;
+  std::atomic<ListenerId> next_listener_id{1};
+  mutable std::mutex lock_;
+  mutable std::unordered_map<AsyncId, std::unique_ptr<PendingBase>>
+      pending_by_id_;
+  std::atomic<AsyncId> next_async_id_{1};
 
   void PushEvent(const proto::FfiEvent &event) const;
   friend void LivekitFfiCallback(const uint8_t *buf, size_t len);
+  std::atomic<bool> initialized_{false};
 };
 } // namespace livekit
 

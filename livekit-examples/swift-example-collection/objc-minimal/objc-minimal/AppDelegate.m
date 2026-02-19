@@ -19,7 +19,7 @@
 
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
 
-    [LiveKitSDK setLoggerStandardOutput];
+    [LiveKitSDK setLogLevel: LogLevelDebug];
 
     NSLog(@"applicationDidFinishLaunching");
 

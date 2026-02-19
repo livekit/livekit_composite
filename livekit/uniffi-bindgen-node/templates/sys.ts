@@ -2,6 +2,9 @@ import { join, dirname } from "path";
 {% if out_dirname_api == DirnameApi::ImportMetaUrl %}
 import { fileURLToPath } from 'url';
 {% endif %}
+{% if let LibPath::Modules(_) = out_lib_path %}
+import { createRequire } from "module";
+{% endif %}
 import {
   DataType,
   JsExternal,
@@ -24,13 +27,14 @@ import {
   UniffiError,
 } from 'uniffi-bindgen-react-native';
 
+
 const CALL_SUCCESS = 0, CALL_ERROR = 1, CALL_UNEXPECTED_ERROR = 2, CALL_CANCELLED = 3;
 
 
 let libraryLoaded = false;
 /**
  * Loads the dynamic library from disk into memory.
- * {% if out_disable_auto_loading_lib -%}NOTE: this must be called before any other functions in this module are called.{%- endif %}
+ * {% if out_lib_disable_auto_loading -%}NOTE: this must be called before any other functions in this module are called.{%- endif %}
  */
 function _uniffiLoad() {
   const library = "lib{{ ci.crate_name() }}";
@@ -40,13 +44,71 @@ function _uniffiLoad() {
     console.warn("Unsupported platform:", platform);
     ext = "so";
   }
-  {% match out_dirname_api %}
-  {% when DirnameApi::Dirname %}
-  const libraryDirectory = __dirname;
-  {% when DirnameApi::ImportMetaUrl %}
-  const libraryDirectory = dirname(fileURLToPath(import.meta.url));
+
+  {% match out_dirname_api -%}
+    {%- when DirnameApi::Dirname -%}
+      const filePath = __filename;
+      const libraryDirectory = __dirname;
+    {%- when DirnameApi::ImportMetaUrl -%}
+      const filePath = fileURLToPath(import.meta.url);
+      const libraryDirectory = dirname(filePath);
+  {%- endmatch %}
+
+  // Get the path to the lib to load
+  {% match out_lib_path -%}
+    {%- when LibPath::Omitted -%}
+      const libraryPath = join(libraryDirectory, `${library}.${ext}`);
+
+    {% when LibPath::Literal(literal) %}
+      {%- if literal.is_absolute() -%}
+        const libraryPath = "{{ literal }}";
+      {%- else -%}
+        const libraryPath = join(libraryDirectory, "{{ literal }}");
+      {%- endif -%}
+
+    {% when LibPath::Modules(mods) %}
+      let libPathModule;
+      let libPathModuleLastResolutionError: Error | null = null;
+      let libPathModuleLoadAttemptStack: Array<string> = [];
+
+      const commonjsRequire = createRequire(filePath);
+      {%- for switch_token in mods.as_switch_tokens() -%}
+        {% match switch_token -%}
+        {% when LibPathSwitchToken::Switch(value) -%}
+          switch ({{ value }}) {
+        {% when LibPathSwitchToken::Case(value) -%}
+          case "{{value}}":
+        {% when LibPathSwitchToken::EndCase -%}
+          break;
+        {% when LibPathSwitchToken::EndSwitch(_value) -%}
+          }
+        {% when LibPathSwitchToken::Value(value) -%}
+            if (!libPathModule) {
+              try {
+                libPathModule = commonjsRequire("{{ value }}");
+              } catch (e) {
+                libPathModuleLastResolutionError = e as Error;
+                libPathModuleLoadAttemptStack.push("{{ value }}");
+              }
+            }
+        {%- endmatch -%}
+      {%- endfor -%}
+
+      if (!libPathModule) {
+        const messageFragments = [
+          `Failed to load a native binding library!`,
+          `Attempted loading from the following modules in order: ${libPathModuleLoadAttemptStack.join(", ")}.`,
+        ];
+        if (libPathModuleLastResolutionError) {
+          messageFragments.push(`The error message from the final load attempt is: ${libPathModuleLastResolutionError?.stack ?? libPathModuleLastResolutionError}`);
+        }
+        throw new Error(messageFragments.join('\n'));
+      }
+
+      const libraryPath = libPathModule.default().path;
+
   {% endmatch %}
-  const libraryPath = join(libraryDirectory, `${library}.${ext}`);
+
   open({ library, path: libraryPath });
   libraryLoaded = true;
 }
@@ -66,7 +128,7 @@ function _checkUniffiLoaded() {
   }
 }
 
-{% if out_disable_auto_loading_lib %}
+{% if out_lib_disable_auto_loading %}
 export { _uniffiLoad as uniffiLoad, _uniffiUnload as uniffiUnload };
 {% else %}
 _uniffiLoad();
@@ -148,7 +210,7 @@ class UniffiFfiRsRustCaller {
 function uniffiCheckCallStatus<ErrorEnumAndVariant extends [string, string]>(
   callStatus: UniffiRustCallStatusStruct,
   liftString: (bytes: UniffiByteArray) => string,
-  liftError?: (buffer: UniffiByteArray) => [string, string],
+  liftError?: (buffer: UniffiByteArray) => ErrorEnumAndVariant,
 ) {
   switch (callStatus.code) {
     case CALL_SUCCESS:
@@ -309,7 +371,7 @@ export class UniffiRustBufferValue {
   }
 
   destroy() {
-    console.log('Rust buffer destroy called', this.struct)
+    {% if out_verbose_logs -%}console.log('Rust buffer destroy called', this.struct);{%- endif %}
     if (!this.struct) {
       throw new Error('Error destroying UniffiRustBufferValue - already previously destroyed! Double freeing is not allowed.');
     }

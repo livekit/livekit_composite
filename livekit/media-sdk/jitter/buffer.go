@@ -312,9 +312,19 @@ func (b *Buffer) popReady() {
 
 // dropIncompleteExpired drops incomplete expired packets
 func (b *Buffer) dropIncompleteExpired(expiry time.Time) {
+	dropped := b.dropIncomplete(expiry, false)
+
+	if dropped && b.onPacketLoss != nil {
+		b.onPacketLoss()
+	}
+}
+
+// dropIncomplete drops incomplete packets at the head of the buffer.
+// If force is false, only drops packets that arrived before expiry.
+func (b *Buffer) dropIncomplete(expiry time.Time, force bool) bool {
 	dropped := false
 
-	for b.head != nil && !b.head.isComplete() && b.head.extPacket.ReceivedAt.Before(expiry) {
+	for b.head != nil && !b.head.isComplete() && (force || b.head.extPacket.ReceivedAt.Before(expiry)) {
 		if b.initialized && !b.head.discont {
 			b.stats.PacketsLost += uint64(b.head.extPacket.SequenceNumber - b.prevSN - 1)
 		}
@@ -325,7 +335,37 @@ func (b *Buffer) dropIncompleteExpired(expiry time.Time) {
 		b.stats.PacketsDropped++
 	}
 
-	if dropped && b.onPacketLoss != nil {
+	return dropped
+}
+
+// Flush drops all incomplete samples and emits any complete samples immediately.
+// Useful when no more packets will arrive (e.g. track unsubscribed).
+func (b *Buffer) Flush() {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
+	dropped := b.dropIncomplete(time.Time{}, true)
+	loss := false
+
+	for b.head != nil && b.head.isComplete() {
+		if b.head.extPacket.SequenceNumber == b.prevSN+1 || b.head.discont || !b.initialized {
+			// normal
+		} else {
+			// missing packets between prevSN and current head
+			loss = true
+			b.stats.PacketsLost += uint64(b.head.extPacket.SequenceNumber - b.prevSN - 1)
+		}
+
+		if sample := b.popSample(); len(sample) > 0 {
+			b.onPacket(sample)
+		}
+
+		if b.dropIncomplete(time.Time{}, true) {
+			dropped = true
+		}
+	}
+
+	if (loss || dropped) && b.onPacketLoss != nil {
 		b.onPacketLoss()
 	}
 }

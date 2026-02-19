@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import Foundation
 
 internal import LiveKitWebRTC
 
-@objc
+@objcMembers
 public class TrackStatistics: NSObject, @unchecked Sendable, Loggable {
     public let codec: [CodecStatistics]
     public let transportStats: TransportStatistics?
@@ -74,6 +74,7 @@ public class TrackStatistics: NSObject, @unchecked Sendable, Loggable {
 }
 
 extension LKRTCStatistics {
+    // swiftlint:disable:next cyclomatic_complexity
     func toLKType(prevStatistics: TrackStatistics?) -> Statistics? {
         switch type {
         case "codec": return CodecStatistics(id: id, timestamp: timestamp_us, rawValues: values)

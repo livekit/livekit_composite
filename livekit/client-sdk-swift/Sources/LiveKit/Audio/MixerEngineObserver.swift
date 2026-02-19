@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -185,6 +185,33 @@ public final class MixerEngineObserver: AudioEngineObserver, Loggable {
         engine.mainMixerNode.outputVolume = outputVolume
 
         return next?.engineWillConnectOutput(engine, src: src, dst: dst, format: format, context: context) ?? 0
+    }
+
+    public func engineWillStart(_ engine: AVAudioEngine, isPlayoutEnabled: Bool, isRecordingEnabled: Bool) -> Int {
+        log("isPlayoutEnabled: \(isPlayoutEnabled), isRecordingEnabled: \(isRecordingEnabled)")
+        let (micNode, appNode) = _state.read {
+            ($0.micNode, $0.appNode)
+        }
+
+        micNode.reset()
+        appNode.reset()
+
+        return next?.engineWillStart(engine, isPlayoutEnabled: isPlayoutEnabled, isRecordingEnabled: isRecordingEnabled) ?? 0
+    }
+
+    public func engineDidStop(_ engine: AVAudioEngine, isPlayoutEnabled: Bool, isRecordingEnabled: Bool) -> Int {
+        log("isPlayoutEnabled: \(isPlayoutEnabled), isRecordingEnabled: \(isRecordingEnabled)")
+        // Invoke next first
+        let nextResult = next?.engineDidStop(engine, isPlayoutEnabled: isPlayoutEnabled, isRecordingEnabled: isRecordingEnabled)
+
+        let (micNode, appNode) = _state.read {
+            ($0.micNode, $0.appNode)
+        }
+
+        micNode.stop()
+        appNode.stop()
+
+        return nextResult ?? 0
     }
 }
 

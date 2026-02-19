@@ -1,5 +1,49 @@
 # Changelog
 
+## [2.12.1] - 2026-02-17
+
+### Fixed
+
+- Voice Processing failing on iOS devices
+- Missing objc annotations for some objc class members
+
+## [2.12.0] - 2026-02-11
+
+### Added
+
+- Expose separate bitrate/network priorities for media tracks
+
+### Changed
+
+- Add option to disable automatic audio session deactivation
+- Default other-audio-ducking configuration
+
+### Fixed
+
+- Linker warnings from FFI package
+- Crashes on macOS Catalyst
+- Reset/stop mixer player nodes on audio engine start/stop
+- Camera selection changing after full reconnect
+
+## [2.11.0] - 2026-01-12
+
+### Added
+
+- Prepare connection & region pinning
+- Experimental support and bindings for shared Rust crates using UniFFI
+- Handle Room moved event
+
+### Changed
+
+- Default protocol version to v16
+- Minor validation logic improvements
+
+### Fixed
+
+- Memory leaks in data channel cancellation code
+- Reconnect sequence stuck in failed state
+- Crash audio processing adapter during deinit
+
 ## [2.10.2] - 2025-12-10
 
 ### Fixed

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,12 +28,12 @@ internal import LiveKitUniFFI
 ///
 /// Download the [Multiplatform SwiftUI Example](https://github.com/livekit/multiplatform-swiftui-example)
 /// to try out the features.
-@objc
+@objcMembers
 public class LiveKitSDK: NSObject, Loggable {
     override private init() {}
 
     @objc(sdkVersion)
-    public static let version = "2.10.2"
+    public static let version = "2.12.1"
     static let ffiVersion = buildVersion()
 
     fileprivate struct State {
@@ -52,7 +52,6 @@ public class LiveKitSDK: NSObject, Loggable {
     /// Adjust the minimum log level for the default `OSLogger`
     /// - Note: This method must be called before any other logging is done
     /// e.g. in the `App.init()` or `AppDelegate/SceneDelegate`
-    @objc
     public static func setLogLevel(_ level: LogLevel) {
         setLogger(OSLogger(minLevel: level))
     }
@@ -60,19 +59,16 @@ public class LiveKitSDK: NSObject, Loggable {
     /// Disable logging for the SDK
     /// - Note: This method must be called before any other logging is done
     /// e.g. in the `App.init()` or `AppDelegate/SceneDelegate`
-    @objc
     public static func disableLogging() {
         setLogger(DisabledLogger())
     }
 
     @available(*, deprecated, renamed: "setLogLevel")
-    @objc
     public static func setLoggerStandardOutput() {
         setLogLevel(.debug)
     }
 
     /// Notify the SDK to start initializing for faster connection/publishing later on. This is non-blocking.
-    @objc
     public static func prepare() {
         // TODO: Add RTC related initializations
         DeviceManager.prepare()

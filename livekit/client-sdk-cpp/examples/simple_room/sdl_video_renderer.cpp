@@ -22,6 +22,8 @@
 
 using namespace livekit;
 
+constexpr int kMaxFPS = 60;
+
 SDLVideoRenderer::SDLVideoRenderer() = default;
 
 SDLVideoRenderer::~SDLVideoRenderer() { shutdown(); }
@@ -95,6 +97,16 @@ void SDLVideoRenderer::render() {
     return;
   }
 
+  // Throttle rendering to kMaxFPS
+  const auto now = std::chrono::steady_clock::now();
+  if (last_render_time_.time_since_epoch().count() != 0) {
+    const auto min_interval = std::chrono::microseconds(1'000'000 / kMaxFPS);
+    if (now - last_render_time_ < min_interval) {
+      return;
+    }
+  }
+  last_render_time_ = now;
+
   // 3) Read a frame from VideoStream (blocking until one is available)
   livekit::VideoFrameEvent vfe;
   bool gotFrame = stream_->read(vfe);
@@ -103,7 +115,7 @@ void SDLVideoRenderer::render() {
     return;
   }
 
-  livekit::LKVideoFrame &frame = vfe.frame;
+  livekit::VideoFrame &frame = vfe.frame;
 
   // 4) Ensure the frame is RGBA.
   //    Ideally you requested RGBA from VideoStream::Options so this is a no-op.

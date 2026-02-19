@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,10 @@ import Foundation
 
 internal import LiveKitWebRTC
 
-@objc
+@objcMembers
 public final class ARCameraCaptureOptions: NSObject, VideoCaptureOptions, Sendable {
-    @objc
     public let dimensions: Dimensions
 
-    @objc
     public let fps: Int
 
     public init(dimensions: Dimensions = .h1080_169, fps: Int = 30) {

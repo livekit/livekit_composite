@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import AVFAudio
 import Foundation
 
 /// A buffer that captures audio before connecting to the server.
-@objc
+@objcMembers
 public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
     public typealias OnError = @Sendable (Error) -> Void
 
@@ -29,15 +29,12 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
     }
 
     /// The default data topic used to send the audio buffer.
-    @objc
     public static let dataTopic = "lk.agent.pre-connect-audio-buffer"
 
     /// The room instance to send the audio buffer to.
-    @objc
     public var room: Room? { state.room }
 
     /// The audio recorder instance.
-    @objc
     public var recorder: LocalAudioTrackRecorder? { state.recorder }
 
     private let state = StateSync<State>(State())
@@ -45,7 +42,7 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
         weak var room: Room?
         var recorder: LocalAudioTrackRecorder?
         var audioStream: LocalAudioTrackRecorder.Stream?
-        var timeoutTask: Task<Void, Error>?
+        var timeoutTask: AnyTaskCancellable?
         var sent: Bool = false
         var onError: OnError?
     }
@@ -54,7 +51,6 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
     /// - Parameters:
     ///   - room: The room instance to send the audio buffer to.
     ///   - onError: The error handler to call when an error occurs while sending the audio buffer.
-    @objc
     public init(room: Room?, onError: OnError? = nil) {
         state.mutate {
             $0.room = room
@@ -67,7 +63,6 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
         stopRecording()
     }
 
-    @objc
     public func setErrorHandler(_ onError: OnError?) {
         state.mutate { $0.onError = onError }
     }
@@ -78,7 +73,6 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
     /// The room connection needs to be established and the remote participant needs to subscribe to the audio track
     /// before the timeout is reached. Otherwise, the audio stream will be flushed without sending.
     ///   - recorder: Optional custom recorder instance. If not provided, a new one will be created.
-    @objc
     public func startRecording(timeout: TimeInterval = Constants.timeout, recorder: LocalAudioTrackRecorder? = nil) async throws {
         room?.add(delegate: self)
 
@@ -94,7 +88,6 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
         let stream = try await newRecorder.start()
         log("Started capturing audio", .info)
 
-        state.timeoutTask?.cancel()
         state.mutate { state in
             state.recorder = newRecorder
             state.audioStream = stream
@@ -102,7 +95,7 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
                 try await Task.sleep(nanoseconds: UInt64(timeout) * NSEC_PER_SEC)
                 try Task.checkCancellation()
                 self?.stopRecording(flush: true)
-            }
+            }.cancellable()
             state.sent = false
         }
     }
@@ -110,7 +103,6 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
     /// Stop capturing audio.
     /// - Parameters:
     ///   - flush: If `true`, the audio stream will be flushed immediately without sending.
-    @objc
     public func stopRecording(flush: Bool = false) {
         guard let recorder, recorder.isRecording else { return }
 
@@ -131,7 +123,6 @@ public final class PreConnectAudioBuffer: NSObject, Sendable, Loggable {
     ///   - room: The room instance to send the audio data.
     ///   - agents: The agents to send the audio data to.
     ///   - topic: The topic to send the audio data.
-    @objc
     public func sendAudioData(to room: Room, agents: [Participant.Identity], on topic: String = dataTopic) async throws {
         guard !agents.isEmpty else { return }
 

@@ -23,8 +23,8 @@ let package = Package(
         ),
         .binaryTarget(
             name: "RustLiveKitUniFFI",
-            url: "https://github.com/livekit/livekit-uniffi-xcframework/releases/download/0.0.2/RustLiveKitUniFFI.xcframework.zip",
-            checksum: "ee5aa5feb3c94d39e87860807622dad65a5e8d4a1b6a4efe6d8bf7180ddd8756"
+            url: "https://github.com/livekit/livekit-uniffi-xcframework/releases/download/0.0.5/RustLiveKitUniFFI.xcframework.zip",
+            checksum: "9a21e046273f8804474eaf2532d67dc3a7d811b233d73e0115992bffd1942600"
         )
     ]
 )

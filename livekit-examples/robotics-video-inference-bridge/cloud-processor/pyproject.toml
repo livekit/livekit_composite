@@ -1,0 +1,13 @@
+[project]
+name = "cloud-processor"
+version = "0.1.0"
+description = "Cloud processor for edge CV - runs YOLO inference on video streams"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "livekit>=0.18",
+    "livekit-api>=0.8",
+    "ultralytics>=8.0",
+    "numpy>=1.24",
+    "python-dotenv>=1.0",
+]

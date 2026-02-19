@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,46 +17,34 @@
 import Combine
 import Foundation
 
-@objc
+@objcMembers
 public class TrackPublication: NSObject, @unchecked Sendable, ObservableObject, Loggable {
     // MARK: - Public properties
 
-    @objc
     public var sid: Track.Sid { _state.sid }
 
-    @objc
     public var kind: Track.Kind { _state.kind }
 
-    @objc
     public var source: Track.Source { _state.source }
 
-    @objc
     public var name: String { _state.name }
 
-    @objc
     public var track: Track? { _state.track }
 
-    @objc
     public var isMuted: Bool { track?._state.isMuted ?? false }
 
-    @objc
     public var streamState: StreamState { _state.streamState }
 
     /// video-only
-    @objc
     public var dimensions: Dimensions? { _state.dimensions }
 
-    @objc
     public var isSimulcasted: Bool { _state.isSimulcasted }
 
     /// MIME type of the ``Track``.
-    @objc
     public var mimeType: String { _state.mimeType }
 
-    @objc
     public var isSubscribed: Bool { _state.track != nil }
 
-    @objc
     public var encryptionType: EncryptionType { _state.encryptionType }
 
     // MARK: - Internal

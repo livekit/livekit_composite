@@ -100,6 +100,23 @@ runs:
             /repos/${GITHUB_REPOSITORY}/issues/${PR_NUMBER}/labels \
             -f labels[]="slack-ts:${team}:${ts}" >/dev/null
         }
+
+        # ---- PR state computation ----
+        compute_pr_state() {
+          local has_changes has_approval
+          has_changes=$(gh api "/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+            --jq '[group_by(.user.login)[] | {user: .[0].user.login, state: .[-1].state}] | any(.[]; .state == "CHANGES_REQUESTED")')
+          has_approval=$(gh api "/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/reviews" \
+            --jq '[group_by(.user.login)[] | {user: .[0].user.login, state: .[-1].state}] | any(.[]; .state == "APPROVED")')
+
+          if [ "$has_changes" = "true" ]; then
+            echo "changes_requested"
+          elif [ "$has_approval" = "true" ]; then
+            echo "approved"
+          else
+            echo "pending"
+          fi
+        }
         BASH
         echo "ok=1" >> "$GITHUB_OUTPUT"
 
@@ -198,7 +215,7 @@ runs:
         done
 
     #########################################################################
-    # REVIEW SUBMITTED: update ALL team messages (approved/changes/comment) #
+    # REVIEW SUBMITTED: update ALL team messages based on computed state    #
     #########################################################################
     - name: Update Slack on review submit
       if: ${{ github.event_name == 'pull_request_review' && github.event.action == 'submitted' }}
@@ -213,18 +230,22 @@ runs:
         set -euo pipefail
         source /tmp/slack_helpers.sh
 
-        state="${{ github.event.review.state }}"
+        state="$(compute_pr_state)"
+
+        # Comments without verdict don't change state
+        if [ "$state" = "pending" ]; then
+          echo "Review was a comment without verdict; no state change."
+          exit 0
+        fi
+
         repo_name="${GITHUB_REPOSITORY#*/}"
         pr_url="${{ github.event.pull_request.html_url }}"
         author_mention="$(mention_for_author "${{ github.event.pull_request.user.login }}")"
         label_text=$(printf '%s: %s' "$repo_name" "$PR_TITLE" | sanitize_label)
 
         case "$state" in
-          approved|APPROVED)                          emoji=":gh-approved:";          msg="is ready to merge" ;;
-          changes_requested|CHANGES_REQUESTED)        emoji=":gh-requested-changes:"; msg="has requested changes" ;;
-          commented|COMMENTED|dismissed|DISMISSED|pending|PENDING)
-                                                       emoji=":gh-reviewed:";          msg="was reviewed" ;;
-          *)                                           emoji=":gh-reviewed:";          msg="was reviewed" ;;
+          approved)          emoji=":gh-approved:";          msg="is ready to merge" ;;
+          changes_requested) emoji=":gh-requested-changes:"; msg="has changes requested" ;;
         esac
 
         while read -r team ts; do
@@ -277,3 +298,60 @@ runs:
           ok=$(printf '%s' "$resp" | jq -r '.ok')
           [ "$ok" = "true" ] || { echo "Slack update failed ($team): $resp" >&2; exit 1; }
         done < <(read_existing_ts_labels)
+
+    ###########################################################
+    # SYNCHRONIZE (push): reset to waiting if changes were    #
+    # previously requested                                    #
+    ###########################################################
+    - name: Update Slack on push (reset from changes requested)
+      if: ${{ github.event_name == 'pull_request' && github.event.action == 'synchronize' }}
+      env:
+        SLACK_TOKEN: ${{ inputs.slack_token }}
+        CONFIG_JSON: ${{ inputs.config_json }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_TITLE: ${{ github.event.pull_request.title }}
+        GH_TOKEN: ${{ github.token }}
+      shell: bash
+      run: |
+        set -euo pipefail
+        source /tmp/slack_helpers.sh
+
+        # Check if there are any existing slack messages for this PR
+        existing_labels="$(read_existing_ts_labels)"
+        if [ -z "$existing_labels" ]; then
+          echo "No existing Slack messages for this PR; nothing to update."
+          exit 0
+        fi
+
+        # Compute current state - after push, changes_requested reviews are still there
+        # but we want to signal "author addressed feedback, back to reviewers"
+        # Only reset if there WERE changes requested (now cleared by this push conceptually)
+        state="$(compute_pr_state)"
+
+        # If already approved or no changes were requested, no need to update
+        if [ "$state" = "approved" ]; then
+          echo "PR is approved; push doesn't change state."
+          exit 0
+        fi
+
+        # If state is pending or changes_requested, reset to waiting for review
+        # (GitHub may still show CHANGES_REQUESTED until reviewer re-reviews,
+        # but our workflow treats a push as "author addressed feedback")
+
+        repo_name="${GITHUB_REPOSITORY#*/}"
+        pr_url="${{ github.event.pull_request.html_url }}"
+        author_mention="$(mention_for_author "${{ github.event.pull_request.user.login }}")"
+        label_text=$(printf '%s: %s' "$repo_name" "$PR_TITLE" | sanitize_label)
+
+        while read -r team ts; do
+          channel="$(channel_for_team "$team")"
+          if [ -z "$channel" ]; then
+            echo "No channel for team '$team' (label exists) – skipping."
+            continue
+          fi
+          team_mention="$(mention_for_team "$team")"
+          text=":gh-opened: <${pr_url}|${label_text}> is waiting for review from ${team_mention} — ${author_mention}"
+          resp="$(slack_update "$channel" "$ts" "$text")"
+          ok=$(printf '%s' "$resp" | jq -r '.ok')
+          [ "$ok" = "true" ] || { echo "Slack update failed ($team): $resp" >&2; exit 1; }
+        done <<< "$existing_labels"

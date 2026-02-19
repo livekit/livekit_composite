@@ -547,10 +547,9 @@ func TestSimulcastCodec(t *testing.T) {
 						require.Equal(t, c.backupCodec.MimeType, track.Codec().MimeType)
 					},
 				},
-			}, "backup_subscriber", withCodecs([]webrtc.RTPCodecParameters{
+			}, "backup_subscriber", WithCodecs([]livekit.Codec{
 				{
-					RTPCodecCapability: c.backupCodec,
-					PayloadType:        96,
+					Mime: c.backupCodec.MimeType,
 				},
 			}))
 			require.NoError(t, err)

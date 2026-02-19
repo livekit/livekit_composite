@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/pion/ice/v4"
-	"github.com/pion/transport/v3/stdnet"
+	"github.com/pion/transport/v4/stdnet"
 	"github.com/pion/webrtc/v4"
 
 	"github.com/livekit/mediatransportutil/pkg/transport"

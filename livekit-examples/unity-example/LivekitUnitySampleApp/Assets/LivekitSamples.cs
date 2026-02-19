@@ -72,7 +72,7 @@ public class LivekitSamples : MonoBehaviour
         Debug.Log("onClickMakeCall clicked!");
         if (webCamTexture == null)
         {
-                           // Check if the platform is Android
+            // Check if the platform is Android
 #if PLATFORM_ANDROID
             // Check if camera permission is already granted
             if (!Permission.HasUserAuthorizedPermission(Permission.Camera))
@@ -162,7 +162,6 @@ public class LivekitSamples : MonoBehaviour
         _videoStreams.Clear();
     }
 
-
     void AddVideoTrack(RemoteVideoTrack videoTrack)
     {
         Debug.Log("AddVideoTrack " + videoTrack.Sid);
@@ -201,6 +200,7 @@ public class LivekitSamples : MonoBehaviour
         }
         else if (track is RemoteAudioTrack audioTrack)
         {
+            Debug.Log("AddAudioTrack " + audioTrack.Sid);
             GameObject audObject = new GameObject(audioTrack.Sid);
             var source = audObject.AddComponent<AudioSource>();
             var stream = new AudioStream(audioTrack, source);
@@ -247,12 +247,7 @@ public class LivekitSamples : MonoBehaviour
         GameObject audObject = new GameObject(localSid);
         _audioObjects[localSid] = audObject;
 
-        _audioObjects[localSid] = audObject;
-        var source = audObject.AddComponent<AudioSource>();
-        source.clip = Microphone.Start(Microphone.devices[0], true, 2, (int)RtcAudioSource.DefaultSampleRate);
-        source.loop = true;
-
-        var rtcSource = new BasicAudioSource(source);
+        var rtcSource = new MicrophoneSource(Microphone.devices[0], audObject);
 
         Debug.Log($"CreateAudioTrack");
         var track = LocalAudioTrack.CreateAudioTrack("my-audio-track", rtcSource, room);

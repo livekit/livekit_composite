@@ -22,7 +22,10 @@ use std::{
     time::Duration,
 };
 
-use super::{ConnectionQuality, ParticipantInner, ParticipantKind, ParticipantTrackPermission};
+use super::{
+    ConnectionQuality, ParticipantInner, ParticipantKind, ParticipantKindDetail,
+    ParticipantTrackPermission,
+};
 use crate::{
     data_stream::{
         ByteStreamInfo, ByteStreamWriter, StreamByteOptions, StreamResult, StreamTextOptions,
@@ -106,15 +109,27 @@ impl LocalParticipant {
     pub(crate) fn new(
         rtc_engine: Arc<RtcEngine>,
         kind: ParticipantKind,
+        kind_details: Vec<ParticipantKindDetail>,
         sid: ParticipantSid,
         identity: ParticipantIdentity,
         name: String,
         metadata: String,
         attributes: HashMap<String, String>,
         encryption_type: EncryptionType,
+        permission: Option<proto::ParticipantPermission>,
     ) -> Self {
         Self {
-            inner: super::new_inner(rtc_engine, sid, identity, name, metadata, attributes, kind),
+            inner: super::new_inner(
+                rtc_engine,
+                sid,
+                identity,
+                name,
+                metadata,
+                attributes,
+                kind,
+                kind_details,
+                permission,
+            ),
             local: Arc::new(LocalInfo {
                 events: LocalEvents::default(),
                 encryption_type,
@@ -203,6 +218,13 @@ impl LocalParticipant {
         super::on_attributes_changed(&self.inner, handler)
     }
 
+    pub(crate) fn on_permission_changed(
+        &self,
+        handler: impl Fn(Participant, Option<proto::ParticipantPermission>) + Send + 'static,
+    ) {
+        super::on_permission_changed(&self.inner, handler)
+    }
+
     pub(crate) fn add_publication(&self, publication: TrackPublication) {
         super::add_publication(&self.inner, &Participant::Local(self.clone()), publication);
     }
@@ -262,6 +284,16 @@ impl LocalParticipant {
 
                 encodings = compute_video_encodings(req.width, req.height, &options);
                 req.layers = video_layers_from_encodings(req.width, req.height, &encodings);
+
+                // Populate simulcast_codecs so the server knows this track is simulcasted
+                if options.simulcast && encodings.len() > 1 {
+                    req.simulcast_codecs = vec![proto::SimulcastCodec {
+                        codec: options.video_codec.as_str().to_string(),
+                        cid: track.rtc_track().id(),
+                        layers: req.layers.clone(),
+                        ..Default::default()
+                    }];
+                }
             }
             LocalTrack::Audio(_audio_track) => {
                 // Setup audio encoding
@@ -734,8 +766,16 @@ impl LocalParticipant {
         self.inner.info.read().kind
     }
 
+    pub fn kind_details(&self) -> Vec<ParticipantKindDetail> {
+        self.inner.info.read().kind_details.clone()
+    }
+
     pub fn disconnect_reason(&self) -> DisconnectReason {
         self.inner.info.read().disconnect_reason
+    }
+
+    pub fn permission(&self) -> Option<proto::ParticipantPermission> {
+        self.inner.info.read().permission.clone()
     }
 
     pub async fn perform_rpc(&self, data: PerformRpcData) -> Result<String, RpcError> {
@@ -769,7 +809,15 @@ impl LocalParticipant {
             min_effective_timeout,
         );
 
-        match self
+        // Register channels BEFORE sending the request to avoid race condition
+        // where the response arrives before we've registered the handlers
+        {
+            let mut rpc_state = self.local.rpc_state.lock();
+            rpc_state.pending_acks.insert(id.clone(), ack_tx);
+            rpc_state.pending_responses.insert(id.clone(), response_tx);
+        }
+
+        if let Err(e) = self
             .publish_rpc_request(RpcRequest {
                 destination_identity: data.destination_identity.clone(),
                 id: id.clone(),
@@ -780,15 +828,12 @@ impl LocalParticipant {
             })
             .await
         {
-            Ok(_) => {
-                let mut rpc_state = self.local.rpc_state.lock();
-                rpc_state.pending_acks.insert(id.clone(), ack_tx);
-                rpc_state.pending_responses.insert(id.clone(), response_tx);
-            }
-            Err(e) => {
-                log::error!("Failed to publish RPC request: {}", e);
-                return Err(RpcError::built_in(RpcErrorCode::SendFailed, Some(e.to_string())));
-            }
+            // Clean up on failure
+            let mut rpc_state = self.local.rpc_state.lock();
+            rpc_state.pending_acks.remove(&id);
+            rpc_state.pending_responses.remove(&id);
+            log::error!("Failed to publish RPC request: {}", e);
+            return Err(RpcError::built_in(RpcErrorCode::SendFailed, Some(e.to_string())));
         }
 
         // Wait for ack timeout
@@ -838,6 +883,11 @@ impl LocalParticipant {
             + 'static,
     ) {
         self.local.rpc_state.lock().handlers.insert(method, Arc::new(handler));
+
+        // Pre-connect the publisher PC so ACKs can be sent immediately when requests arrive.
+        // Without this, the first RPC request would trigger publisher negotiation, causing
+        // a ~300-500ms delay before the ACK can be sent (ICE negotiation time).
+        self.inner.rtc_engine.publisher_negotiation_needed();
     }
 
     pub fn unregister_rpc_method(&self, method: String) {

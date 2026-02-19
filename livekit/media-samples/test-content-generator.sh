@@ -80,3 +80,24 @@ ffmpeg -y \
   -filter_complex "[0:a][1:a]amix=inputs=2:normalize=0, aformat=sample_fmts=s16:channel_layouts=stereo:sample_rates=48000[a]" \
   -map "[a]" -c:a pcm_s16le \
   avsync_minmotion_livekit_audio_48k_120s.wav
+
+
+echo "Generating pcmu/mulaw test file..."
+ffmpeg -y \
+  -f lavfi -t 120 \
+  -i "aevalsrc=exprs='0.12*if(lt(mod(t,1),0.01),(1-cos(2*PI*mod(t,1)/0.01))/2*sin(2*PI*(600+20*floor(t))*t),0)':s=8000:channel_layout=mono" \
+  -f lavfi -t 120 \
+  -i "aevalsrc=exprs='0.02*sin(2*PI*440*t)':s=8000:channel_layout=mono" \
+  -filter_complex "[0:a][1:a]amix=inputs=2:normalize=0, aformat=channel_layouts=mono:sample_rates=8000[a]" \
+  -map "[a]" -c:a pcm_mulaw -ar 8000 -ac 1 \
+  avsync_minmotion_livekit_audio_8k_120s_pcmu.wav
+
+echo "Generating pcma/alaw test file..."
+ffmpeg -y \
+  -f lavfi -t 120 \
+  -i "aevalsrc=exprs='0.12*if(lt(mod(t,1),0.01),(1-cos(2*PI*mod(t,1)/0.01))/2*sin(2*PI*(600+20*floor(t))*t),0)':s=8000:channel_layout=mono" \
+  -f lavfi -t 120 \
+  -i "aevalsrc=exprs='0.02*sin(2*PI*440*t)':s=8000:channel_layout=mono" \
+  -filter_complex "[0:a][1:a]amix=inputs=2:normalize=0, aformat=channel_layouts=mono:sample_rates=8000[a]" \
+  -map "[a]" -c:a pcm_alaw -ar 8000 -ac 1 \
+  avsync_minmotion_livekit_audio_8k_120s_pcma.wav

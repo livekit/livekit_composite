@@ -549,6 +549,9 @@ func ParseMedia(d *sdp.MediaDescription) (*MediaDesc, error) {
 			continue
 		}
 		codec, _ := rtp.CodecByPayloadType(byte(typ)).(rtp.AudioCodec)
+		if !media.CodecEnabled(codec) {
+			codec = nil
+		}
 		out.Codecs = append(out.Codecs, CodecInfo{
 			Type:  byte(typ),
 			Codec: codec,

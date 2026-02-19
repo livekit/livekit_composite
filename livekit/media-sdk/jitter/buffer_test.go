@@ -232,6 +232,64 @@ func TestDroppedPackets(t *testing.T) {
 	})
 }
 
+func TestFlushDropsIncomplete(t *testing.T) {
+	out := make(chan []ExtPacket, 10)
+	b := NewBuffer(&testDepacketizer{}, testBufferLatency, chanFunc(t, out))
+	s := newTestStream()
+
+	// incomplete sample at the head blocks later complete samples
+	b.Push(s.gen(true, false))
+	_ = s.gen(true, true) // simulate lost packet (seq gap), keeps head incomplete
+	b.Push(s.gen(true, false))
+	b.Push(s.gen(false, true))
+	checkSample(t, out, 0)
+
+	b.Flush()
+
+	checkSample(t, out, 2)
+	checkStats(t, b, &BufferStats{
+		PacketsPushed:  3,
+		PacketsLost:    0,
+		PacketsDropped: 1,
+		PacketsPopped:  2,
+		SamplesPopped:  1,
+	})
+}
+
+func TestFlushReportsLoss(t *testing.T) {
+	out := make(chan []ExtPacket, 10)
+	losses := 0
+	b := NewBuffer(&testDepacketizer{}, testBufferLatency, chanFunc(t, out), WithPacketLossHandler(func() {
+		losses++
+	}))
+	s := newTestStream()
+
+	// first sample passes through normally
+	b.Push(s.gen(true, false))
+	b.Push(s.gen(false, true))
+	checkSample(t, out, 2)
+
+	// simulate a missing packet between samples
+	_ = s.gen(true, true)
+
+	// next sample should be released on flush and counted as loss
+	b.Push(s.gen(true, false))
+	b.Push(s.gen(false, true))
+	checkSample(t, out, 0)
+
+	b.Flush()
+
+	checkSample(t, out, 2)
+	require.Equal(t, 1, losses)
+	checkStats(t, b, &BufferStats{
+		PacketsPushed:  4,
+		PacketsLost:    1,
+		PacketsDropped: 0,
+		PacketsPopped:  4,
+		SamplesPopped:  2,
+	})
+}
+
 func checkSample(t *testing.T, out chan []ExtPacket, expected int) {
 	select {
 	case sample := <-out:

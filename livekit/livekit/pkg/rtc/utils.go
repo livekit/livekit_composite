@@ -23,7 +23,7 @@ import (
 	"github.com/pion/webrtc/v4"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/livekit/livekit-server/pkg/sfu/mime"
+	"github.com/livekit/protocol/codecs/mime"
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
 )
@@ -117,7 +117,7 @@ func Recover(l logger.Logger) any {
 
 // logger helpers
 func LoggerWithParticipant(l logger.Logger, identity livekit.ParticipantIdentity, sid livekit.ParticipantID, isRemote bool) logger.Logger {
-	values := make([]interface{}, 0, 4)
+	values := make([]any, 0, 4)
 	if identity != "" {
 		values = append(values, "participant", identity)
 	}
@@ -130,7 +130,7 @@ func LoggerWithParticipant(l logger.Logger, identity livekit.ParticipantIdentity
 }
 
 func LoggerWithRoom(l logger.Logger, name livekit.RoomName, roomID livekit.RoomID) logger.Logger {
-	values := make([]interface{}, 0, 2)
+	values := make([]any, 0, 2)
 	if name != "" {
 		values = append(values, "room", name)
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 import Foundation
 
-@objc
+@objcMembers
 public final class VideoCodec: NSObject, Codec {
     public static func from(name: String) -> VideoCodec? {
         guard let codec = all.first(where: { $0.name == name.lowercased() }) else { return nil }

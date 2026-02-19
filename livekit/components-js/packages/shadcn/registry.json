@@ -6,7 +6,7 @@
     {
       "name": "agent-disconnect-button",
       "type": "registry:component",
-      "title": "Agent Session Disconnect",
+      "title": "Agent Disconnect Button",
       "description": "A button for disconnecting the agent session.",
       "files": [
         {
@@ -94,7 +94,7 @@
     {
       "name": "agent-audio-visualizer-bar",
       "type": "registry:component",
-      "title": "Audio Bar Visualizer",
+      "title": "Agent Audio Visualizer Bar",
       "description": "A linear bar visualizer for audio tracks.",
       "files": [
         {
@@ -117,7 +117,7 @@
     {
       "name": "agent-audio-visualizer-radial",
       "type": "registry:component",
-      "title": "Audio Radial Visualizer",
+      "title": "Agent Audio Visualizer Radial",
       "description": "A radial bar visualizer for audio tracks.",
       "files": [
         {
@@ -139,7 +139,7 @@
     {
       "name": "agent-audio-visualizer-grid",
       "type": "registry:component",
-      "title": "Audio Grid Visualizer",
+      "title": "Agent Audio Visualizer Grid",
       "description": "A grid visualizer for audio tracks.",
       "files": [
         {
@@ -216,6 +216,62 @@
         "@ai-elements/conversation",
         "@agents-ui/agent-chat-indicator"
       ]
+    },
+    {
+      "name": "react-shader-toy",
+      "type": "registry:component",
+      "title": "React Shader Toy",
+      "description": "A shadertoy-like shader renderer component for React.",
+      "files": [
+        {
+          "path": "components/agents-ui/react-shader-toy.tsx",
+          "type": "registry:component"
+        }
+      ]
+    },
+    {
+      "name": "agent-audio-visualizer-wave",
+      "type": "registry:component",
+      "title": "Agent Audio Visualizer Wave",
+      "description": "A wave visualizer for audio tracks.",
+      "files": [
+        {
+          "path": "components/agents-ui/agent-audio-visualizer-wave.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "hooks/agents-ui/use-agent-audio-visualizer-wave.ts",
+          "type": "registry:hook"
+        }
+      ],
+      "dependencies": [
+        "livekit-client@^2.0.0",
+        "@livekit/components-react@^2.0.0",
+        "class-variance-authority"
+      ],
+      "registryDependencies": ["utils", "@agents-ui/react-shader-toy"]
+    },
+    {
+      "name": "agent-audio-visualizer-aura",
+      "type": "registry:component",
+      "title": "Agent Audio Visualizer Aura",
+      "description": "An aura visualizer for audio tracks.",
+      "files": [
+        {
+          "path": "components/agents-ui/agent-audio-visualizer-aura.tsx",
+          "type": "registry:component"
+        },
+        {
+          "path": "hooks/agents-ui/use-agent-audio-visualizer-aura.ts",
+          "type": "registry:hook"
+        }
+      ],
+      "dependencies": [
+        "livekit-client@^2.0.0",
+        "@livekit/components-react@^2.0.0",
+        "class-variance-authority"
+      ],
+      "registryDependencies": ["utils", "@agents-ui/react-shader-toy"]
     }
   ]
 }

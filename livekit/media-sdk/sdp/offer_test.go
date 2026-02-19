@@ -344,6 +344,58 @@ func TestSDPMediaAnswer(t *testing.T) {
 	}, offer)
 }
 
+func TestSDPMediaAnswerOneDisabled(t *testing.T) {
+	offer := sdp.MediaDescription{
+		MediaName: sdp.MediaName{
+			Formats: []string{"9", "0", "8", "101"},
+		},
+		Attributes: []sdp.Attribute{
+			{Key: "rtpmap", Value: "9 G722/8000"},
+			{Key: "rtpmap", Value: "0 PCMU/8000"},
+			{Key: "rtpmap", Value: "101 telephone-event/8000"},
+		},
+	}
+	exp := &AudioConfig{
+		Codec:    getCodec(g711.ULawSDPName),
+		Type:     0,
+		DTMFType: 101,
+	}
+
+	media.CodecSetEnabled(g722.SDPName, false)
+	defer media.CodecSetEnabled(g722.SDPName, true)
+
+	m, err := ParseMedia(&offer)
+	require.NoError(t, err)
+	got, err := SelectAudio(*m, false)
+	require.NoError(t, err)
+	require.NotNil(t, exp.Codec)
+	require.Equal(t, exp, got)
+}
+
+func TestSDPMediaAnswerAllDisabled(t *testing.T) {
+	offer := sdp.MediaDescription{
+		MediaName: sdp.MediaName{
+			Formats: []string{"9", "0", "101"},
+		},
+		Attributes: []sdp.Attribute{
+			{Key: "rtpmap", Value: "9 G722/8000"},
+			{Key: "rtpmap", Value: "0 PCMU/8000"},
+			{Key: "rtpmap", Value: "101 telephone-event/8000"},
+		},
+	}
+
+	media.CodecSetEnabled(g722.SDPName, false)
+	defer media.CodecSetEnabled(g722.SDPName, true)
+	media.CodecSetEnabled(g711.ULawSDPName, false)
+	defer media.CodecSetEnabled(g711.ULawSDPName, true)
+
+	m, err := ParseMedia(&offer)
+	require.NoError(t, err)
+	_, err = SelectAudio(*m, false)
+	require.Error(t, err)
+	require.Equal(t, ErrNoCommonMedia, err)
+}
+
 func TestParseOffer(t *testing.T) {
 	tests := []struct {
 		name    string

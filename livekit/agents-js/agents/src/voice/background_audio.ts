@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import {
   AudioFrame,
+  AudioMixer,
   AudioSource,
   LocalAudioTrack,
   type LocalTrackPublication,
@@ -57,13 +58,15 @@ export interface BackgroundAudioPlayerOptions {
 
   /**
    * Sound to play when the agent is thinking.
-   * TODO (Brian): Implement thinking sound when AudioMixer becomes available
+   * Plays when agent state changes to 'thinking' and stops when it changes to other states.
    */
   thinkingSound?: AudioSourceType | AudioConfig | AudioConfig[];
 
   /**
-   * Stream timeout in milliseconds
-   * @defaultValue 200
+   * Stream timeout in milliseconds for the audio mixer.
+   * Controls how long the mixer waits for a stream to produce data before timing out.
+   * Higher values are more tolerant of network latency and processing delays.
+   * @defaultValue 2000
    */
   streamTimeoutMs?: number;
 }
@@ -77,6 +80,7 @@ export interface BackgroundAudioStartOptions {
 // Queue size for AudioSource buffer (400ms)
 // Kept small to avoid abrupt cutoffs when removing sounds
 const AUDIO_SOURCE_BUFFER_MS = 400;
+const STREAM_TIMEOUT_MS = 2000;
 
 export class PlayHandle {
   private doneFuture = new Future<void>();
@@ -113,15 +117,16 @@ export class PlayHandle {
  * This class handles playing ambient sounds and manages audio track publishing.
  * It supports:
  * - Continuous ambient sound playback with looping
+ * - Thinking sound playback during agent processing
+ * - Multiple simultaneous audio streams via AudioMixer
  * - Volume control and probability-based sound selection
  * - Integration with LiveKit rooms and agent sessions
- *
- * Note: Thinking sound not yet supported
  *
  * @example
  * ```typescript
  * const player = new BackgroundAudioPlayer({
  *   ambientSound: { source: BuiltinAudioClip.OFFICE_AMBIENCE, volume: 0.8 },
+ *   thinkingSound: { source: BuiltinAudioClip.KEYBOARD_TYPING, volume: 0.6 },
  * });
  *
  * await player.start({ room, agentSession });
@@ -130,9 +135,12 @@ export class PlayHandle {
 export class BackgroundAudioPlayer {
   private ambientSound?: AudioSourceType | AudioConfig | AudioConfig[];
   private thinkingSound?: AudioSourceType | AudioConfig | AudioConfig[];
+  private streamTimeoutMs: number;
 
   private playTasks: Task<void>[] = [];
   private audioSource = new AudioSource(48000, 1, AUDIO_SOURCE_BUFFER_MS);
+  private audioMixer: AudioMixer;
+  private mixerTask?: Task<void>;
 
   private room?: Room;
   private agentSession?: AgentSession;
@@ -143,20 +151,24 @@ export class BackgroundAudioPlayer {
   private ambientHandle?: PlayHandle;
   private thinkingHandle?: PlayHandle;
 
+  private closed = true;
+
   // TODO (Brian): add lock
 
   #logger = log();
 
   constructor(options?: BackgroundAudioPlayerOptions) {
-    const { ambientSound, thinkingSound } = options || {};
+    const { ambientSound, thinkingSound, streamTimeoutMs = STREAM_TIMEOUT_MS } = options || {};
 
     this.ambientSound = ambientSound;
     this.thinkingSound = thinkingSound;
+    this.streamTimeoutMs = streamTimeoutMs;
 
-    if (this.thinkingSound) {
-      this.#logger.warn('thinkingSound is not yet supported');
-      // TODO: Implement thinking sound when AudioMixer becomes available
-    }
+    this.audioMixer = new AudioMixer(48000, 1, {
+      blocksize: 4800, // 100ms at 48kHz
+      capacity: 1,
+      streamTimeoutMs: this.streamTimeoutMs,
+    });
   }
 
   /**
@@ -278,15 +290,24 @@ export class BackgroundAudioPlayer {
     this.agentSession = agentSession;
     this.trackPublishOptions = trackPublishOptions;
 
+    this.closed = false;
+
     await this.publishTrack();
 
     // TODO (Brian): check job context is not fake
 
-    // TODO (Brian): start audio mixer task
+    this.mixerTask = Task.from(async () => {
+      try {
+        await this.runMixerTask();
+      } catch (err) {
+        if (this.closed) return; // expected when AudioSource is closed
+        throw err;
+      }
+    });
+
     this.room.on('reconnected', this.onReconnected);
 
     this.agentSession?.on(AgentSessionEventTypes.AgentStateChanged, this.onAgentStateChanged);
-
     if (!this.ambientSound) return;
 
     const normalized = this.normalizeSoundSource(this.ambientSound);
@@ -301,15 +322,20 @@ export class BackgroundAudioPlayer {
    * Close and cleanup the background audio system
    */
   async close(): Promise<void> {
+    this.closed = true;
+
     await cancelAndWait(this.playTasks, TASK_TIMEOUT_MS);
 
     if (this.republishTask) {
       await this.republishTask.cancelAndWait(TASK_TIMEOUT_MS);
     }
 
-    // TODO (Brian): cancel audio mixer task and close audio mixer
-
+    await this.audioMixer.aclose();
     await this.audioSource.close();
+
+    if (this.mixerTask) {
+      await this.mixerTask.cancelAndWait(TASK_TIMEOUT_MS);
+    }
 
     this.agentSession?.off(AgentSessionEventTypes.AgentStateChanged, this.onAgentStateChanged);
     this.room?.off('reconnected', this.onReconnected);
@@ -362,6 +388,12 @@ export class BackgroundAudioPlayer {
     await this.publishTrack();
   }
 
+  private async runMixerTask(): Promise<void> {
+    for await (const frame of this.audioMixer) {
+      await this.audioSource.captureFrame(frame);
+    }
+  }
+
   private onAgentStateChanged = (ev: AgentStateChangedEvent): void => {
     if (!this.thinkingSound) {
       return;
@@ -372,11 +404,44 @@ export class BackgroundAudioPlayer {
         return;
       }
 
-      // TODO (Brian): play thinking sound and assign to thinkingHandle
+      const normalized = this.normalizeSoundSource(this.thinkingSound);
+      if (normalized) {
+        const { source, volume } = normalized;
+        const selectedSound: AudioConfig = { source, volume, probability: 1.0 };
+        // Loop thinking sound while in thinking state (same as ambient)
+        this.thinkingHandle = this.play(selectedSound, typeof source === 'string');
+      }
     } else {
       this.thinkingHandle?.stop();
     }
   };
+
+  // Note: Python uses numpy, TS uses typed arrays for equivalent logic
+  private applyVolumeToFrame(frame: AudioFrame, volume: number): AudioFrame {
+    const int16Data = new Int16Array(
+      frame.data.buffer,
+      frame.data.byteOffset,
+      frame.data.byteLength / 2,
+    );
+    const float32Data = new Float32Array(int16Data.length);
+
+    for (let i = 0; i < int16Data.length; i++) {
+      float32Data[i] = int16Data[i]!;
+    }
+
+    const volumeFactor = 10 ** Math.log10(volume);
+    for (let i = 0; i < float32Data.length; i++) {
+      float32Data[i]! *= volumeFactor;
+    }
+
+    const outputData = new Int16Array(float32Data.length);
+    for (let i = 0; i < float32Data.length; i++) {
+      const clipped = Math.max(-32768, Math.min(32767, float32Data[i]!));
+      outputData[i] = Math.round(clipped);
+    }
+
+    return new AudioFrame(outputData, frame.sampleRate, frame.channels, frame.samplesPerChannel);
+  }
 
   private async playTask({
     playHandle,
@@ -395,57 +460,35 @@ export class BackgroundAudioPlayer {
       sound = getBuiltinAudioPath(sound);
     }
 
+    let audioStream: AsyncIterable<AudioFrame>;
     if (typeof sound === 'string') {
-      sound = loop
+      audioStream = loop
         ? loopAudioFramesFromFile(sound, { abortSignal: signal })
         : audioFramesFromFile(sound, { abortSignal: signal });
+    } else {
+      audioStream = sound;
     }
 
-    try {
-      for await (const frame of sound) {
+    const applyVolume = this.applyVolumeToFrame.bind(this);
+    async function* genWrapper(): AsyncGenerator<AudioFrame> {
+      for await (const frame of audioStream) {
         if (signal.aborted || playHandle.done()) break;
-
-        let processedFrame: AudioFrame;
-
-        if (volume !== 1.0) {
-          const int16Data = new Int16Array(
-            frame.data.buffer,
-            frame.data.byteOffset,
-            frame.data.byteLength / 2,
-          );
-          const float32Data = new Float32Array(int16Data.length);
-
-          for (let i = 0; i < int16Data.length; i++) {
-            float32Data[i] = int16Data[i]!;
-          }
-
-          const volumeFactor = 10 ** Math.log10(volume);
-          for (let i = 0; i < float32Data.length; i++) {
-            float32Data[i]! *= volumeFactor;
-          }
-
-          const outputData = new Int16Array(float32Data.length);
-          for (let i = 0; i < float32Data.length; i++) {
-            const clipped = Math.max(-32768, Math.min(32767, float32Data[i]!));
-            outputData[i] = Math.round(clipped);
-          }
-
-          processedFrame = new AudioFrame(
-            outputData,
-            frame.sampleRate,
-            frame.channels,
-            frame.samplesPerChannel,
-          );
-        } else {
-          processedFrame = frame;
-        }
-
-        // TODO (Brian): use AudioMixer to add/remove frame streams
-        await this.audioSource.captureFrame(processedFrame);
+        yield volume !== 1.0 ? applyVolume(frame, volume) : frame;
       }
-    } finally {
-      // TODO: the waitForPlayout() may be innaccurate by 400ms
       playHandle._markPlayoutDone();
+    }
+
+    const gen = genWrapper();
+    try {
+      this.audioMixer.addStream(gen);
+      await playHandle.waitForPlayout();
+    } finally {
+      this.audioMixer.removeStream(gen);
+      playHandle._markPlayoutDone();
+
+      if (playHandle.done()) {
+        await gen.return(undefined);
+      }
     }
   }
 }

@@ -17,6 +17,7 @@ export interface ChoiceDelta {
   role: ChatRole;
   content?: string;
   toolCalls?: FunctionCall[];
+  extra?: Record<string, unknown>;
 }
 
 export interface CompletionUsage {
@@ -135,7 +136,7 @@ export abstract class LLMStream implements AsyncIterableIterator<ChatChunk> {
     // is run **after** the constructor has finished. Otherwise we get
     // runtime error when trying to access class variables in the
     // `run` method.
-    startSoon(() => this.mainTask().then(() => this.queue.close()));
+    startSoon(() => this.mainTask().finally(() => this.queue.close()));
   }
 
   private _mainTaskImpl = async (span: Span) => {
@@ -173,7 +174,7 @@ export abstract class LLMStream implements AsyncIterableIterator<ChatChunk> {
             this.emitError({ error, recoverable: true });
             this.logger.warn(
               { llm: this.#llm.label(), attempt: i + 1, error },
-              `failed to generate LLM completion, retrying in ${retryInterval}s`,
+              `failed to generate LLM completion, retrying in ${retryInterval}ms`,
             );
           }
 

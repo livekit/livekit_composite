@@ -6,6 +6,7 @@ import { EventEmitter } from 'events';
 import type { ReadableStream } from 'node:stream/web';
 import { DeferredReadableStream } from '../stream/deferred_stream.js';
 import { Task } from '../utils.js';
+import type { TimedString } from '../voice/io.js';
 import type { ChatContext, FunctionCall } from './chat_context.js';
 import type { ToolChoice, ToolContext } from './tool_context.js';
 
@@ -17,7 +18,10 @@ export interface InputSpeechStoppedEvent {
 
 export interface MessageGeneration {
   messageId: string;
-  textStream: ReadableStream<string>;
+  /**
+   * Text stream that may contain plain strings or TimedString objects with timestamps.
+   */
+  textStream: ReadableStream<string | TimedString>;
   audioStream: ReadableStream<AudioFrame>;
   modalities?: Promise<('text' | 'audio')[]>;
 }
@@ -26,6 +30,8 @@ export interface GenerationCreatedEvent {
   messageStream: ReadableStream<MessageGeneration>;
   functionStream: ReadableStream<FunctionCall>;
   userInitiated: boolean;
+  /** Response ID for correlating metrics with spans */
+  responseId?: string;
 }
 
 export interface RealtimeModelError {
@@ -62,6 +68,9 @@ export abstract class RealtimeModel {
   get capabilities() {
     return this._capabilities;
   }
+
+  /** The model name/identifier used by this realtime model */
+  abstract get model(): string;
 
   abstract session(): RealtimeSession;
 

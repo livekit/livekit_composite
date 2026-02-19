@@ -17,7 +17,7 @@ import logging
 from collections import deque
 import ctypes
 import random
-from typing import Callable, Generator, Generic, List, TypeVar
+from typing import Callable, Generator, Generic, List, TypeVar, Union
 
 logger = logging.getLogger("livekit")
 
@@ -40,8 +40,36 @@ def task_done_logger(task: asyncio.Task) -> None:
         return
 
 
-def get_address(mv: memoryview) -> int:
-    return ctypes.addressof(ctypes.c_char.from_buffer(mv))
+def _ensure_compatible_buffer(
+    data: Union[bytes, bytearray, memoryview],
+) -> Union[bytes, bytearray, memoryview]:
+    """Validate and normalize a buffer for FFI use.
+
+    Sliced memoryviews are materialized because get_address cannot
+    reliably resolve their offset for all buffer types.
+    """
+    if isinstance(data, memoryview):
+        if not data.contiguous:
+            raise ValueError("memoryview must be contiguous")
+        if data.nbytes != len(data.obj):  # type: ignore[arg-type]
+            return bytearray(data) if not data.readonly else bytes(data)
+    elif not isinstance(data, (bytes, bytearray)):
+        raise TypeError(f"expected bytes, bytearray, or memoryview, got {type(data)}")
+    return data
+
+
+def get_address(data: Union[bytes, bytearray, memoryview]) -> int:
+    if isinstance(data, memoryview):
+        if not data.readonly:
+            return ctypes.addressof(ctypes.c_char.from_buffer(data))
+        data = data.obj  # type: ignore[assignment]
+    if isinstance(data, bytearray):
+        return ctypes.addressof(ctypes.c_char.from_buffer(data))
+    if isinstance(data, bytes):
+        addr = ctypes.cast(ctypes.c_char_p(data), ctypes.c_void_p).value
+        assert addr is not None
+        return addr
+    raise TypeError(f"expected bytes, bytearray, or memoryview, got {type(data)}")
 
 
 T = TypeVar("T")

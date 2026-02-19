@@ -69,8 +69,8 @@ type StreamTracker struct {
 	lastNotifiedStatus StreamStatus
 
 	lastBitrateReport time.Time
-	bytesForBitrate   [4]int64
-	bitrate           [4]int64
+	bytesForBitrate   [buffer.DefaultMaxLayerTemporal + 1]int64
+	bitrate           [buffer.DefaultMaxLayerTemporal + 1]int64
 
 	isStopped bool
 }
@@ -158,10 +158,10 @@ func (s *StreamTracker) resetLocked() {
 
 	s.setStatusLocked(StreamStatusStopped)
 
-	for i := 0; i < len(s.bytesForBitrate); i++ {
+	for i := range len(s.bytesForBitrate) {
 		s.bytesForBitrate[i] = 0
 	}
-	for i := 0; i < len(s.bitrate); i++ {
+	for i := range len(s.bitrate) {
 		s.bitrate[i] = 0
 	}
 
@@ -207,8 +207,17 @@ func (s *StreamTracker) Observe(
 		go s.worker(s.generation.Load())
 	}
 
-	if temporalLayer >= 0 {
+	if temporalLayer >= 0 && int(temporalLayer) < len(s.bytesForBitrate) {
 		s.bytesForBitrate[temporalLayer] += int64(pktSize)
+	} else if int(temporalLayer) >= len(s.bytesForBitrate) {
+		s.params.Logger.Warnw(
+			"invalid temporal layer", nil,
+			"temporalLayer", temporalLayer,
+			"pktSize", pktSize,
+			"payloadSize", payloadSize,
+			"hasMarker", hasMarker,
+			"ts", ts,
+		)
 	}
 	s.lock.Unlock()
 
@@ -235,7 +244,7 @@ func (s *StreamTracker) BitrateTemporalCumulative() []int64 {
 	}
 
 	// clear higher layers
-	for i := 0; i < len(brs); i++ {
+	for i := range brs {
 		if brs[i] == 0 {
 			for j := i + 1; j < len(brs); j++ {
 				brs[j] = 0
@@ -291,7 +300,7 @@ func (s *StreamTracker) bitrateReport() {
 	s.lastBitrateReport = now
 
 	bitrateAvailabilityChanged := false
-	for i := 0; i < len(s.bytesForBitrate); i++ {
+	for i := range len(s.bytesForBitrate) {
 		bitrate := int64(float64(s.bytesForBitrate[i]*8) / diff.Seconds())
 		if (s.bitrate[i] == 0 && bitrate > 0) || (s.bitrate[i] > 0 && bitrate == 0) {
 			bitrateAvailabilityChanged = true

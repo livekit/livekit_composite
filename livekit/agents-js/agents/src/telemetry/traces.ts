@@ -37,6 +37,8 @@ export interface StartSpanOptions {
   attributes?: Attributes;
   /** Whether to end the span when the function exits (default: true) */
   endOnExit?: boolean;
+  /** Optional start time for the span in milliseconds (Date.now() format) */
+  startTime?: number;
 }
 
 /**
@@ -79,10 +81,12 @@ class DynamicTracer {
    */
   startSpan(options: StartSpanOptions): Span {
     const ctx = options.context || otelContext.active();
+
     const span = this.tracer.startSpan(
       options.name,
       {
         attributes: options.attributes,
+        startTime: options.startTime,
       },
       ctx,
     );
@@ -101,7 +105,7 @@ class DynamicTracer {
   async startActiveSpan<T>(fn: (span: Span) => Promise<T>, options: StartSpanOptions): Promise<T> {
     const ctx = options.context || otelContext.active();
     const endOnExit = options.endOnExit === undefined ? true : options.endOnExit; // default true
-    const opts: SpanOptions = { attributes: options.attributes };
+    const opts: SpanOptions = { attributes: options.attributes, startTime: options.startTime };
 
     // Directly return the tracer's startActiveSpan result - it handles async correctly
     return await this.tracer.startActiveSpan(options.name, opts, ctx, async (span) => {
@@ -125,7 +129,7 @@ class DynamicTracer {
   startActiveSpanSync<T>(fn: (span: Span) => T, options: StartSpanOptions): T {
     const ctx = options.context || otelContext.active();
     const endOnExit = options.endOnExit === undefined ? true : options.endOnExit; // default true
-    const opts: SpanOptions = { attributes: options.attributes };
+    const opts: SpanOptions = { attributes: options.attributes, startTime: options.startTime };
 
     return this.tracer.startActiveSpan(options.name, opts, ctx, (span) => {
       try {
@@ -457,9 +461,15 @@ export async function uploadSessionReport(options: {
   // get reordered by the dashboard
   let lastTimestamp = 0;
   for (const item of report.chatHistory.items) {
+    // Skip null/undefined items
+    if (!item) continue;
+
     // Ensure monotonically increasing timestamps for proper ordering
     // Add 0.001ms (1 microsecond) offset when timestamps collide
-    let itemTimestamp = item.createdAt;
+    // Also handle undefined/NaN timestamps from realtime mode (defensive)
+    const hasValidTimestamp = Number.isFinite(item.createdAt);
+    let itemTimestamp = hasValidTimestamp ? item.createdAt : Date.now();
+
     if (itemTimestamp <= lastTimestamp) {
       itemTimestamp = lastTimestamp + 0.001; // Add 1 microsecond
     }
@@ -482,6 +492,7 @@ export async function uploadSessionReport(options: {
       severityText,
     });
   }
+
   await logExporter.export(logRecords);
 
   const apiKey = process.env.LIVEKIT_API_KEY;
@@ -574,13 +585,30 @@ export async function uploadSessionReport(options: {
         }
 
         if (res.statusCode && res.statusCode >= 400) {
-          reject(
-            new Error(`Failed to upload session report: ${res.statusCode} ${res.statusMessage}`),
-          );
+          // Read response body for error details
+          let body = '';
+          res.on('data', (chunk) => {
+            body += chunk.toString();
+          });
+          res.on('error', (readErr) => {
+            reject(
+              new Error(
+                `Failed to upload session report: ${res.statusCode} ${res.statusMessage} (body read error: ${readErr.message})`,
+              ),
+            );
+          });
+          res.on('end', () => {
+            reject(
+              new Error(
+                `Failed to upload session report: ${res.statusCode} ${res.statusMessage} - ${body}`,
+              ),
+            );
+          });
           return;
         }
 
         res.resume(); // Drain the response
+        res.on('error', (readErr) => reject(new Error(`Response read error: ${readErr.message}`)));
         res.on('end', () => resolve());
       },
     );

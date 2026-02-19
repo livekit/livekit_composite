@@ -11,30 +11,33 @@ mod generator;
 mod filters;
 pub mod utils;
 
-use crate::{bindings::generator::{generate_node_bindings, Bindings}, utils::write_with_dirs};
+use crate::{bindings::generator::{generate_node_bindings, Bindings, GenerateNodeBindingsOptions}, utils::write_with_dirs};
 
 pub struct NodeBindingGenerator {
     out_dirname_api: utils::DirnameApi,
-    out_disable_auto_loading_lib: bool,
+    out_lib_disable_auto_loading: bool,
     out_import_extension: utils::ImportExtension,
     out_node_version: String,
     out_verbose_logs: bool,
+    out_lib_path: utils::LibPath,
 }
 
 impl NodeBindingGenerator {
     pub fn new(
         out_dirname_api: utils::DirnameApi,
-        out_disable_auto_loading_lib: bool,
+        out_lib_disable_auto_loading: bool,
         out_import_extension: utils::ImportExtension,
         out_node_version: &str,
         out_verbose_logs: bool,
+        out_lib_path: utils::LibPath,
     ) -> Self {
         Self {
             out_dirname_api,
-            out_disable_auto_loading_lib,
+            out_lib_disable_auto_loading,
             out_import_extension,
             out_node_version: out_node_version.into(),
             out_verbose_logs,
+            out_lib_path,
         }
     }
 }
@@ -78,13 +81,16 @@ impl BindingGenerator for NodeBindingGenerator {
                 index_ts_file_contents,
             } = generate_node_bindings(
                 &ci,
-                sys_ts_main_file_name.as_str(),
-                node_ts_main_file_name.as_str(),
-                self.out_dirname_api.clone(),
-                self.out_disable_auto_loading_lib,
-                self.out_import_extension.clone(),
-                self.out_node_version.as_str(),
-                self.out_verbose_logs,
+                GenerateNodeBindingsOptions {
+                    sys_ts_main_file_name: sys_ts_main_file_name.as_str(),
+                    node_ts_main_file_name: node_ts_main_file_name.as_str(),
+                    out_dirname_api: self.out_dirname_api.clone(),
+                    out_lib_disable_auto_loading: self.out_lib_disable_auto_loading,
+                    out_import_extension: self.out_import_extension.clone(),
+                    out_node_version: self.out_node_version.as_str(),
+                    out_verbose_logs: self.out_verbose_logs,
+                    out_lib_path: self.out_lib_path.clone(),
+                }
             )?;
 
             let package_json_path = settings.out_dir.join("package.json");

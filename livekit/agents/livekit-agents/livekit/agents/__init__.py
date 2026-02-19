@@ -27,6 +27,7 @@ from ._exceptions import (
     APIStatusError,
     APITimeoutError,
     AssignmentTimeoutError,
+    create_api_error_from_http,
 )
 from .job import (
     AutoSubscribe,
@@ -37,6 +38,8 @@ from .job import (
     get_job_context,
 )
 from .llm.chat_context import (
+    AgentConfigUpdate,
+    AgentHandoff,
     ChatContent,
     ChatContext,
     ChatItem,
@@ -45,7 +48,14 @@ from .llm.chat_context import (
     FunctionCall,
     FunctionCallOutput,
 )
-from .llm.tool_context import FunctionTool, StopResponse, ToolError, function_tool
+from .llm.tool_context import (
+    FunctionTool,
+    ProviderTool,
+    StopResponse,
+    ToolContext,
+    ToolError,
+    function_tool,
+)
 from .plugin import Plugin
 from .types import (
     DEFAULT_API_CONNECT_OPTIONS,
@@ -70,6 +80,7 @@ from .voice import (
     FunctionToolsExecutedEvent,
     MetricsCollectedEvent,
     ModelSettings,
+    RecordingOptions,
     RunContext,
     SpeechCreatedEvent,
     UserInputTranscribedEvent,
@@ -126,6 +137,7 @@ __all__ = [
     "AutoSubscribe",
     "FunctionTool",
     "function_tool",
+    "ProviderTool",
     "ChatContext",
     "ChatItem",
     "room_io",
@@ -148,11 +160,15 @@ __all__ = [
     "FunctionToolsExecutedEvent",
     "FunctionCall",
     "FunctionCallOutput",
+    "AgentConfigUpdate",
+    "AgentHandoff",
     "StopResponse",
+    "ToolContext",
     "ToolError",
     "RunContext",
     "Plugin",
     "AgentSession",
+    "RecordingOptions",
     "AgentEvent",
     "ModelSettings",
     "Agent",
@@ -162,6 +178,7 @@ __all__ = [
     "APIError",
     "APIStatusError",
     "APITimeoutError",
+    "create_api_error_from_http",
     "APIConnectOptions",
     "NotGiven",
     "NOT_GIVEN",

@@ -1,5 +1,6 @@
 'use client';
 
+import { type ComponentProps } from 'react';
 import { type AgentState, type ReceivedMessage } from '@livekit/components-react';
 import {
   Conversation,
@@ -10,19 +11,48 @@ import { Message, MessageContent, MessageResponse } from '@/components/ai-elemen
 import { AgentChatIndicator } from '@/components/agents-ui/agent-chat-indicator';
 import { AnimatePresence } from 'motion/react';
 
-export interface AgentChatTranscriptProps {
+/**
+ * Props for the AgentChatTranscript component.
+ */
+export interface AgentChatTranscriptProps extends ComponentProps<'div'> {
+  /**
+   * The current state of the agent. When 'thinking', displays a loading indicator.
+   */
   agentState?: AgentState;
+  /**
+   * Array of messages to display in the transcript.
+   * @defaultValue []
+   */
   messages?: ReceivedMessage[];
+  /**
+   * Additional CSS class names to apply to the conversation container.
+   */
   className?: string;
 }
 
+/**
+ * A chat transcript component that displays a conversation between the user and agent.
+ * Shows messages with timestamps and origin indicators, plus a thinking indicator
+ * when the agent is processing.
+ *
+ * @extends ComponentProps<'div'>
+ *
+ * @example
+ * ```tsx
+ * <AgentChatTranscript
+ *   agentState={agentState}
+ *   messages={chatMessages}
+ * />
+ * ```
+ */
 export function AgentChatTranscript({
   agentState,
   messages = [],
   className,
+  ...props
 }: AgentChatTranscriptProps) {
   return (
-    <Conversation className={className}>
+    <Conversation className={className} {...props}>
       <ConversationContent>
         {messages.map((receivedMessage) => {
           const { id, timestamp, from, message } = receivedMessage;

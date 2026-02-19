@@ -54,6 +54,14 @@ type TLSConfig struct {
 	ListenPort int       `yaml:"port_listen"` // SIP signaling port to listen on
 	Certs      []TLSCert `yaml:"certs"`
 	KeyLog     string    `yaml:"key_log"`
+
+	MinVersion string `yaml:"min_version"` // min TLS version, accepts: "tls1.0", "tls1.1", "tls1.2", "tls1.3"
+	MaxVersion string `yaml:"max_version"` // max TLS version, accepts: "tls1.0", "tls1.1", "tls1.2", "tls1.3"
+
+	// CipherSuites is an optional list of cipher suite names.
+	// If not provided, Go's secure defaults are used.
+	// Note: Only applies to TLS 1.0-1.2; TLS 1.3 cipher suites are not configurable.
+	CipherSuites []string `yaml:"cipher_suites"`
 }
 
 type TCPConfig struct {
@@ -85,6 +93,7 @@ type Config struct {
 	NAT1To1IP     string `yaml:"nat_1_to_1_ip"`
 	ListenIP      string `yaml:"listen_ip"`
 
+	UDPMaxPayload int `yaml:"udp_max_payload"`
 	// if different from signaling IP
 	MediaUseExternalIP bool   `yaml:"media_use_external_ip"`
 	MediaNAT1To1IP     string `yaml:"media_nat_1_to_1_ip"`
@@ -108,6 +117,7 @@ type Config struct {
 	// internal
 	ServiceName string `yaml:"-"`
 	NodeID      string // Do not provide, will be overwritten
+	JaegerURL   string `yaml:"jaeger_url"` // for tracing
 
 	// Experimental, these option might go away without notice.
 	Experimental struct {

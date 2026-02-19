@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,15 +18,12 @@ import CoreMedia
 
 internal import LiveKitWebRTC
 
-@objc
+@objcMembers
 public final class Dimensions: NSObject, Loggable, Sendable {
-    @objc
     public let width: Int32
 
-    @objc
     public let height: Int32
 
-    @objc
     public init(width: Int32, height: Int32) {
         self.width = width
         self.height = height

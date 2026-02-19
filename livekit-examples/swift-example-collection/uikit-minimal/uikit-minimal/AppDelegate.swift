@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,17 +15,12 @@
  */
 
 import LiveKit
-import Logging
 import UIKit
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
-        LoggingSystem.bootstrap {
-            var logHandler = StreamLogHandler.standardOutput(label: $0)
-            logHandler.logLevel = .debug
-            return logHandler
-        }
+        LiveKitSDK.setLogLevel(.debug)
 
         return true
     }

@@ -26,15 +26,20 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"gopkg.in/yaml.v3"
 
-	"github.com/livekit/egress/pkg/config"
-	"github.com/livekit/egress/pkg/errors"
-	"github.com/livekit/egress/pkg/logging"
 	"github.com/livekit/protocol/egress"
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/rpc"
-	"github.com/livekit/protocol/tracer"
 	"github.com/livekit/protocol/utils"
+	"go.opentelemetry.io/otel"
+
+	"github.com/livekit/egress/pkg/config"
+	"github.com/livekit/egress/pkg/errors"
+	"github.com/livekit/egress/pkg/logging"
+)
+
+var (
+	tracer = otel.Tracer("github.com/livekit/egress/pkg/server")
 )
 
 func (s *Server) StartEgress(ctx context.Context, req *rpc.StartEgressRequest) (*livekit.EgressInfo, error) {
@@ -202,7 +207,7 @@ func (s *Server) StartEgressAffinity(_ context.Context, req *rpc.StartEgressRequ
 }
 
 func (s *Server) ListActiveEgress(ctx context.Context, _ *rpc.ListActiveEgressRequest) (*rpc.ListActiveEgressResponse, error) {
-	ctx, span := tracer.Start(ctx, "Service.ListActiveEgress")
+	_, span := tracer.Start(ctx, "Service.ListActiveEgress")
 	defer span.End()
 
 	return &rpc.ListActiveEgressResponse{

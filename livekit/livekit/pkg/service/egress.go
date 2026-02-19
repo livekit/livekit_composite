@@ -73,7 +73,7 @@ func NewEgressLauncher(client rpc.EgressClient, io IOClient, store ServiceStore)
 }
 
 func (s *EgressService) StartRoomCompositeEgress(ctx context.Context, req *livekit.RoomCompositeEgressRequest) (*livekit.EgressInfo, error) {
-	fields := []interface{}{
+	fields := []any{
 		"room", req.RoomName,
 		"baseUrl", req.CustomBaseUrl,
 		"outputType", egress.GetOutputType(req),
@@ -81,7 +81,10 @@ func (s *EgressService) StartRoomCompositeEgress(ctx context.Context, req *livek
 	defer func() {
 		AppendLogFields(ctx, fields...)
 	}()
+
+	egressID, idFromCtx := EgressID(ctx)
 	ei, err := s.startEgress(ctx, &rpc.StartEgressRequest{
+		EgressId: egressID,
 		Request: &rpc.StartEgressRequest_RoomComposite{
 			RoomComposite: req,
 		},
@@ -89,19 +92,23 @@ func (s *EgressService) StartRoomCompositeEgress(ctx context.Context, req *livek
 	if err != nil {
 		return nil, err
 	}
-	fields = append(fields, "egressID", ei.EgressId)
+	if !idFromCtx {
+		fields = append(fields, "egressID", ei.EgressId)
+	}
 	return ei, err
 }
 
 func (s *EgressService) StartWebEgress(ctx context.Context, req *livekit.WebEgressRequest) (*livekit.EgressInfo, error) {
-	fields := []interface{}{
+	fields := []any{
 		"url", req.Url,
 		"outputType", egress.GetOutputType(req),
 	}
 	defer func() {
 		AppendLogFields(ctx, fields...)
 	}()
+	egressID, idFromCtx := EgressID(ctx)
 	ei, err := s.startEgress(ctx, &rpc.StartEgressRequest{
+		EgressId: egressID,
 		Request: &rpc.StartEgressRequest_Web{
 			Web: req,
 		},
@@ -109,12 +116,14 @@ func (s *EgressService) StartWebEgress(ctx context.Context, req *livekit.WebEgre
 	if err != nil {
 		return nil, err
 	}
-	fields = append(fields, "egressID", ei.EgressId)
+	if !idFromCtx {
+		fields = append(fields, "egressID", ei.EgressId)
+	}
 	return ei, err
 }
 
 func (s *EgressService) StartParticipantEgress(ctx context.Context, req *livekit.ParticipantEgressRequest) (*livekit.EgressInfo, error) {
-	fields := []interface{}{
+	fields := []any{
 		"room", req.RoomName,
 		"identity", req.Identity,
 		"outputType", egress.GetOutputType(req),
@@ -122,7 +131,9 @@ func (s *EgressService) StartParticipantEgress(ctx context.Context, req *livekit
 	defer func() {
 		AppendLogFields(ctx, fields...)
 	}()
+	egressID, idFromCtx := EgressID(ctx)
 	ei, err := s.startEgress(ctx, &rpc.StartEgressRequest{
+		EgressId: egressID,
 		Request: &rpc.StartEgressRequest_Participant{
 			Participant: req,
 		},
@@ -130,12 +141,14 @@ func (s *EgressService) StartParticipantEgress(ctx context.Context, req *livekit
 	if err != nil {
 		return nil, err
 	}
-	fields = append(fields, "egressID", ei.EgressId)
+	if !idFromCtx {
+		fields = append(fields, "egressID", ei.EgressId)
+	}
 	return ei, err
 }
 
 func (s *EgressService) StartTrackCompositeEgress(ctx context.Context, req *livekit.TrackCompositeEgressRequest) (*livekit.EgressInfo, error) {
-	fields := []interface{}{
+	fields := []any{
 		"room", req.RoomName,
 		"audioTrackID", req.AudioTrackId,
 		"videoTrackID", req.VideoTrackId,
@@ -144,7 +157,9 @@ func (s *EgressService) StartTrackCompositeEgress(ctx context.Context, req *live
 	defer func() {
 		AppendLogFields(ctx, fields...)
 	}()
+	egressID, idFromCtx := EgressID(ctx)
 	ei, err := s.startEgress(ctx, &rpc.StartEgressRequest{
+		EgressId: egressID,
 		Request: &rpc.StartEgressRequest_TrackComposite{
 			TrackComposite: req,
 		},
@@ -152,19 +167,23 @@ func (s *EgressService) StartTrackCompositeEgress(ctx context.Context, req *live
 	if err != nil {
 		return nil, err
 	}
-	fields = append(fields, "egressID", ei.EgressId)
+	if !idFromCtx {
+		fields = append(fields, "egressID", ei.EgressId)
+	}
 	return ei, err
 }
 
 func (s *EgressService) StartTrackEgress(ctx context.Context, req *livekit.TrackEgressRequest) (*livekit.EgressInfo, error) {
-	fields := []interface{}{"room", req.RoomName, "trackID", req.TrackId}
+	fields := []any{"room", req.RoomName, "trackID", req.TrackId}
 	if t := reflect.TypeOf(req.Output); t != nil {
 		fields = append(fields, "outputType", t.String())
 	}
 	defer func() {
 		AppendLogFields(ctx, fields...)
 	}()
+	egressID, idFromCtx := EgressID(ctx)
 	ei, err := s.startEgress(ctx, &rpc.StartEgressRequest{
+		EgressId: egressID,
 		Request: &rpc.StartEgressRequest_Track{
 			Track: req,
 		},
@@ -172,7 +191,9 @@ func (s *EgressService) StartTrackEgress(ctx context.Context, req *livekit.Track
 	if err != nil {
 		return nil, err
 	}
-	fields = append(fields, "egressID", ei.EgressId)
+	if !idFromCtx {
+		fields = append(fields, "egressID", ei.EgressId)
+	}
 	return ei, err
 }
 

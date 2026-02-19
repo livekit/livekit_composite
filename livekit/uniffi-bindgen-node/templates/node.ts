@@ -379,8 +379,15 @@ export class {{ object_def.name() | typescript_class_name }} extends UniffiAbstr
       let {{ arg.name() | typescript_argument_var_name }} = {{ arg.name() | typescript_var_name | typescript_ffi_converter_lower_with(arg.as_type().borrow()) }};
     {% endfor -%}
 
-    const pointer = uniffiCaller.rustCall(
-      /*caller:*/ (callStatus) => {
+    const pointer = {%- match constructor_fn.throws_type() -%}
+      {%- when Some(err) -%}
+        uniffiCaller.rustCallWithError(
+          /*liftError:*/ (buffer) => ["{{err | typescript_type_name}}", {{err | typescript_ffi_converter_name}}.lift(buffer)],
+          /*caller:*/ (callStatus) => {
+      {%- else -%}
+        uniffiCaller.rustCall(
+          /*caller:*/ (callStatus) => {
+    {%- endmatch %}
         return FFI_DYNAMIC_LIB.{{ constructor_fn.ffi_func().name() }}([
           {% for arg in constructor_fn.arguments() -%}
             {{ arg.name() | typescript_argument_var_name }}

@@ -78,7 +78,7 @@ def parse_session_config(data: Dict[str, Any]) -> SessionConfig:
     config = SessionConfig(
         gemini_api_key=data.get("gemini_api_key", ""),
         instructions=data.get("instructions", ""),
-        model=data.get("model", "gemini-2.5-flash-native-audio-preview-09-2025"),
+        model=data.get("model", "gemini-2.5-flash-native-audio-preview-12-2025"),
         voice=data.get("voice", "Puck"),
         temperature=float(data.get("temperature", 0.8)),
         max_response_output_tokens=

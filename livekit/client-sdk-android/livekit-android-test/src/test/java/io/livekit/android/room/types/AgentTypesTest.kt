@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit, Inc.
+ * Copyright 2025-2026 LiveKit, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,17 +16,20 @@
 
 package io.livekit.android.room.types
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
 class AgentTypesTest {
 
-    // Some basic tests to ensure klaxon functionality.
-
+    // Some basic tests to ensure deserialization functionality.
     @Test
     fun testEmptyMapConversion() {
-        val agentAttributes = AgentAttributes.fromMap(emptyMap<String, Any>())
+        val agentAttributes = AgentAttributes.fromStringMap(emptyMap())
 
         assertNull(agentAttributes.lkAgentInputs)
         assertNull(agentAttributes.lkAgentOutputs)
@@ -38,9 +41,9 @@ class AgentTypesTest {
     fun testSimpleMapConversion() {
         val map = mapOf(
             "lk.agent.state" to "idle",
-            "lk.publish_on_behalf" to "agent_identity"
+            "lk.publish_on_behalf" to "agent_identity",
         )
-        val agentAttributes = AgentAttributes.fromMap(map)
+        val agentAttributes = AgentAttributes.fromStringMap(map)
 
         assertNull(agentAttributes.lkAgentInputs)
         assertNull(agentAttributes.lkAgentOutputs)
@@ -50,13 +53,55 @@ class AgentTypesTest {
 
     @Test
     fun testDeepMapConversion() {
+        val json = Json
         val map = mapOf(
-            "lk.agent.inputs" to listOf("audio", "text"),
-            "lk.agent.outputs" to listOf("audio"),
+            "lk.agent.inputs" to json.encodeToString(
+                buildJsonArray {
+                    add("audio")
+                    add("text")
+                },
+            ),
+            "lk.agent.outputs" to json.encodeToString(
+                buildJsonArray {
+                    add("audio")
+                },
+            ),
             "lk.agent.state" to "idle",
-            "lk.publish_on_behalf" to "agent_identity"
+            "lk.publish_on_behalf" to "agent_identity",
         )
-        val agentAttributes = AgentAttributes.fromMap(map)
+        val agentAttributes = AgentAttributes.fromStringMap(map)
+
+        assertEquals(listOf(AgentInput.Audio, AgentInput.Text), agentAttributes.lkAgentInputs)
+        assertEquals(listOf(AgentOutput.Audio), agentAttributes.lkAgentOutputs)
+        assertEquals(AgentSdkState.Idle, agentAttributes.lkAgentState)
+        assertEquals("agent_identity", agentAttributes.lkPublishOnBehalf)
+    }
+
+    @Test
+    fun testEmptyStringMapDoesNotThrow() {
+        AgentAttributes.fromStringMap(emptyMap())
+        TranscriptionAttributes.fromStringMap(emptyMap())
+    }
+
+    @Test
+    fun testInvalidStringConversionDoesNotThrow() {
+        val json = Json
+        val map = mapOf(
+            "lk.agent.inputs" to json.encodeToString(
+                buildJsonArray {
+                    add("audio")
+                    add("text")
+                },
+            ),
+            "lk.agent.outputs" to json.encodeToString(
+                buildJsonArray {
+                    add("audio")
+                },
+            ),
+            "lk.agent.state" to "idle",
+            "lk.publish_on_behalf" to "agent_identity",
+        )
+        val agentAttributes = AgentAttributes.fromStringMap(map)
 
         assertEquals(listOf(AgentInput.Audio, AgentInput.Text), agentAttributes.lkAgentInputs)
         assertEquals(listOf(AgentOutput.Audio), agentAttributes.lkAgentOutputs)

@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,19 @@
  * limitations under the License.
  */
 
+import AVFAudio
 import Combine
 import LiveKit
 import SwiftUI
 
 // This class contains the logic to control behavior of the whole app.
 @MainActor
-final class AppContext: ObservableObject {
+final class AppContext: NSObject, ObservableObject {
     private let store: ValueStore<Preferences>
+
+    private var audioPlayer: AVAudioPlayer?
+    @Published var isSampleAudioPlaying: Bool = false
+    private var mutedSpeechToastHideTask: Task<Void, Never>?
 
     @Published var videoViewVisible: Bool = true {
         didSet { store.value.videoViewVisible = videoViewVisible }
@@ -77,6 +82,21 @@ final class AppContext: ObservableObject {
         didSet { AudioManager.shared.isVoiceProcessingBypassed = isVoiceProcessingBypassed }
     }
 
+    @Published var isVoiceProcessingAGCEnabled: Bool = false {
+        didSet { AudioManager.shared.isVoiceProcessingAGCEnabled = isVoiceProcessingAGCEnabled }
+    }
+
+    @Published var isVoiceProcessingEnabled: Bool = true {
+        didSet {
+            guard oldValue != isVoiceProcessingEnabled else { return }
+            do {
+                try AudioManager.shared.setVoiceProcessingEnabled(isVoiceProcessingEnabled)
+            } catch {
+                print("Failed to set voice processing enabled: \(error)")
+            }
+        }
+    }
+
     @Published var micMuteMode: MicrophoneMuteMode = .voiceProcessing {
         didSet {
             do {
@@ -95,6 +115,58 @@ final class AppContext: ObservableObject {
         didSet { AudioManager.shared.mixer.appVolume = appVolume }
     }
 
+    @Published var isRecordingAlwaysPreparedMode: Bool = false {
+        didSet {
+            Task {
+                do {
+                    try await AudioManager.shared.setRecordingAlwaysPreparedMode(isRecordingAlwaysPreparedMode)
+                } catch {
+                    print("Failed to set recording always prepared mode: \(error)")
+                }
+            }
+        }
+    }
+
+    @Published var isAdvancedDuckingEnabled: Bool = false {
+        didSet {
+            if #available(iOS 17, macOS 14.0, visionOS 1.0, *) {
+                AudioManager.shared.isAdvancedDuckingEnabled = isAdvancedDuckingEnabled
+            }
+        }
+    }
+
+    @Published var audioDuckingLevel: AudioDuckingLevel = .min {
+        didSet {
+            if #available(iOS 17, macOS 14.0, visionOS 1.0, *) {
+                AudioManager.shared.duckingLevel = audioDuckingLevel
+            }
+        }
+    }
+
+    @Published var isAudioEngineInputAvailable: Bool = true {
+        didSet {
+            do {
+                try AudioManager.shared.setEngineAvailability(.init(isInputAvailable: isAudioEngineInputAvailable,
+                                                                    isOutputAvailable: isAudioEngineOutputAvailable))
+            } catch {
+                print("Failed to set audio engine availability: \(error)")
+            }
+        }
+    }
+
+    @Published var isAudioEngineOutputAvailable: Bool = true {
+        didSet {
+            do {
+                try AudioManager.shared.setEngineAvailability(.init(isInputAvailable: isAudioEngineInputAvailable,
+                                                                    isOutputAvailable: isAudioEngineOutputAvailable))
+            } catch {
+                print("Failed to set audio engine availability: \(error)")
+            }
+        }
+    }
+
+    @Published var showMutedSpeechToast: Bool = false
+
     init(store: ValueStore<Preferences>) {
         self.store = store
 
@@ -105,6 +177,8 @@ final class AppContext: ObservableObject {
         videoViewMirrored = store.value.videoViewMirrored
         connectionHistory = store.value.connectionHistory
 
+        super.init()
+
         AudioManager.shared.onDeviceUpdate = { [weak self] _ in
             guard let self else { return }
             // force UI update for outputDevice / inputDevice
@@ -114,6 +188,26 @@ final class AppContext: ObservableObject {
                 inputDevices = AudioManager.shared.inputDevices
                 outputDevice = AudioManager.shared.outputDevice
                 inputDevice = AudioManager.shared.inputDevice
+                updateAudioDeviceSelections()
+            }
+        }
+
+        AudioManager.shared.onMutedSpeechActivity = { [weak self] _, event in
+            guard let self else { return }
+            guard case .started = event else { return }
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                withAnimation {
+                    showMutedSpeechToast = true
+                }
+                mutedSpeechToastHideTask?.cancel()
+                mutedSpeechToastHideTask = Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    withAnimation {
+                        showMutedSpeechToast = false
+                    }
+                }
             }
         }
 
@@ -121,5 +215,69 @@ final class AppContext: ObservableObject {
         inputDevices = AudioManager.shared.inputDevices
         outputDevice = AudioManager.shared.outputDevice
         inputDevice = AudioManager.shared.inputDevice
+        isVoiceProcessingEnabled = AudioManager.shared.isVoiceProcessingEnabled
+        isVoiceProcessingAGCEnabled = AudioManager.shared.isVoiceProcessingAGCEnabled
+        isRecordingAlwaysPreparedMode = AudioManager.shared.isRecordingAlwaysPreparedMode
+        updateAudioDeviceSelections()
+    }
+}
+
+private extension AppContext {
+    func updateAudioDeviceSelections() {
+        if !inputDevices.contains(where: { $0.id == inputDevice.id }) {
+            if let defaultInput = inputDevices.first(where: { $0.isDefault }) {
+                inputDevice = defaultInput
+            } else if let firstInput = inputDevices.first {
+                inputDevice = firstInput
+            }
+        }
+
+        if !outputDevices.contains(where: { $0.id == outputDevice.id }) {
+            if let defaultOutput = outputDevices.first(where: { $0.isDefault }) {
+                outputDevice = defaultOutput
+            } else if let firstOutput = outputDevices.first {
+                outputDevice = firstOutput
+            }
+        }
+    }
+}
+
+// MARK: - AudioClips
+
+extension AppContext {
+    func playSampleAudio() {
+        do {
+            if let prevPlayer = audioPlayer {
+                prevPlayer.stop()
+            }
+
+            guard let url = Bundle.main.url(forResource: "livekit_clip01", withExtension: "m4a") else {
+                print("Audio file not found")
+                return
+            }
+
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.delegate = self
+            player.play()
+            audioPlayer = player
+            isSampleAudioPlaying = true
+        } catch {
+            print("Failed to sample audio clip")
+        }
+    }
+
+    func stopSampleAudio() {
+        if let prevPlayer = audioPlayer {
+            prevPlayer.stop()
+        }
+
+        audioPlayer = nil
+        isSampleAudioPlaying = false
+    }
+}
+
+extension AppContext: @MainActor AVAudioPlayerDelegate {
+    func audioPlayerDidFinishPlaying(_: AVAudioPlayer, successfully _: Bool) {
+        isSampleAudioPlaying = false
     }
 }

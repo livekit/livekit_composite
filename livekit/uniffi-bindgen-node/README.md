@@ -16,10 +16,10 @@ dynamic library file and call the relevant operations.
 > - Async function calling
 > - Enums (both bare enums and enums with associated fields)
 > - Objects (multiple constructors, async + regular method calling)
+> - Error enums / exceptions
 > 
 > Currently missing features:
 > - Traits (including node -> rust function calls support)
-> - Error enums / exceptions
 > - Any sort of comprehensive test suite
 
 ## Differences from `uniffi-bindgen-react-native`
@@ -40,7 +40,7 @@ where the build code bridges the dynamic library to node.js directly.
 3. `uniffi-bindgen-node` should be in `~/.cargo/bin` - make sure this is part of your `PATH`.
 
 ## Usage
-Run `uniffi-bindgen-node -- <lib_path>`, passing a dynamic library (`dylib`/`dll`/`so`) build to
+Run `uniffi-bindgen-node generate <lib_path>`, passing a dynamic library (`dylib`/`dll`/`so`) build to
 export a uniffi interface. See `output/` for the results. For more complicated scenarios, run
 `uniffi-bindgen-node --help`.
 

@@ -1,7 +1,7 @@
 import com.google.protobuf.gradle.protobuf
 import com.google.protobuf.gradle.protoc
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.net.URL
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.net.URI
 
 buildscript {
     repositories {
@@ -21,7 +21,7 @@ apply(from = "gradle/gradle-mvn-push.gradle")
 apply(plugin = "idea")
 
 plugins {
-    kotlin("jvm") version "1.9.25"
+    kotlin("jvm") version "2.3.0"
     `maven-publish`
     `java-library`
     id("org.jetbrains.dokka") version "1.9.20"
@@ -34,12 +34,14 @@ plugins {
 java {
     withJavadocJar()
     withSourcesJar()
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
-tasks.withType<KotlinCompile> {
-    kotlinOptions.jvmTarget = "1.8"
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 spotless {
@@ -81,6 +83,17 @@ spotless {
 val protoc_platform: String? by project
 val protoSrc = File("$projectDir/protocol/protobufs/").listFiles { f -> f.isFile }
 
+sourceSets {
+    main {
+        proto {
+            srcDir("$projectDir/protocol/protobufs/")
+            exclude("agent/*")
+            exclude("infra/*")
+            exclude("rpc/*")
+        }
+    }
+}
+
 val protobufVersion = "4.29.4"
 val protobufDep = "com.google.protobuf:protobuf-java:$protobufVersion"
 protobuf {
@@ -107,9 +120,9 @@ fun org.jetbrains.dokka.gradle.DokkaTask.configureDokkaTask() {
 
                 // URL showing where the source code can be accessed through the web browser
                 remoteUrl.set(
-                    URL(
+                    URI(
                         "https://github.com/livekit/server-sdk-kotlin/tree/main/src/main/kotlin"
-                    )
+                    ).toURL()
                 )
                 // Suffix which is used to append the line number to the URL. Use #L for GitHub
                 remoteLineSuffix.set("#L")
@@ -131,10 +144,11 @@ val javadocJar = tasks.named<Jar>("javadocJar") {
 }
 
 dependencies {
-    protobuf(files(*protoSrc))
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
-    api("com.squareup.retrofit2:retrofit:2.11.0")
-    implementation("com.squareup.retrofit2:converter-protobuf:2.11.0")
+
+    implementation(platform("com.squareup.okhttp3:okhttp-bom:5.3.2"))
+    implementation("com.squareup.okhttp3:logging-interceptor")
+    api("com.squareup.retrofit2:retrofit:3.0.0")
+    implementation("com.squareup.retrofit2:converter-protobuf:3.0.0")
     implementation("com.auth0:java-jwt:4.5.0")
     api(protobufDep)
     api("com.google.protobuf:protobuf-java-util:$protobufVersion")

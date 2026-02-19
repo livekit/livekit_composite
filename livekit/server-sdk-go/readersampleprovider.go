@@ -37,6 +37,9 @@ const (
 	// defaults to 30 fps
 	defaultH264FrameDuration = 33 * time.Millisecond
 	defaultH265FrameDuration = 33 * time.Millisecond
+	// G.711 uses 20ms frames at 8kHz = 160 samples
+	defaultG711FrameDuration   = 20 * time.Millisecond
+	defaultG711SamplesPerFrame = 160
 )
 
 // ---------------------------------
@@ -70,6 +73,13 @@ type ReaderSampleProvider struct {
 	AudioLevel          uint8
 	trackOpts           []LocalTrackOptions
 	h26xStreamingFormat H26xStreamingFormat
+	appendUserTimestamp bool
+
+	// When appendUserTimestamp is enabled, we will attempt to parse timestamps from
+	// H264 SEI user_data_unregistered NALs that precede frame NALs.
+	// We then stash the parsed timestamp and attach it to the next frame as an LKTS trailer.
+	pendingUserTimestampUs  int64
+	hasPendingUserTimestamp bool
 
 	// Allow various types of ingress
 	reader io.ReadCloser
@@ -87,6 +97,9 @@ type ReaderSampleProvider struct {
 
 	// for ogg
 	oggReader *oggreader.OggReader
+
+	// for wav (PCMU/PCMA)
+	wavReader *wavReader
 }
 
 type ReaderSampleProviderOption func(*ReaderSampleProvider)
@@ -127,6 +140,21 @@ func ReaderTrackWithH26xStreamingFormat(h26xStreamingFormat H26xStreamingFormat)
 	}
 }
 
+func readerTrackWithWavReader(wr *wavReader) func(provider *ReaderSampleProvider) {
+	return func(provider *ReaderSampleProvider) {
+		provider.wavReader = wr
+	}
+}
+
+// ReaderTrackWithUserTimestamp enables attaching the custom LKTS trailer
+// (timestamp_us + magic) to outgoing encoded frame payloads.
+// This currently supports H264.
+func ReaderTrackWithUserTimestamp(enabled bool) func(provider *ReaderSampleProvider) {
+	return func(provider *ReaderSampleProvider) {
+		provider.appendUserTimestamp = enabled
+	}
+}
+
 // NewLocalFileTrack creates an *os.File reader for NewLocalReaderTrack
 func NewLocalFileTrack(file string, options ...ReaderSampleProviderOption) (*LocalTrack, error) {
 	// File health check
@@ -147,16 +175,18 @@ func NewLocalFileTrack(file string, options ...ReaderSampleProviderOption) (*Loc
 	case ".h264":
 		mime = webrtc.MimeTypeH264
 	case ".ivf":
-		buf := make([]byte, 3)
+		buf := make([]byte, 4)
 		_, err = fp.ReadAt(buf, 8)
 		if err != nil {
 			return nil, err
 		}
-		switch string(buf) {
-		case "VP8":
+		switch {
+		case string(buf[:3]) == "VP8":
 			mime = webrtc.MimeTypeVP8
-		case "VP9":
+		case string(buf[:3]) == "VP9":
 			mime = webrtc.MimeTypeVP9
+		case string(buf) == "AV01":
+			mime = webrtc.MimeTypeAV1
 		default:
 			_ = fp.Close()
 			return nil, ErrCannotDetermineMime
@@ -166,6 +196,15 @@ func NewLocalFileTrack(file string, options ...ReaderSampleProviderOption) (*Loc
 		mime = webrtc.MimeTypeH265
 	case ".ogg":
 		mime = webrtc.MimeTypeOpus
+	case ".wav":
+		// Parse WAV header to determine format (PCMU or PCMA)
+		var wavReader *wavReader
+		wavReader, mime, err = detectWavFormat(fp)
+		if err != nil {
+			_ = fp.Close()
+			return nil, ErrCannotDetermineMime
+		}
+		options = append(options, readerTrackWithWavReader(wavReader))
 	default:
 		_ = fp.Close()
 		return nil, ErrCannotDetermineMime
@@ -197,10 +236,12 @@ func NewLocalReaderTrack(in io.ReadCloser, mime string, options ...ReaderSampleP
 
 	// check if mime type is supported
 	switch provider.Mime {
-	case webrtc.MimeTypeH264, webrtc.MimeTypeH265, webrtc.MimeTypeVP8, webrtc.MimeTypeVP9:
+	case webrtc.MimeTypeH264, webrtc.MimeTypeH265, webrtc.MimeTypeVP8, webrtc.MimeTypeVP9, webrtc.MimeTypeAV1:
 		clockRate = 90000
 	case webrtc.MimeTypeOpus:
 		clockRate = 48000
+	case webrtc.MimeTypePCMU, webrtc.MimeTypePCMA:
+		clockRate = 8000
 	default:
 		return nil, ErrUnsupportedFileType
 	}
@@ -221,7 +262,7 @@ func NewLocalReaderTrack(in io.ReadCloser, mime string, options ...ReaderSampleP
 
 func (p *ReaderSampleProvider) OnBind() error {
 	// If we are not closing on unbind, don't do anything on rebind
-	if p.ivfReader != nil || p.h264reader != nil || p.oggReader != nil || p.h265reader != nil {
+	if p.ivfReader != nil || p.h264reader != nil || p.oggReader != nil || p.h265reader != nil || p.wavReader != nil {
 		return nil
 	}
 
@@ -229,11 +270,11 @@ func (p *ReaderSampleProvider) OnBind() error {
 	switch p.Mime {
 	case webrtc.MimeTypeH264:
 		if p.h26xStreamingFormat == H26xStreamingFormatAnnexB {
-			p.h264reader, err = h264reader.NewReader(p.reader)
+			p.h264reader, err = h264reader.NewReaderWithOptions(p.reader, h264reader.WithIncludeSEI(true))
 		}
 	case webrtc.MimeTypeH265:
-		p.h265reader, err = h265reader.NewReader(p.reader)
-	case webrtc.MimeTypeVP8, webrtc.MimeTypeVP9:
+		p.h265reader, err = h265reader.NewReaderWithOptions(p.reader, h265reader.WithIncludeSEI(true))
+	case webrtc.MimeTypeVP8, webrtc.MimeTypeVP9, webrtc.MimeTypeAV1:
 		var ivfHeader *ivfreader.IVFFileHeader
 		p.ivfReader, ivfHeader, err = ivfreader.NewWith(p.reader)
 		if err == nil {
@@ -241,6 +282,10 @@ func (p *ReaderSampleProvider) OnBind() error {
 		}
 	case webrtc.MimeTypeOpus:
 		p.oggReader, _, err = oggreader.NewOggReader(p.reader)
+	case webrtc.MimeTypePCMU, webrtc.MimeTypePCMA:
+		if p.wavReader == nil {
+			p.wavReader, _, err = newWavReader(p.reader)
+		}
 	default:
 		err = ErrUnsupportedFileType
 	}
@@ -292,6 +337,21 @@ func (p *ReaderSampleProvider) NextSample(ctx context.Context) (media.Sample, er
 			nalUnitData = nal.Data
 		}
 
+		if nalUnitType == h264reader.NalUnitTypeSEI {
+			if p.appendUserTimestamp {
+				if ts, ok := parseH264SEIUserTimestamp(nalUnitData); ok {
+					p.pendingUserTimestampUs = ts
+					p.hasPendingUserTimestamp = true
+				}
+			}
+			// If SEI, clear the data and do not return a frame.
+			// We only use SEI to source timestamps, and avoid sending SEI-only
+			// samples that can break some decoders.
+			sample.Data = nil
+			sample.Duration = 0
+			return sample, nil
+		}
+
 		isFrame := false
 		switch nalUnitType {
 		case h264reader.NalUnitTypeCodedSliceDataPartitionA,
@@ -307,6 +367,20 @@ func (p *ReaderSampleProvider) NextSample(ctx context.Context) (media.Sample, er
 			// return it without duration
 			return sample, nil
 		}
+
+		// Attach the LKTS trailer to the encoded frame payload when enabled.
+		// If we didn't see a preceding timestamp, we still append a trailer with
+		// a zero timestamp.
+		if p.appendUserTimestamp {
+			ts := int64(0)
+			if p.hasPendingUserTimestamp {
+				ts = p.pendingUserTimestampUs
+				p.hasPendingUserTimestamp = false
+				p.pendingUserTimestampUs = 0
+			}
+			sample.Data = appendUserTimestampTrailer(sample.Data, ts)
+		}
+
 		sample.Duration = defaultH264FrameDuration
 
 	case webrtc.MimeTypeH265:
@@ -319,6 +393,26 @@ func (p *ReaderSampleProvider) NextSample(ctx context.Context) (media.Sample, er
 			nal, err := p.h265reader.NextNAL()
 			if err != nil {
 				return sample, err
+			}
+
+			if nal.NalUnitType == 39 { // prefix SEI
+				if p.appendUserTimestamp {
+					if ts, ok := parseH265SEIUserTimestamp(nal.Data); ok {
+						p.pendingUserTimestampUs = ts
+						p.hasPendingUserTimestamp = true
+					}
+				}
+				// If SEI, clear the data and do not return a frame (try next NAL)
+				sample.Data = nil
+				sample.Duration = 0
+				return sample, nil
+			}
+
+			if nal.NalUnitType == 40 { // suffix SEI
+				// Ignore suffix SEI entirely (do not parse or append).
+				sample.Data = nil
+				sample.Duration = 0
+				return sample, nil
 			}
 
 			// aggregate vps,sps,pps into a single AP packet (chrome requires this)
@@ -345,11 +439,24 @@ func (p *ReaderSampleProvider) NextSample(ctx context.Context) (media.Sample, er
 				return sample, nil
 			}
 
+			// Attach the LKTS trailer to the encoded frame payload when enabled.
+			// If we didn't see a preceding timestamp, we still append a trailer with
+			// a zero timestamp.
+			if p.appendUserTimestamp {
+				ts := int64(0)
+				if p.hasPendingUserTimestamp {
+					ts = p.pendingUserTimestampUs
+					p.hasPendingUserTimestamp = false
+					p.pendingUserTimestampUs = 0
+				}
+				sample.Data = appendUserTimestampTrailer(sample.Data, ts)
+			}
+
 			sample.Duration = defaultH265FrameDuration
 			break
 		}
 
-	case webrtc.MimeTypeVP8, webrtc.MimeTypeVP9:
+	case webrtc.MimeTypeVP8, webrtc.MimeTypeVP9, webrtc.MimeTypeAV1:
 		frame, header, err := p.ivfReader.ParseNextFrame()
 		if err != nil {
 			return sample, err
@@ -369,6 +476,21 @@ func (p *ReaderSampleProvider) NextSample(ctx context.Context) (media.Sample, er
 		if err != nil {
 			return sample, err
 		}
+	case webrtc.MimeTypePCMU, webrtc.MimeTypePCMA:
+		frame, err := p.wavReader.readFrame()
+		if err != nil {
+			return sample, err
+		}
+		sample.Data = frame
+		// Calculate duration based on actual frame size
+		// For G.711: 160 samples = 20ms, so each sample = 0.125ms
+		// Duration = (frame length in bytes) * (20ms / 160 samples)
+		if len(frame) == defaultG711SamplesPerFrame {
+			sample.Duration = defaultG711FrameDuration
+		} else {
+			// Partial frame: calculate duration proportionally
+			sample.Duration = time.Duration(len(frame)) * defaultG711FrameDuration / defaultG711SamplesPerFrame
+		}
 	}
 
 	if p.FrameDuration > 0 {
@@ -378,6 +500,166 @@ func (p *ReaderSampleProvider) NextSample(ctx context.Context) (media.Sample, er
 }
 
 // --------------------------------------------------
+
+// wavReader reads WAV files containing PCMU (mulaw) or PCMA (alaw) audio
+type wavReader struct {
+	reader          io.Reader
+	dataSize        int64
+	samplesPerFrame int
+	bytesRead       int64 // Track bytes read from data chunk
+}
+
+// WAV file format constants
+const (
+	wavFormatPCMU = 0x0007 // G.711 μ-law
+	wavFormatPCMA = 0x0006 // G.711 A-law
+)
+
+// newWavReader parses a WAV file header and returns a reader for PCMU/PCMA samples
+func newWavReader(r io.Reader) (*wavReader, string, error) {
+	var riffHeader [12]byte
+	if _, err := io.ReadFull(r, riffHeader[:]); err != nil {
+		return nil, "", fmt.Errorf("failed to read RIFF header: %w", err)
+	}
+
+	if string(riffHeader[0:4]) != "RIFF" {
+		return nil, "", fmt.Errorf("not a RIFF file")
+	}
+
+	if string(riffHeader[8:12]) != "WAVE" {
+		return nil, "", fmt.Errorf("not a WAVE file")
+	}
+
+	var formatCode uint16
+	var channels uint16
+	var sampleRate uint32
+	var bitsPerSample uint16
+	foundFmt := false
+
+	for {
+		var chunkHeader [8]byte
+		if _, err := io.ReadFull(r, chunkHeader[:]); err != nil {
+			if err == io.EOF || err == io.ErrUnexpectedEOF {
+				break
+			}
+			return nil, "", fmt.Errorf("failed to read chunk header: %w", err)
+		}
+
+		chunkID := string(chunkHeader[0:4])
+		chunkSize := int64(binary.LittleEndian.Uint32(chunkHeader[4:8]))
+
+		switch chunkID {
+		case "fmt ":
+			if chunkSize < 16 {
+				return nil, "", fmt.Errorf("fmt chunk too small: %d bytes (minimum 16)", chunkSize)
+			}
+
+			var fmtBase [16]byte
+			if _, err := io.ReadFull(r, fmtBase[:]); err != nil {
+				return nil, "", fmt.Errorf("failed to read fmt chunk: %w", err)
+			}
+
+			formatCode = binary.LittleEndian.Uint16(fmtBase[0:2])
+			channels = binary.LittleEndian.Uint16(fmtBase[2:4])
+			sampleRate = binary.LittleEndian.Uint32(fmtBase[4:8])
+			bitsPerSample = binary.LittleEndian.Uint16(fmtBase[14:16])
+
+			if formatCode != wavFormatPCMU && formatCode != wavFormatPCMA {
+				return nil, "", fmt.Errorf("unsupported WAV format code: 0x%04x (expected PCMU 0x0007 or PCMA 0x0006)", formatCode)
+			}
+			if channels != 1 {
+				return nil, "", fmt.Errorf("only mono (1 channel) WAV files are supported, got %d channels", channels)
+			}
+			if sampleRate != 8000 {
+				return nil, "", fmt.Errorf("expected 8000 Hz sample rate for G.711, got %d", sampleRate)
+			}
+			if bitsPerSample != 8 {
+				return nil, "", fmt.Errorf("expected 8 bits per sample for G.711, got %d", bitsPerSample)
+			}
+
+			if remaining := chunkSize - 16; remaining > 0 {
+				if _, err := io.CopyN(io.Discard, r, remaining); err != nil {
+					return nil, "", fmt.Errorf("failed to read fmt chunk extension: %w", err)
+				}
+			}
+			foundFmt = true
+
+		case "data":
+			if !foundFmt {
+				return nil, "", fmt.Errorf("fmt chunk not found before data")
+			}
+
+			var mime string
+			switch formatCode {
+			case wavFormatPCMU:
+				mime = webrtc.MimeTypePCMU
+			case wavFormatPCMA:
+				mime = webrtc.MimeTypePCMA
+			default:
+				return nil, "", fmt.Errorf("unsupported WAV format code: 0x%04x (expected PCMU 0x0007 or PCMA 0x0006)", formatCode)
+			}
+
+			return &wavReader{
+				reader:          r,
+				dataSize:        chunkSize,
+				samplesPerFrame: defaultG711SamplesPerFrame,
+				bytesRead:       0,
+			}, mime, nil
+
+		default:
+			if _, err := io.CopyN(io.Discard, r, chunkSize); err != nil {
+				return nil, "", fmt.Errorf("failed to skip %s chunk: %w", chunkID, err)
+			}
+		}
+
+		// WAV format requires chunks to be word-aligned (even size)
+		// If chunk size is odd, there's a padding byte that must be skipped
+		if chunkSize%2 != 0 {
+			var pad [1]byte
+			if _, err := io.ReadFull(r, pad[:]); err != nil {
+				return nil, "", fmt.Errorf("failed to read padding byte: %w", err)
+			}
+		}
+	}
+
+	if !foundFmt {
+		return nil, "", fmt.Errorf("fmt chunk not found")
+	}
+
+	return nil, "", fmt.Errorf("data chunk not found")
+}
+
+// readFrame reads one frame of G.711 audio (160 samples = 20ms at 8kHz)
+// It respects dataSize and stops reading at the end of the audio data chunk
+func (w *wavReader) readFrame() ([]byte, error) {
+	// Check if we've read all available data
+	remaining := w.dataSize - w.bytesRead
+	if remaining <= 0 {
+		return nil, io.EOF
+	}
+
+	// Calculate how many bytes to read (up to one frame, but not more than remaining)
+	frameSize := w.samplesPerFrame
+	bytesToRead := frameSize
+	if remaining < int64(bytesToRead) {
+		bytesToRead = int(remaining)
+	}
+
+	buf := make([]byte, bytesToRead)
+	n, err := io.ReadFull(w.reader, buf)
+	if err == io.EOF && n == 0 {
+		return nil, io.EOF
+	}
+	if err != nil && err != io.ErrUnexpectedEOF {
+		return nil, err
+	}
+
+	// Update bytes read counter
+	w.bytesRead += int64(n)
+
+	// Return the frame (may be partial if at end of data)
+	return buf[:n], nil
+}
 
 // minimal length-prefixed NAL reeader
 func nextNALH264LengthPrefixed(r io.Reader) (h264reader.NalUnitType, []byte, error) {
@@ -397,4 +679,15 @@ func nextNALH264LengthPrefixed(r io.Reader) (h264reader.NalUnitType, []byte, err
 	}
 
 	return h264reader.NalUnitType(buf[0] & 0x1F), buf, nil
+}
+
+func detectWavFormat(r io.Reader) (*wavReader, string, error) {
+	// Parse WAV header to get mime type and create wavReader
+	// Stream ends at start of data chunk - no seeking needed
+	wavReader, mime, err := newWavReader(r)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return wavReader, mime, nil
 }

@@ -2,6 +2,73 @@
 
 This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.9.11] - 2026-01-15
+
+## PLEASE NOTE: The previous release tag v1.9.10 hit a panic under some conditions. Sincerely regret the inconvenience caused. Although we do test rigorously, it is not guaranteed to cover all scenarios. We request you to report any issues you encounter. Thank you.
+
+### Added
+- Support OpenTelemetry tracing. Add Jaeger support. (#4222)
+- Add option to force simuclast codec. (#4226)
+- Log timeout in API (#4231, #4232)
+- Add participant option for data track auto-subscribe. (#4240)
+
+### Changed
+- Remove enable arrival time forwarding method. (#4217)
+- sfu/receiver and sfu/buffer refactor (#4221, #4224, #4225)
+- Change some logs to debugw (#4229)
+- Changing field naming of data track packet (#4235)
+- Update Pion transport package. (#4237)
+- Wrapping the invalid request errors for CreateSipParticipant (#4239)
+
+### Fixed
+- Swap result sink atomically rather than closing and setting (#4216)
+- Address crash in v1.9.10 (#4219, #4220)
+- Return on SDP fragment read error. (#4228)
+
+## [1.9.10] - 2026-01-01
+
+## WARNING: Please do not use this release. There is a run time issue which causes the server to panic. The issue has been addressed in #4219 and #4220.
+
+### Added
+- add explicit room exists servicestore op (#4175)
+- Add support for TURN static auth secret credentials (#3796)
+- Make new path for signalling v1.5 support. (#4180)
+- report video size from media data for whip (#4211)
+- Support preserving external supplied time. (#4212)
+
+### Changed
+- Use published track for model access in data down track. (#4176)
+- Refactor receiver and buffer into Base and higher layer. (#4185, #4186, #4187, #4189, #4196, #4198, #4207)
+- Update pion/webrtc to v4.2.1 (#4191)
+- Receiver restart related changes. (#4192, #4200, #4202, #4208)
+- Do not warn about track not bound if participant is not ready. (#4205, #4206)
+
+### Fixed
+- Flush ext packets on restart/close and release packets. (#4179)
+- Resolve RTX pair via OnTrack also. (#4190)
+- Handle repair SSRC of simulcast tracks during migration. (#4193)
+- return iceservers for whip (#4210)
+
+## [1.9.9] - 2025-12-18
+
+### Added
+- Add support for RTP stream restart. (#4161)
+
+### Changed
+- Avoid duplicate track add to room track manager.  (#4152, #4153)
+- Consistently undo update to sequence number and timestamp when the incoming packet cannot be sequenced. (#4156)
+- deregister observability function when participant is closed (#4157)
+- Ensure subscribe data track handles are unique (#4162)
+- move delete to oss service store (#4164)
+- clean up manual roomservice log redaction (#4165)
+- skip lost sequence number ranges in getIntervalStats (#4166, #4169)
+
+### Fixed
+- chore: fix a large number of spelling issues (#4147)
+- Handle case of sequence number jump just after start. (#4150)
+- Drop run away receiver reports. (#4170)
+- Publish/Unpublish counter match. (#4173)
+
 ## [1.9.8] - 2025-12-10
 
 ### Added

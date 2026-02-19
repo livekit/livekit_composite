@@ -10,12 +10,19 @@ import { Future } from '../utils.js';
 import type { IPCMessage } from './message.js';
 
 export interface ProcOpts {
+  /** Timeout for process initialization in milliseconds. */
   initializeTimeout: number;
+  /** Timeout for process shutdown in milliseconds. */
   closeTimeout: number;
+  /** Memory usage warning threshold in megabytes. */
   memoryWarnMB: number;
+  /** Memory usage limit in megabytes. */
   memoryLimitMB: number;
+  /** Interval for health check pings in milliseconds. */
   pingInterval: number;
+  /** Timeout waiting for pong response in milliseconds. */
   pingTimeout: number;
+  /** Threshold for warning about unresponsive processes in milliseconds. */
   highPingThreshold: number;
 }
 
@@ -59,6 +66,10 @@ export abstract class SupervisedProc {
     return this.#started;
   }
 
+  get isAlive(): boolean {
+    return this.#started && !this.#closing && !!this.proc?.connected;
+  }
+
   get runningJob(): RunningJobInfo | undefined {
     return this.#runningJob;
   }
@@ -80,7 +91,9 @@ export abstract class SupervisedProc {
     await this.init.await;
 
     this.#pingInterval = setInterval(() => {
-      this.proc!.send({ case: 'pingRequest', value: { timestamp: Date.now() } });
+      if (this.proc?.connected) {
+        this.proc.send({ case: 'pingRequest', value: { timestamp: Date.now() } });
+      }
     }, this.#opts.pingInterval);
 
     this.#pongTimeout = setTimeout(() => {
@@ -141,6 +154,7 @@ export abstract class SupervisedProc {
     });
 
     this.proc!.on('exit', () => {
+      this.clearTimers();
       this.#join.resolve();
     });
 
@@ -159,14 +173,16 @@ export abstract class SupervisedProc {
 
   async initialize() {
     const timer = setTimeout(() => {
-      const err = new Error('runner initialization timed out');
-      this.init.reject(err);
-      throw err;
+      this.init.reject(new Error('runner initialization timed out'));
     }, this.#opts.initializeTimeout);
-    this.proc!.send({
+    if (!this.proc?.connected) {
+      this.init.reject(new Error('process not connected'));
+      return;
+    }
+    this.proc.send({
       case: 'initializeRequest',
       value: {
-        loggerOptions,
+        loggerOptions: loggerOptions(),
         pingInterval: this.#opts.pingInterval,
         pingTimeout: this.#opts.pingTimeout,
         highPingThreshold: this.#opts.highPingThreshold,
@@ -187,7 +203,9 @@ export abstract class SupervisedProc {
     }
     this.#closing = true;
 
-    this.proc!.send({ case: 'shutdownRequest' });
+    if (this.proc?.connected) {
+      this.proc.send({ case: 'shutdownRequest' });
+    }
 
     const timer = setTimeout(() => {
       this.#logger.error('job shutdown is taking too much time');
@@ -203,8 +221,11 @@ export abstract class SupervisedProc {
     if (this.#runningJob) {
       throw new Error('executor already has a running job');
     }
+    if (!this.proc?.connected) {
+      throw new Error('process not connected');
+    }
     this.#runningJob = info;
-    this.proc!.send({ case: 'startJobRequest', value: { runningJob: info } });
+    this.proc.send({ case: 'startJobRequest', value: { runningJob: info } });
   }
 
   private async getChildMemoryUsageMB(): Promise<number> {
@@ -212,8 +233,16 @@ export abstract class SupervisedProc {
     if (!pid) {
       return 0;
     }
-    const stats = await pidusage(pid);
-    return stats.memory / (1024 * 1024); // Convert bytes to MB
+    try {
+      const stats = await pidusage(pid);
+      return stats.memory / (1024 * 1024);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'ENOENT' || code === 'ESRCH') {
+        return 0;
+      }
+      throw err;
+    }
   }
 
   private clearTimers() {

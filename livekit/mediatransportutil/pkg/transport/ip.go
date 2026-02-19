@@ -20,7 +20,7 @@ import (
 	"net"
 
 	"github.com/pion/ice/v4"
-	"github.com/pion/transport/v3"
+	"github.com/pion/transport/v4"
 )
 
 func localInterfaces(n transport.Net, interfaceFilter func(string) bool, ipFilter func(net.IP) bool, networkTypes []ice.NetworkType, includeLoopback bool) ([]net.IP, error) { //nolint:gocognit

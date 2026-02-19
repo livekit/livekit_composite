@@ -65,6 +65,7 @@ EventTypes = Literal[
     "participant_attributes_changed",
     "connection_quality_changed",
     "participant_encryption_status_changed",
+    "participant_permissions_changed",
     "data_received",
     "sip_dtmf_received",
     "transcription_received",
@@ -106,6 +107,10 @@ class RoomOptions:
     """Options for end-to-end encryption."""
     rtc_config: RtcConfiguration | None = None
     """WebRTC-related configuration."""
+    connect_timeout: float | None = None
+    """Timeout in seconds for each signal connection attempt. When None, uses the default (5s)."""
+    single_peer_connection: bool | None = None
+    """Use a single peer connection for both publish and subscribe. When None, uses the default (false)."""
 
 
 @dataclass
@@ -430,6 +435,12 @@ class Room(EventEmitter[EventTypes]):
         # options
         req.connect.options.auto_subscribe = options.auto_subscribe
         req.connect.options.dynacast = options.dynacast
+
+        if options.connect_timeout is not None:
+            req.connect.options.connect_timeout_ms = int(options.connect_timeout * 1000)
+
+        if options.single_peer_connection is not None:
+            req.connect.options.single_peer_connection = options.single_peer_connection
 
         if options.e2ee:
             warnings.warn(
@@ -786,6 +797,16 @@ class Room(EventEmitter[EventTypes]):
                 "participant_encryption_status_changed",
                 participant,
                 event.participant_encryption_status_changed.is_encrypted,
+            )
+        elif which == "participant_permissions_changed":
+            identity = event.participant_permission_changed.participant_identity
+            participant = self._retrieve_participant(identity)
+            assert isinstance(participant, Participant)
+            participant._info.permission.CopyFrom(event.participant_permission_changed.permission)
+            self.emit(
+                "participant_permissions_changed",
+                participant,
+                participant.permissions,
             )
         elif which == "connection_quality_changed":
             identity = event.connection_quality_changed.participant_identity

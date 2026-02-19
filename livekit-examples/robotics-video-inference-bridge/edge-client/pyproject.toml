@@ -1,0 +1,12 @@
+[project]
+name = "edge-client"
+version = "0.1.0"
+description = "Edge client for cloud CV - streams video and prints bounding boxes"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "livekit>=0.18",
+    "livekit-api>=0.8",
+    "imageio[ffmpeg]>=2.34",
+    "python-dotenv>=1.0",
+]

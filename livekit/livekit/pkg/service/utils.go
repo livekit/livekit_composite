@@ -39,7 +39,7 @@ import (
 	"github.com/livekit/protocol/logger"
 )
 
-func handleError(w http.ResponseWriter, r *http.Request, status int, err error, keysAndValues ...interface{}) {
+func handleError(w http.ResponseWriter, r *http.Request, status int, err error, keysAndValues ...any) {
 	keysAndValues = append(keysAndValues, "status", status)
 	if r != nil && r.URL != nil {
 		keysAndValues = append(keysAndValues, "method", r.Method, "path", r.URL.Path)
@@ -50,12 +50,12 @@ func handleError(w http.ResponseWriter, r *http.Request, status int, err error, 
 	w.WriteHeader(status)
 }
 
-func HandleError(w http.ResponseWriter, r *http.Request, status int, err error, keysAndValues ...interface{}) {
+func HandleError(w http.ResponseWriter, r *http.Request, status int, err error, keysAndValues ...any) {
 	handleError(w, r, status, err, keysAndValues...)
 	_, _ = w.Write([]byte(err.Error()))
 }
 
-func HandleErrorJson(w http.ResponseWriter, r *http.Request, status int, err error, keysAndValues ...interface{}) {
+func HandleErrorJson(w http.ResponseWriter, r *http.Request, status int, err error, keysAndValues ...any) {
 	handleError(w, r, status, err, keysAndValues...)
 	json.NewEncoder(w).Encode(struct {
 		Error string `json:"error"`
@@ -114,8 +114,11 @@ func SetRoomConfiguration(createRequest *livekit.CreateRoomRequest, conf *liveki
 func ParseClientInfo(r *http.Request) *livekit.ClientInfo {
 	values := r.Form
 	ci := &livekit.ClientInfo{}
-	if pv, err := strconv.Atoi(values.Get("protocol")); err == nil {
+	if pv, err := strconv.ParseInt(values.Get("protocol"), 10, 32); err == nil {
 		ci.Protocol = int32(pv)
+	}
+	if cp, err := strconv.ParseInt(values.Get("client_protocol"), 10, 32); err == nil {
+		ci.ClientProtocol = int32(cp)
 	}
 	sdkString := values.Get("sdk")
 	switch sdkString {
@@ -143,6 +146,8 @@ func ParseClientInfo(r *http.Request) *livekit.ClientInfo {
 		ci.Sdk = livekit.ClientInfo_UNITY_WEB
 	case "node":
 		ci.Sdk = livekit.ClientInfo_NODE
+	case "esp32":
+		ci.Sdk = livekit.ClientInfo_ESP32
 	}
 
 	ci.Version = values.Get("version")
@@ -166,13 +171,13 @@ var (
 func createUserAgentParserWithCustomRules() (*uaparser.Parser, error) {
 	defaultYaml := uaparser.DefinitionYaml
 
-	rules := make(map[string]interface{})
+	rules := make(map[string]any)
 	err := yaml.Unmarshal(defaultYaml, rules)
 	if err != nil {
 		return nil, err
 	}
 
-	rules["user_agent_parsers"] = append(rules["user_agent_parsers"].([]interface{}), map[string]interface{}{
+	rules["user_agent_parsers"] = append(rules["user_agent_parsers"].([]any), map[string]any{
 		"regex":              "OBS-Studio\\/([0-9\\.]+)",
 		"family_replacement": "OBS Studio",
 		"v1_replacement":     "$1",

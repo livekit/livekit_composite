@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.26](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.25...rust-sdks/libwebrtc@0.3.26) - 2026-02-16
+
+### Other
+
+- add is_screencast to VideoSource ([#896](https://github.com/livekit/rust-sdks/pull/896))
+
+## [0.3.25](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.24...rust-sdks/libwebrtc@0.3.25) - 2026-02-09
+
+### Fixed
+
+- fix the 440->441 samples issue and pass a noop callback for release ([#848](https://github.com/livekit/rust-sdks/pull/848))
+
+### Other
+
+- Use workspace dependencies & settings ([#856](https://github.com/livekit/rust-sdks/pull/856))
+- allow apm >=10ms frames ([#843](https://github.com/livekit/rust-sdks/pull/843))
+
+## [0.3.24](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.23...rust-sdks/libwebrtc@0.3.24) - 2026-01-15
+
+### Other
+
+- updated the following local packages: webrtc-sys
+
+## [0.3.23](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.22...rust-sdks/libwebrtc@0.3.23) - 2025-12-19
+
+### Fixed
+
+- Exclude the desktop-capturer module link for mobile. ([#817](https://github.com/livekit/rust-sdks/pull/817))
+
+## [0.3.22](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.21...rust-sdks/libwebrtc@0.3.22) - 2025-12-17
+
+### Other
+
+- Expose WebRTC's audio_mixer ([#806](https://github.com/livekit/rust-sdks/pull/806))
+
 ## [0.3.21](https://github.com/livekit/rust-sdks/compare/rust-sdks/libwebrtc@0.3.20...rust-sdks/libwebrtc@0.3.21) - 2025-12-04
 
 ### Other

@@ -1,8 +1,8 @@
 // SPDX-FileCopyrightText: 2024 LiveKit, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
+import type { DataStream_Chunk } from '@livekit/rtc-ffi-bindings';
 import { log } from '../log.js';
-import type { DataStream_Chunk } from '../proto/room_pb.js';
 import { bigIntToNumber } from '../utils.js';
 import type { BaseStreamInfo, ByteStreamInfo, TextStreamInfo } from './types.js';
 
@@ -53,14 +53,14 @@ export class ByteStreamReader extends BaseStreamReader<ByteStreamInfo> {
         try {
           const { done, value } = await reader.read();
           if (done) {
-            return { done: true, value: undefined as any };
+            return { done: true, value: undefined as unknown };
           } else {
             this.handleChunkReceived(value);
             return { done: false, value: value.content! };
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error('error processing stream update: %s', error);
-          return { done: true, value: undefined };
+          return { done: true, value: undefined as unknown };
         }
       },
 
@@ -135,7 +135,7 @@ export class TextStreamReader extends BaseStreamReader<TextStreamInfo> {
               value: decoder.decode(value.content!),
             };
           }
-        } catch (error: any) {
+        } catch (error: unknown) {
           log.error('error processing stream update: %s', error);
           return { done: true, value: undefined };
         }

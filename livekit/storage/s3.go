@@ -35,6 +35,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/aws-sdk-go-v2/service/sts"
+	"github.com/aws/smithy-go/logging"
 	"github.com/aws/smithy-go/middleware"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 )
@@ -159,6 +160,30 @@ func updateRegion(awsConf *aws.Config, bucket string) error {
 	return nil
 }
 
+func (s *s3Storage) getClient(l logging.Logger) *s3.Client {
+	return s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
+		if l != nil {
+			o.Logger = l
+			o.ClientLogMode = aws.LogRequest | aws.LogResponse | aws.LogRetries
+		}
+
+		o.UsePathStyle = s.conf.ForcePathStyle
+
+		// switch to md5 checksum for oracle cloud
+		if s.conf.Endpoint != "" {
+			if parsed, err := url.Parse(s.conf.Endpoint); err == nil && strings.HasSuffix(parsed.Host, "oraclecloud.com") {
+				o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
+					stack.Initialize.Remove("AWSChecksum:SetupInputContext")
+					stack.Build.Remove("AWSChecksum:RequestMetricsTracking")
+					stack.Finalize.Remove("AWSChecksum:ComputeInputPayloadChecksum")
+					stack.Finalize.Remove("addInputChecksumTrailer")
+					return smithyhttp.AddContentChecksumMiddleware(stack)
+				})
+			}
+		}
+	})
+}
+
 func (s *s3Storage) UploadData(data []byte, storagePath, contentType string) (string, int64, error) {
 	location, err := s.upload(bytes.NewReader(data), storagePath, contentType)
 	if err != nil {
@@ -191,24 +216,7 @@ func (s *s3Storage) UploadFile(filepath, storagePath, contentType string) (strin
 
 func (s *s3Storage) upload(reader io.Reader, storagePath, contentType string) (string, error) {
 	l := NewS3Logger()
-	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
-		o.Logger = l
-		o.ClientLogMode = aws.LogRequest | aws.LogResponse | aws.LogRetries
-		o.UsePathStyle = s.conf.ForcePathStyle
-
-		// switch to md5 checksum for oracle cloud
-		if s.conf.Endpoint != "" {
-			if parsed, err := url.Parse(s.conf.Endpoint); err == nil && strings.HasSuffix(parsed.Host, "oraclecloud.com") {
-				o.APIOptions = append(o.APIOptions, func(stack *middleware.Stack) error {
-					stack.Initialize.Remove("AWSChecksum:SetupInputContext")
-					stack.Build.Remove("AWSChecksum:RequestMetricsTracking")
-					stack.Finalize.Remove("AWSChecksum:ComputeInputPayloadChecksum")
-					stack.Finalize.Remove("addInputChecksumTrailer")
-					return smithyhttp.AddContentChecksumMiddleware(stack)
-				})
-			}
-		}
-	})
+	client := s.getClient(l)
 
 	input := &s3.PutObjectInput{
 		Body:        reader,
@@ -228,6 +236,7 @@ func (s *s3Storage) upload(reader io.Reader, storagePath, contentType string) (s
 	}
 
 	if _, err := manager.NewUploader(client).Upload(context.Background(), input); err != nil {
+		l.WriteLogs()
 		return "", err
 	}
 
@@ -250,9 +259,7 @@ func (s *s3Storage) upload(reader io.Reader, storagePath, contentType string) (s
 }
 
 func (s *s3Storage) ListObjects(prefix string) ([]string, error) {
-	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
-		o.UsePathStyle = s.conf.ForcePathStyle
-	})
+	client := s.getClient(nil)
 
 	var objects []string
 	paginator := s3.NewListObjectsV2Paginator(client, &s3.ListObjectsV2Input{
@@ -295,9 +302,7 @@ func (s *s3Storage) DownloadFile(filepath, storagePath string) (int64, error) {
 }
 
 func (s *s3Storage) download(w io.WriterAt, storagePath string) (int64, error) {
-	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
-		o.UsePathStyle = s.conf.ForcePathStyle
-	})
+	client := s.getClient(nil)
 
 	return manager.NewDownloader(client).Download(
 		context.Background(),
@@ -310,9 +315,7 @@ func (s *s3Storage) download(w io.WriterAt, storagePath string) (int64, error) {
 }
 
 func (s *s3Storage) GeneratePresignedUrl(storagePath string, expiration time.Duration) (string, error) {
-	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
-		o.UsePathStyle = s.conf.ForcePathStyle
-	})
+	client := s.getClient(nil)
 
 	res, err := s3.NewPresignClient(client).PresignGetObject(context.Background(), &s3.GetObjectInput{
 		Bucket: aws.String(s.conf.Bucket),
@@ -326,9 +329,7 @@ func (s *s3Storage) GeneratePresignedUrl(storagePath string, expiration time.Dur
 }
 
 func (s *s3Storage) DeleteObject(storagePath string) error {
-	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
-		o.UsePathStyle = s.conf.ForcePathStyle
-	})
+	client := s.getClient(nil)
 
 	_, err := client.DeleteObject(context.Background(), &s3.DeleteObjectInput{
 		Bucket: aws.String(s.conf.Bucket),
@@ -338,9 +339,7 @@ func (s *s3Storage) DeleteObject(storagePath string) error {
 }
 
 func (s *s3Storage) DeleteObjects(storagePaths []string) error {
-	client := s3.NewFromConfig(*s.awsConf, func(o *s3.Options) {
-		o.UsePathStyle = s.conf.ForcePathStyle
-	})
+	client := s.getClient(nil)
 
 	for i := 0; i < len(storagePaths); i += 1000 {
 		end := i + 1000

@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2024 LiveKit, Inc.
 //
 // SPDX-License-Identifier: Apache-2.0
+import type { OwnedAudioFrameBuffer } from '@livekit/rtc-ffi-bindings';
+import { AudioFrameBufferInfo } from '@livekit/rtc-ffi-bindings';
 import { FfiClient, FfiHandle } from './ffi_client.js';
-import type { OwnedAudioFrameBuffer } from './proto/audio_frame_pb.js';
-import { AudioFrameBufferInfo } from './proto/audio_frame_pb.js';
 
 export class AudioFrame {
   data: Int16Array;
@@ -11,21 +11,35 @@ export class AudioFrame {
   channels: number;
   samplesPerChannel: number;
 
+  private _userdata: Record<string, unknown>;
+
   // note: if converting from Uint8Array to Int16Array, *do not* use buffer.slice!
   // it is marked unstable by Node and can cause undefined behaviour, such as massive chunks of
   // noise being added to the end.
   // it is recommended to use buffer.subarray instead.
   // XXX(nbsp): add this when writing proper docs
-  constructor(data: Int16Array, sampleRate: number, channels: number, samplesPerChannel: number) {
+  constructor(
+    data: Int16Array,
+    sampleRate: number,
+    channels: number,
+    samplesPerChannel: number,
+    userdata: Record<string, unknown> = {},
+  ) {
     this.data = data;
     this.sampleRate = sampleRate;
     this.channels = channels;
     this.samplesPerChannel = samplesPerChannel;
+    this._userdata = userdata;
   }
 
-  static create(sampleRate: number, channels: number, samplesPerChannel: number): AudioFrame {
+  static create(
+    sampleRate: number,
+    channels: number,
+    samplesPerChannel: number,
+    userdata?: Record<string, unknown>,
+  ): AudioFrame {
     const data = new Int16Array(channels * samplesPerChannel);
-    return new AudioFrame(data, sampleRate, channels, samplesPerChannel);
+    return new AudioFrame(data, sampleRate, channels, samplesPerChannel, userdata);
   }
 
   /** @internal */
@@ -50,6 +64,11 @@ export class AudioFrame {
       numChannels: this.channels,
       samplesPerChannel: this.samplesPerChannel,
     });
+  }
+
+  /** Returns the user data associated with the audio frame. */
+  get userdata() {
+    return this._userdata;
   }
 }
 
@@ -89,5 +108,12 @@ export const combineAudioFrames = (buffer: AudioFrame | AudioFrame[]): AudioFram
   }
 
   const data = new Int16Array(buffer.map((x) => [...x.data]).flat());
-  return new AudioFrame(data, sampleRate, channels, totalSamplesPerChannel);
+
+  // Merge userdata from all frames
+  const mergedUserdata: Record<string, unknown> = {};
+  for (const frame of buffer) {
+    Object.assign(mergedUserdata, frame.userdata);
+  }
+
+  return new AudioFrame(data, sampleRate, channels, totalSamplesPerChannel, mergedUserdata);
 };

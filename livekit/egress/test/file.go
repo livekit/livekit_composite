@@ -192,6 +192,34 @@ func (r *Runner) testFile(t *testing.T) {
 				},
 				contentCheck: r.audioOnlyContentCheck,
 			},
+			{
+				name:        "TrackComposite/AudioOnlyPCMU",
+				requestType: types.RequestTypeTrackComposite,
+				publishOptions: publishOptions{
+					audioCodec: types.MimeTypePCMU,
+					audioOnly:  true,
+				},
+				fileOptions: &fileOptions{
+					filename:   "tc_{room_name}_audio_pcmu_{time}.mp4",
+					fileType:   livekit.EncodedFileType_MP4,
+					outputType: types.OutputTypeMP4,
+				},
+				contentCheck: r.audioOnlyContentCheck,
+			},
+			{
+				name:        "TrackComposite/AudioOnlyPCMA",
+				requestType: types.RequestTypeTrackComposite,
+				publishOptions: publishOptions{
+					audioCodec: types.MimeTypePCMA,
+					audioOnly:  true,
+				},
+				fileOptions: &fileOptions{
+					filename:   "tc_{room_name}_audio_pcma_{time}.mp4",
+					fileType:   livekit.EncodedFileType_MP4,
+					outputType: types.OutputTypeMP4,
+				},
+				contentCheck: r.audioOnlyContentCheck,
+			},
 
 			// --------- Track ---------
 
@@ -204,6 +232,32 @@ func (r *Runner) testFile(t *testing.T) {
 				},
 				fileOptions: &fileOptions{
 					filename:   "t_{track_source}_{time}.ogg",
+					outputType: types.OutputTypeOGG,
+				},
+				contentCheck: r.audioOnlyContentCheck,
+			},
+			{
+				name:        "Track/PCMU",
+				requestType: types.RequestTypeTrack,
+				publishOptions: publishOptions{
+					audioCodec: types.MimeTypePCMU,
+					audioOnly:  true,
+				},
+				fileOptions: &fileOptions{
+					filename:   "t_{track_source}_pcmu_{time}.ogg",
+					outputType: types.OutputTypeOGG,
+				},
+				contentCheck: r.audioOnlyContentCheck,
+			},
+			{
+				name:        "Track/PCMA",
+				requestType: types.RequestTypeTrack,
+				publishOptions: publishOptions{
+					audioCodec: types.MimeTypePCMA,
+					audioOnly:  true,
+				},
+				fileOptions: &fileOptions{
+					filename:   "t_{track_source}_pcma_{time}.ogg",
 					outputType: types.OutputTypeOGG,
 				},
 				contentCheck: r.audioOnlyContentCheck,
@@ -285,7 +339,7 @@ func (r *Runner) verifyFile(t *testing.T, tc *testCase, p *config.PipelineConfig
 	require.NotZero(t, res.EndedAt)
 
 	// file info
-	fileRes := res.GetFile()
+	fileRes := res.GetFile() //nolint:staticcheck
 	if fileRes == nil {
 		require.Len(t, res.FileResults, 1)
 		fileRes = res.FileResults[0]
@@ -296,13 +350,12 @@ func (r *Runner) verifyFile(t *testing.T, tc *testCase, p *config.PipelineConfig
 	require.Greater(t, fileRes.Duration, int64(0))
 
 	storagePath := fileRes.Filename
-	localPath := fileRes.Filename
 	require.NotEmpty(t, storagePath)
 	require.False(t, strings.Contains(storagePath, "{"))
 	storageFilename := path.Base(storagePath)
 
 	// download from cloud storage
-	localPath = path.Join(r.FilePrefix, storageFilename)
+	localPath := path.Join(r.FilePrefix, storageFilename)
 	download(t, p.GetFileConfig().StorageConfig, localPath, storagePath, false)
 
 	manifestLocal := path.Join(path.Dir(localPath), res.EgressId+".json")

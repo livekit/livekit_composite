@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import Foundation
 
 internal import LiveKitWebRTC
 
-@objc
+@objcMembers
 public class E2EEManager: NSObject, @unchecked Sendable, ObservableObject, Loggable {
     // Private delegate adapter to hide RTCFrameCryptorDelegate symbol
     private class DelegateAdapter: NSObject, LKRTCFrameCryptorDelegate {

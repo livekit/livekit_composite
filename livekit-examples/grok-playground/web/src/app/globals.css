@@ -1,0 +1,287 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Grok-specific colors */
+  --color-grok-white: white;
+
+  /* Semantic background colors */
+  --color-background: var(--background);
+  --color-bg0: var(--bg0);
+  --color-bg1: var(--bg-1);
+  --color-bg2: var(--bg-2);
+  --color-bg3: var(--bg-3);
+  --color-bg-serious1: var(--bg-serious-1);
+  --color-bg-serious2: var(--bg-serious-2);
+
+  /* Semantic foreground colors */
+  --color-foreground: var(--foreground);
+  --color-fg0: var(--fg-0);
+  --color-fg1: var(--fg-1);
+  --color-fg2: var(--fg-2);
+  --color-fg3: var(--fg-3);
+  --color-fg4: var(--fg-4);
+  --color-fg5: var(--fg-5);
+
+  /* Separator colors */
+  --color-separator1: var(--separator1);
+  --color-separator2: var(--separator2);
+
+  /* Accent colors */
+  --color-fgAccent1: var(--fg-accent-primary);
+  --color-fgAccent2: var(--fg-accent-2);
+  --color-fgSerious1: var(--fg-serious-1);
+  --color-fgSerious2: var(--fg-serious-2);
+
+  /* Sidebar colors */
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+
+  /* Chart colors */
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+
+  /* Standard shadcn colors */
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-border-intense: var(--border-intense);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Border radius */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Fonts */
+  --font-sans: Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Commit Mono", ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+:root {
+  --radius: 0.625rem;
+
+  /* Light theme */
+  --background: oklch(1 0 0);
+  --bg0: #ffffff;
+  --bg-1: #fdfdfc;
+  --bg-2: #efefec;
+  --bg-3: #e2e2df;
+  --bg-serious-1: #fae6e6;
+  --bg-serious-2: #ffcdc7;
+  --foreground: #000000;
+  --fg-0: #000000;
+  --fg-1: #3b3b3b;
+  --fg-2: #4d4d4d;
+  --fg-3: #636363;
+  --fg-4: #707070;
+  --fg-5: #666666;
+  --fg-accent-2: #395cf9;
+  --fg-serious-1: #b32909;
+  --fg-serious-2: #fa4c39;
+  --separator1: #dbdbd8;
+  --separator2: #bdbdbb;
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: #dbdbd8;
+  --border-intense: #bdbdbb;
+  --input: oklch(0.922 0 0);
+  --ring: #002cf2;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+  --fg-accent-primary: #002cf2;
+
+  /* LiveKit-specific variables */
+  --lk-va-bar-width: 2px;
+  --lk-va-bar-gap: 4px;
+  --lk-fg: rgb(115 115 115 / var(--tw-text-opacity));
+}
+
+.dark {
+  /* Dark theme */
+  --background: oklch(0.145 0 0);
+  --bg0: #000000;
+  --bg-1: #070707;
+  --bg-2: #131313;
+  --bg-3: #1f1f1f;
+  --bg-serious-1: #1f0e0b;
+  --bg-serious-2: #421510;
+  --foreground: oklch(0.985 0 0);
+  --fg-0: #ffffff;
+  --fg-1: #cccccc;
+  --fg-2: #b2b2b2;
+  --fg-3: #999999;
+  --fg-4: #666666;
+  --fg-5: #555555;
+  --fg-accent-2: #15889f;
+  --fg-serious-1: #ff7566;
+  --fg-serious-2: #791b11;
+  --separator1: #202020;
+  --separator2: #30302f;
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: #202020;
+  --border-intense: #30302f;
+  --input: oklch(1 0 0 / 15%);
+  --ring: #1fd5f9;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: #070707;
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+  --fg-accent-primary: #1fd5f9;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family:
+      Roboto,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+  }
+
+  /* Webkit scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(189, 189, 187, 0.4);
+    border-radius: 4px;
+    transition: background 0.2s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(189, 189, 187, 0.6);
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(48, 48, 47, 0.5);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(48, 48, 47, 0.7);
+  }
+
+  /* Firefox scrollbar styling */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(189, 189, 187, 0.4) transparent;
+  }
+
+  .dark * {
+    scrollbar-color: rgba(48, 48, 47, 0.5) transparent;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Commit Mono font */
+@font-face {
+  font-family: "Commit Mono";
+  src: url("/fonts/CommitMono-400-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Commit Mono";
+  src: url("/fonts/CommitMono-700-Regular.otf") format("opentype");
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* Tiptap editor styles */
+.tiptap p.is-editor-empty:first-child::before {
+  color: #adb5bd;
+  font-weight: 300;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

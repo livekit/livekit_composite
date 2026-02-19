@@ -792,9 +792,9 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
         maxRetries: connectOptions.maxRetries,
         e2eeEnabled: !!this.e2eeManager,
         websocketTimeout: connectOptions.websocketTimeout,
-        singlePeerConnection: roomOptions.singlePeerConnection,
       },
       abortController.signal,
+      !roomOptions.singlePeerConnection,
     );
 
     let serverInfo: Partial<ServerInfo> | undefined = joinResponse.serverInfo;
@@ -2307,7 +2307,7 @@ class Room extends (EventEmitter as new () => TypedEmitter<RoomEventCallbacks>) 
           engine: this.engine
             ? {
                 closed: this.engine.isClosed,
-                transportsConnected: this.engine.verifyTransport(),
+                transportsConnectedOrConnecting: this.engine.verifyTransport(),
               }
             : undefined,
         });

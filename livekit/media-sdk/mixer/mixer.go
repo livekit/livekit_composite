@@ -44,8 +44,10 @@ type Stats struct {
 	ZeroMixes     atomic.Uint64
 	NegativeMixes atomic.Uint64
 
-	InputSamples atomic.Uint64
-	InputFrames  atomic.Uint64
+	InputSamples        atomic.Uint64
+	InputFrames         atomic.Uint64
+	InputSamplesDropped atomic.Uint64
+	InputFramesDropped  atomic.Uint64
 
 	MixedSamples atomic.Uint64
 	MixedFrames  atomic.Uint64
@@ -388,6 +390,10 @@ func (i *Input) WriteSample(sample msdk.PCM16Sample) error {
 
 	i.m.stats.InputFrames.Add(1)
 	i.m.stats.InputSamples.Add(uint64(len(sample)))
+	if discarded := i.buf.Len() + len(sample) - i.buf.Size(); discarded > 0 {
+		i.m.stats.InputFramesDropped.Add(1)
+		i.m.stats.InputSamplesDropped.Add(uint64(discarded))
+	}
 
 	_, err := i.buf.Write(sample)
 	return err

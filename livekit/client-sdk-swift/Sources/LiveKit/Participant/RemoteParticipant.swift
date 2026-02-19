@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,7 @@
 
 internal import LiveKitWebRTC
 
-@objc
+@objcMembers
 public class RemoteParticipant: Participant, @unchecked Sendable {
     init(info: Livekit_ParticipantInfo, room: Room, connectionState: ConnectionState) {
         super.init(room: room, sid: Participant.Sid(from: info.sid), identity: Participant.Identity(from: info.identity))

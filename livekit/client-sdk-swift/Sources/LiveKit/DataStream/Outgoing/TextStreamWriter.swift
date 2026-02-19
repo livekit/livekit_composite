@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,10 +17,9 @@
 import Foundation
 
 /// Asynchronously write to an open text stream.
-@objc
+@objcMembers
 public final class TextStreamWriter: NSObject, Sendable {
     /// Information about the outgoing text stream.
-    @objc
     public let info: TextStreamInfo
 
     private let destination: StreamWriterDestination
@@ -64,8 +63,7 @@ public extension TextStreamWriter {
     @available(*, unavailable, message: "Use async write(_:) method instead.")
     func write(_ text: String, onCompletion: @Sendable @escaping (Error?) -> Void) {
         Task {
-            do { try await write(text) }
-            catch { onCompletion(error) }
+            do { try await write(text) } catch { onCompletion(error) }
         }
     }
 
@@ -73,8 +71,7 @@ public extension TextStreamWriter {
     @available(*, unavailable, message: "Use async close(reason:) method instead.")
     func close(reason: String?, onCompletion: @Sendable @escaping (Error?) -> Void) {
         Task {
-            do { try await close(reason: reason) }
-            catch { onCompletion(error) }
+            do { try await close(reason: reason) } catch { onCompletion(error) }
         }
     }
 }

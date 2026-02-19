@@ -43,7 +43,7 @@ One of the best ways to get started with LiveKit is by reviewing the [examples](
 Once you have chosen an example to be your starting point, create a fresh project from it locally using the following command:
 
 ```sh
-idf.py create-project-from-example "livekit/livekit=0.3.3:<example>"
+idf.py create-project-from-example "livekit/livekit=0.3.5:<example>"
 ```
 
 Substitute *\<example\>* for the example's directory name.
@@ -53,7 +53,7 @@ Substitute *\<example\>* for the example's directory name.
 If you would like to add LiveKit to your existing application, add it as a dependency using IDF:
 
 ```sh
-idf.py add-dependency "livekit/livekit=0.3.3"
+idf.py add-dependency "livekit/livekit=0.3.5"
 ```
 
 > [!IMPORTANT]
@@ -167,7 +167,7 @@ livekit_room_rpc_register(room_handle, "get_cpu_temp", get_cpu_temp);
 ```
 
 > [!TIP]
-> In the [*voice_agent*](./examples/voice_agent/) example, RPC is used to allow an AI agent to interact
+> In the [*voice_agent*](./components/livekit/examples/voice_agent/) example, RPC is used to allow an AI agent to interact
 > with hardware by defining a series of methods for the agent to invoke.
 
 #### User packets
@@ -201,7 +201,7 @@ Please refer to the [LiveKit Docs](https://docs.livekit.io/home/) for an introdu
 
 ## Getting Help & Contributing
 
-We invite you to join the [LiveKit Community Slack](https://livekit.io/join-slack) to get your questions answered, suggest improvements, or discuss how you can best contribute to this SDK.
+We invite you to join our [developer community](https://community.livekit.io/c/robotics) to ask questions, suggest improvements, or discuss how you can best contribute to this SDK.
 
 <!--BEGIN_REPO_NAV-->
 <br/><table>

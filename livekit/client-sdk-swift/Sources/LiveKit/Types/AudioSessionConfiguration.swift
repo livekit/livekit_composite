@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,18 +47,14 @@ public extension AudioSessionConfiguration {
                                                                  mode: .voiceChat)
 }
 
-@objc
+@objcMembers
 public final class AudioSessionConfiguration: NSObject, Sendable {
-    @objc
     public let category: AVAudioSession.Category
 
-    @objc
     public let categoryOptions: AVAudioSession.CategoryOptions
 
-    @objc
     public let mode: AVAudioSession.Mode
 
-    @objc
     public init(category: AVAudioSession.Category,
                 categoryOptions: AVAudioSession.CategoryOptions,
                 mode: AVAudioSession.Mode)
@@ -68,7 +64,6 @@ public final class AudioSessionConfiguration: NSObject, Sendable {
         self.mode = mode
     }
 
-    @objc
     override public convenience init() {
         let webRTCConfiguration = LKRTCAudioSessionConfiguration.webRTC()
         self.init(category: AVAudioSession.Category(rawValue: webRTCConfiguration.category),

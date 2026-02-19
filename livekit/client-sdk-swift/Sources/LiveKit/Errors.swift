@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -60,6 +60,10 @@ public enum LiveKitErrorType: Int, Sendable {
     // Encryption
     case encryptionFailed = 1001
     case decryptionFailed = 1002
+
+    // LiveKit Cloud
+    case onlyForCloud = 1101
+    case regionManager = 1102
 }
 
 extension LiveKitErrorType: CustomStringConvertible {
@@ -115,12 +119,16 @@ extension LiveKitErrorType: CustomStringConvertible {
             "Encryption failed"
         case .decryptionFailed:
             "Decryption failed"
+        case .onlyForCloud:
+            "Only for LiveKit Cloud"
+        case .regionManager:
+            "Region manager error"
         default: "Unknown"
         }
     }
 }
 
-@objc
+@objcMembers
 public class LiveKitError: NSError, @unchecked Sendable, Loggable {
     public let type: LiveKitErrorType
     public let message: String?
@@ -184,6 +192,27 @@ extension LiveKitError {
 
     static func from(reason: Livekit_DisconnectReason) -> LiveKitError {
         LiveKitError(reason.toLKType())
+    }
+}
+
+extension Error {
+    /// Returns `true` for network/timeouts that should trigger region failover.
+    var isRetryableForRegionFailover: Bool {
+        if let liveKitError = self as? LiveKitError {
+            switch liveKitError.type {
+            case .network, .timedOut:
+                return true
+            default:
+                return false
+            }
+        }
+
+        if self is URLError {
+            return true
+        }
+
+        let nsError = self as NSError
+        return nsError.domain == NSURLErrorDomain
     }
 }
 

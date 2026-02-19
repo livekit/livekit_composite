@@ -30,9 +30,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Git LFS
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           lfs: 'true'
+      
+      - name: Verify version.go matches tag
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          CODE_VERSION=$(sed -n 's/.*Version = "\([^"]*\)".*/\1/p' version.go)
+          echo "Tag version: v$TAG_VERSION"
+          echo "Code version: $CODE_VERSION"
+          if [ "$TAG_VERSION" != "$CODE_VERSION" ]; then
+            echo "ERROR: Version mismatch!"
+            echo "  Tag:     v$TAG_VERSION"
+            echo "  version.go: $CODE_VERSION"
+            exit 1
+          fi
+          echo "✓ Versions match: $CODE_VERSION"
       
       - name: Verify server-sdk-go version
         run: |
@@ -56,7 +70,7 @@ jobs:
       - name: Fetch all tags
         run: git fetch --force --tags
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: |
             ~/go/pkg/mod

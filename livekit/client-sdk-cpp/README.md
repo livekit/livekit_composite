@@ -1,18 +1,29 @@
-# LiveKit C++ Client SDK
+# Build & Installation Guide
 
-This SDK enables native C++ applications to connect to LiveKit servers for real-time audio/video communication.
+This page covers how to build and install the LiveKit C++ Client SDK for real-time audio/video communication.
 
 ---
 
 ## 📦 Requirements
-- **CMake** ≥ 4.0  
+- **CMake** ≥ 3.20  
 - **Rust / Cargo** (latest stable toolchain)  
-- **Protobuf** compiler (`protoc`)  
-- **macOS** users: System frameworks (CoreAudio, AudioToolbox, etc.) are automatically linked via CMake.
 - **Git LFS** (required for examples)
   Some example data files (e.g., audio assets) are stored using Git LFS.
   You must install Git LFS before cloning or pulling the repo if you want to run the examples.
 
+**Platform-Specific Requirements:**
+
+### For Building the SDK:
+- **Windows:** Visual Studio 2019+, vcpkg
+- **Linux:** `sudo apt install libprotobuf-dev libssl-dev` (protobuf 3.x)
+- **macOS:** `brew install protobuf` (protobuf 3.x)
+
+### For Using the Pre-built SDK:
+- **Windows:** ✅ All dependencies included (DLLs bundled) - ready to use
+- **Linux:** ⚠️ Requires `libprotobuf` and `libssl-dev`; deploy `liblivekit_ffi.so` with your executable
+- **macOS:** ⚠️ Requires `protobuf`; deploy `liblivekit_ffi.dylib` with your executable
+
+> **Note**: If the SDK was built with Protobuf 6.0+, you also need `libabsl-dev` (Linux) or `abseil` (macOS).
 
 ## 🧩 Clone the Repository
 
@@ -30,14 +41,74 @@ git submodule update --init --recursive
 
 ## ⚙️ BUILD
 
-All build actions are managed by the provided build.sh script.
+### Quick Build (Using Build Scripts)
+
+**Linux/macOS:**
 ```bash
-./build.sh clean        # Clean CMake build artifacts
-./build.sh clean-all    # Deep clean (C++ + Rust + generated files)
-./build.sh debug        # Build Debug version
-./build.sh release      # Build Release version
-./build.sh verbose      # Verbose build output
+./build.sh clean          # Clean CMake build artifacts
+./build.sh clean-all      # Deep clean (C++ + Rust + generated files)
+./build.sh debug          # Build Debug version
+./build.sh release        # Build Release version
+./build.sh debug-tests    # Build Debug with tests
+./build.sh release-tests  # Build Release with tests
 ```
+**Windows**
+```bash
+cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="$PWD/vcpkg/scripts/buildsystems/vcpkg.cmake"  # Generate Makefiles in build folder
+# Build (Release or Debug)
+cmake --build build --config Release
+# or:
+cmake --build build --config Debug
+# Clean CMake build artifacts
+Remove-Item -Recurse -Force build
+```
+Note (Windows), This assumes vcpkg is checked out in the repo root at .\vcpkg\.
+You must install protobuf via vcpkg (so CMake can find ProtobufConfig.cmake and protoc), for example:
+```bash
+.\vcpkg\vcpkg install protobuf:x64-windows
+```
+
+**Windows:**
+```powershell
+.\build.cmd clean          # Clean CMake build artifacts
+.\build.cmd clean-all      # Deep clean (C++ + Rust + generated files)
+.\build.cmd debug          # Build Debug version
+.\build.cmd release        # Build Release version
+.\build.cmd debug-tests    # Build Debug with tests
+.\build.cmd release-tests  # Build Release with tests
+```
+
+### Advanced Build (Using CMake Presets)
+
+For more control and platform-specific builds, see the detailed instructions in [README_BUILD.md](README_BUILD.md).
+
+**Prerequisites (Windows only):**
+- Set `VCPKG_ROOT` environment variable pointing to your vcpkg installation
+
+```powershell
+# Windows PowerShell
+$env:VCPKG_ROOT = "C:\path\to\vcpkg"
+```
+
+**Prerequisites (Linux/macOS):**
+- Install system dependencies (see above)
+
+**Quick start:**
+```bash
+# Windows
+cmake --preset windows-release
+cmake --build --preset windows-release
+
+# Linux
+cmake --preset linux-release
+cmake --build --preset linux-release
+
+# macOS
+cmake --preset macos-release
+cmake --build --preset macos-release
+```
+
+📖 **For complete build instructions, troubleshooting, and platform-specific notes, see [README_BUILD.md](README_BUILD.md)**
 
 ## 🧪 Run Example
 
@@ -59,6 +130,19 @@ export LIVEKIT_URL=ws://localhost:7880
 export LIVEKIT_TOKEN=<jwt-token>
 ./build/examples/SimpleRoom
 ```
+
+**End-to-End Encryption (E2EE)**
+You can enable E2E encryption for the streams via --enable_e2ee and --e2ee_key flags,
+by running the following cmds in two terminals or computers. **Note, jwt_token needs to be different identity**
+```bash
+./build/examples/SimpleRoom --url $URL --token <jwt-token> --enable_e2ee --e2ee_key="your_key"
+```
+**Note**, **all participants must use the exact same E2EE configuration and shared key.**
+If the E2EE keys do not match between participants:
+- Media cannot be decrypted
+- Video tracks will appear as a black screen
+- Audio will be silent
+- No explicit error may be shown at the UI level
 
 Press Ctrl-C to exit the example.
 
@@ -122,6 +206,78 @@ On another terminal or computer, start the sender
 **Receiver** (e.g. caller)
 - Registers handlers for text and file streams, logs stream events, computes one-way latency, and saves the received file locally.
 
+
+## 🧪 Integration & Stress Tests
+
+The SDK includes integration and stress tests using Google Test (gtest).
+
+### Build Tests
+
+**Linux/macOS:**
+```bash
+./build.sh debug-tests      # Build Debug with tests
+./build.sh release-tests    # Build Release with tests
+```
+
+**Windows:**
+```powershell
+.\build.cmd debug-tests
+.\build.cmd release-tests
+```
+
+### Run Tests
+
+After building, run tests using ctest or directly:
+
+```bash
+# Run all tests via ctest
+cd build-debug
+ctest --output-on-failure
+
+# Or run test executables directly
+./build-debug/bin/livekit_integration_tests
+./build-debug/bin/livekit_stress_tests
+
+# Run specific test suites
+./build-debug/bin/livekit_integration_tests --gtest_filter="*Rpc*"
+./build-debug/bin/livekit_stress_tests --gtest_filter="*MaxPayloadStress*"
+```
+
+### Test Types
+
+| Executable | Description |
+|------------|-------------|
+| `livekit_integration_tests` | Quick tests (~1-2 minutes) for SDK functionality |
+| `livekit_stress_tests` | Long-running tests (configurable, default 1 hour) |
+
+### RPC Test Environment Variables
+
+RPC integration and stress tests require a LiveKit server and two participant tokens:
+
+```bash
+# Required
+export LIVEKIT_URL="wss://your-server.livekit.cloud"
+export LIVEKIT_CALLER_TOKEN="<token with caller identity>"
+export LIVEKIT_RECEIVER_TOKEN="<token with receiver identity>"
+
+# Optional (for stress tests)
+export RPC_STRESS_DURATION_SECONDS=3600   # Test duration (default: 1 hour)
+export RPC_STRESS_CALLER_THREADS=4        # Concurrent caller threads (default: 4)
+```
+
+**Generate tokens for RPC tests:**
+```bash
+lk token create -r test -i rpc-caller --join --valid-for 99999h --dev --room=rpc-test-room
+lk token create -r test -i rpc-receiver --join --valid-for 99999h --dev --room=rpc-test-room
+```
+
+### Test Coverage
+
+- **SDK Initialization**: Initialize/shutdown lifecycle
+- **Room**: Room creation, options, connection
+- **Audio Frame**: Frame creation, manipulation, edge cases
+- **RPC**: Round-trip calls, max payload (15KB), timeouts, errors, concurrent calls
+- **Stress Tests**: High throughput, bidirectional RPC, memory pressure
 
 ##  🧰 Recommended Setup
 ### macOS

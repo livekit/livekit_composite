@@ -21,9 +21,9 @@ import (
 
 	"github.com/pion/ice/v4"
 	"github.com/pion/logging"
-	"github.com/pion/transport/v3"
-	"github.com/pion/transport/v3/stdnet"
-	tudp "github.com/pion/transport/v3/udp"
+	"github.com/pion/transport/v4"
+	"github.com/pion/transport/v4/stdnet"
+	tudp "github.com/pion/transport/v4/udp"
 )
 
 // Functions to create UDPMuxes from ports, most code are copied from pion/ice package as the PR

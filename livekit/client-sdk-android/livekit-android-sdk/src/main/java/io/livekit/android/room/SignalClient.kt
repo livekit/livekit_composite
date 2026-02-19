@@ -1,5 +1,5 @@
 /*
- * Copyright 2023-2025 LiveKit, Inc.
+ * Copyright 2023-2026 LiveKit, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,6 +97,7 @@ constructor(
 
     // join will always return a JoinResponse.
     // reconnect will return a ReconnectResponse or a Unit if a different response was received.
+    @Volatile
     private var joinContinuation: CancellableContinuation<
         Either<
             JoinResponse,
@@ -169,7 +170,7 @@ constructor(
         // Clean up any pre-existing connection.
         close(reason = "Starting new connection", shouldClearQueuedRequests = false)
 
-        val wsUrlString = "${url.toWebsocketUrl()}/rtc" + createConnectionParams(getClientInfo(), options, roomOptions)
+        val wsUrlString = "${url.toWebsocketUrl()}/rtc${createConnectionParams(getClientInfo(), options, roomOptions)}"
         isReconnecting = options.reconnect
 
         LKLog.i { "connecting to $wsUrlString" }
@@ -184,10 +185,17 @@ constructor(
             .addHeader("Authorization", "Bearer $token")
             .build()
 
-        return suspendCancellableCoroutine {
+        return suspendCancellableCoroutine { cont ->
             // Wait for join response through WebSocketListener
-            joinContinuation = it
-            currentWs = websocketFactory.newWebSocket(request, this)
+            joinContinuation = cont
+            cont.invokeOnCancellation {
+                // If the coroutine is cancelled, websocket needs to be cancelled.
+                // onFailure will handle cleanup.
+                LKLog.v { "connect cancelled, abort websocket" }
+                currentWs?.cancel()
+                joinContinuation = null
+            }
+            currentWs = websocketFactory.newWebSocket(request, this@SignalClient)
         }
     }
 
@@ -196,34 +204,39 @@ constructor(
         options: ConnectOptions,
         roomOptions: RoomOptions,
     ): String {
-        val queryParams = mutableListOf<Pair<String, String>>()
-        queryParams.add(CONNECT_QUERY_PROTOCOL to options.protocolVersion.value.toString())
+        val queryBuilder = StringBuilder()
+        var first = true
+
+        fun addParam(key: String, value: String) {
+            queryBuilder.append(if (first) "?" else "&")
+                .append(key).append("=").append(value)
+            first = false
+        }
+
+        addParam(CONNECT_QUERY_PROTOCOL, options.protocolVersion.value.toString())
 
         if (options.reconnect) {
-            queryParams.add(CONNECT_QUERY_RECONNECT to 1.toString())
+            addParam(CONNECT_QUERY_RECONNECT, "1")
             options.participantSid?.let { sid ->
-                queryParams.add(CONNECT_QUERY_PARTICIPANT_SID to sid)
+                addParam(CONNECT_QUERY_PARTICIPANT_SID, sid)
             }
         }
 
         val autoSubscribe = if (options.autoSubscribe) 1 else 0
-        queryParams.add(CONNECT_QUERY_AUTOSUBSCRIBE to autoSubscribe.toString())
+        addParam(CONNECT_QUERY_AUTOSUBSCRIBE, autoSubscribe.toString())
 
         val adaptiveStream = if (roomOptions.adaptiveStream) 1 else 0
-        queryParams.add(CONNECT_QUERY_ADAPTIVE_STREAM to adaptiveStream.toString())
+        addParam(CONNECT_QUERY_ADAPTIVE_STREAM, adaptiveStream.toString())
 
         // Client info
-        queryParams.add(CONNECT_QUERY_SDK to "android")
-        queryParams.add(CONNECT_QUERY_VERSION to clientInfo.version)
-        queryParams.add(CONNECT_QUERY_DEVICE_MODEL to clientInfo.deviceModel)
-        queryParams.add(CONNECT_QUERY_OS to clientInfo.os)
-        queryParams.add(CONNECT_QUERY_OS_VERSION to clientInfo.osVersion)
-        queryParams.add(CONNECT_QUERY_NETWORK_TYPE to networkInfo.getNetworkType().protoName)
+        addParam(CONNECT_QUERY_SDK, "android")
+        addParam(CONNECT_QUERY_VERSION, clientInfo.version)
+        addParam(CONNECT_QUERY_DEVICE_MODEL, clientInfo.deviceModel)
+        addParam(CONNECT_QUERY_OS, clientInfo.os)
+        addParam(CONNECT_QUERY_OS_VERSION, clientInfo.osVersion)
+        addParam(CONNECT_QUERY_NETWORK_TYPE, networkInfo.getNetworkType().protoName)
 
-        return queryParams.foldIndexed("") { index, acc, pair ->
-            val separator = if (index == 0) "?" else "&"
-            acc + separator + "${pair.first}=${pair.second}"
-        }
+        return queryBuilder.toString()
     }
 
     /**
@@ -346,6 +359,7 @@ constructor(
             listener?.onError(t)
             joinContinuation?.cancel(t)
         }
+        joinContinuation = null
 
         val wasConnected = isConnected
 
@@ -655,6 +669,7 @@ constructor(
                     version = serverVersion
                 )
                 joinContinuation?.resumeWith(Result.success(Either.Left(response.join)))
+                joinContinuation = null
             } else if (response.hasLeave()) {
                 // Some reconnects may immediately send leave back without a join response first.
                 handleSignalResponseImpl(ws, response)
@@ -669,8 +684,10 @@ constructor(
 
                 if (response.hasReconnect()) {
                     joinContinuation?.resumeWith(Result.success(Either.Right(Either.Left(response.reconnect))))
+                    joinContinuation = null
                 } else {
                     joinContinuation?.resumeWith(Result.success(Either.Right(Either.Right(Unit))))
+                    joinContinuation = null
                     // Non-reconnect response, handle normally
                     shouldProcessMessage = true
                 }

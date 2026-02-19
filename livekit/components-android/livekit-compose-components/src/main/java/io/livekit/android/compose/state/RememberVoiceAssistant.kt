@@ -1,5 +1,5 @@
 /*
- * Copyright 2024-2025 LiveKit, Inc.
+ * Copyright 2024-2026 LiveKit, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,7 +42,7 @@ import io.livekit.android.util.flow
  *
  * Requires an agent running with livekit-agents \>= 0.9.0.
  */
-@Beta
+@OptIn(Beta::class)
 @Composable
 fun rememberVoiceAssistant(passedRoom: Room? = null): VoiceAssistant {
     val room = requireRoom(passedRoom)
@@ -171,6 +171,7 @@ enum class AgentState {
                 AgentSdkState.Listening -> LISTENING
                 AgentSdkState.Speaking -> SPEAKING
                 AgentSdkState.Thinking -> THINKING
+                AgentSdkState.Unknown,
                 null -> UNKNOWN
             }
         }

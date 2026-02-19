@@ -17,8 +17,8 @@
 #ifndef LIVEKIT_ROOM_H
 #define LIVEKIT_ROOM_H
 
-#include "ffi_client.h"
 #include "livekit/data_stream.h"
+#include "livekit/e2ee.h"
 #include "livekit/ffi_handle.h"
 #include "livekit/room_event_types.h"
 #include <memory>
@@ -32,26 +32,10 @@ namespace proto {
 class FfiEvent;
 }
 
+struct E2EEOptions;
+class E2EEManager;
 class LocalParticipant;
 class RemoteParticipant;
-
-/// Represents end-to-end encryption (E2EE) settings.
-struct E2EEOptions {
-  // Encryption algorithm type.
-  int encryption_type = 0;
-
-  // Shared static key. If provided, this key is used for encryption.
-  std::string shared_key;
-
-  // Salt used when deriving ratcheted encryption keys.
-  std::string ratchet_salt;
-
-  // How many consecutive ratcheting failures are tolerated before an error.
-  int failure_tolerance = 0;
-
-  // Maximum size of the ratchet window.
-  int ratchet_window_size = 0;
-};
 
 // Represents a single ICE server configuration.
 struct IceServer {
@@ -89,11 +73,11 @@ struct RoomOptions {
   // Enable dynacast (server sends optimal layers depending on subscribers).
   bool dynacast = false;
 
-  // Optional end-to-end encryption settings.
-  std::optional<E2EEOptions> e2ee;
-
   // Optional WebRTC configuration (ICE policy, servers, etc.)
   std::optional<RtcConfig> rtc_config;
+
+  // Optional end-to-end encryption settings.
+  std::optional<E2EEOptions> encryption;
 };
 
 /// Represents a LiveKit room session.
@@ -234,16 +218,25 @@ public:
    */
   void unregisterByteStreamHandler(const std::string &topic);
 
+  /**
+   * Returns the room's E2EE manager, or nullptr if E2EE was not enabled at
+   * connect time.
+   *
+   * Notes:
+   * - The manager is created after a successful Connect().
+   * - If E2EE was not configured in RoomOptions, this will return nullptr.
+   */
+  E2EEManager *e2eeManager() const;
+
 private:
   mutable std::mutex lock_;
-  bool connected_{false};
+  ConnectionState connection_state_ = ConnectionState::Disconnected;
   RoomDelegate *delegate_ = nullptr; // Not owned
   RoomInfoData room_info_;
   std::shared_ptr<FfiHandle> room_handle_;
   std::unique_ptr<LocalParticipant> local_participant_;
   std::unordered_map<std::string, std::shared_ptr<RemoteParticipant>>
       remote_participants_;
-  ConnectionState connection_state_ = ConnectionState::Disconnected;
   // Data stream
   std::unordered_map<std::string, TextStreamHandler> text_stream_handlers_;
   std::unordered_map<std::string, ByteStreamHandler> byte_stream_handlers_;
@@ -251,6 +244,11 @@ private:
       text_stream_readers_;
   std::unordered_map<std::string, std::shared_ptr<ByteStreamReader>>
       byte_stream_readers_;
+  // E2EE
+  std::unique_ptr<E2EEManager> e2ee_manager_;
+
+  // FfiClient listener ID (0 means no listener registered)
+  int listener_id_{0};
 
   void OnEvent(const proto::FfiEvent &event);
 };

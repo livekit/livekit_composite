@@ -29,6 +29,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/livekit/sipgo/transport"
+
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	msdk "github.com/livekit/media-sdk"
@@ -36,11 +38,12 @@ import (
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/rpc"
 	"github.com/livekit/psrpc"
+	"github.com/livekit/sipgo"
+
 	"github.com/livekit/sip/pkg/config"
 	siperrors "github.com/livekit/sip/pkg/errors"
 	"github.com/livekit/sip/pkg/stats"
 	"github.com/livekit/sip/version"
-	"github.com/livekit/sipgo"
 )
 
 type ServiceConfig struct {
@@ -72,6 +75,9 @@ type GetIOInfoClient func(projectID string) rpc.IOInfoClient
 func NewService(region string, conf *config.Config, mon *stats.Monitor, log logger.Logger, getIOClient GetIOInfoClient) (*Service, error) {
 	if log == nil {
 		log = logger.GetLogger()
+	}
+	if conf.UDPMaxPayload > 0 {
+		transport.UDPMTUSize = conf.UDPMaxPayload
 	}
 	if conf.MediaTimeout <= 0 {
 		conf.MediaTimeout = defaultMediaTimeout
@@ -214,12 +220,15 @@ func (s *Service) Start() error {
 		sipgo.WithUserAgentLogger(slog.New(logger.ToSlogHandler(s.log))),
 	}
 	if tconf := s.conf.TCP; tconf != nil {
+		s.log.Debugw("configuring TCP dial port range", "start", tconf.DialPort.Start, "end", tconf.DialPort.End)
 		opts = append(opts, sipgo.WithUserAgentTCPConfig(&sipgo.TCPConfig{
 			DialPorts: sipgo.PortRange{
 				Min: tconf.DialPort.Start,
 				Max: tconf.DialPort.End,
 			},
 		}))
+	} else {
+		s.log.Debugw("TCP config is nil")
 	}
 	var tlsConf *tls.Config
 	if tconf := s.conf.TLS; tconf != nil {
@@ -255,6 +264,29 @@ func (s *Service) Start() error {
 			Certificates: certs,
 			KeyLogWriter: keyLog,
 		}
+
+		if len(tconf.CipherSuites) > 0 {
+			suits, err := parseCipherSuites(s.log, tconf.CipherSuites)
+			if err != nil {
+				return err
+			}
+			tlsConf.CipherSuites = suits
+		}
+		if tconf.MinVersion != "" {
+			minVer, err := parseTLSVersion(tconf.MinVersion)
+			if err != nil {
+				return err
+			}
+			tlsConf.MinVersion = minVer
+		}
+		if tconf.MaxVersion != "" {
+			maxVer, err := parseTLSVersion(tconf.MaxVersion)
+			if err != nil {
+				return err
+			}
+			tlsConf.MaxVersion = maxVer
+		}
+
 		ConfigureTLS(tlsConf)
 		opts = append(opts, sipgo.WithUserAgenTLSConfig(tlsConf))
 	}

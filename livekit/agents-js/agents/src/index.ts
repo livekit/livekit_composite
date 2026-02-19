@@ -23,6 +23,7 @@ import * as voice from './voice/index.js';
 
 export * from './_exceptions.js';
 export * from './audio.js';
+export * from './connection_pool.js';
 export * from './generator.js';
 export * from './inference_runner.js';
 export * from './job.js';
@@ -33,6 +34,7 @@ export * from './types.js';
 export * from './utils.js';
 export * from './vad.js';
 export * from './version.js';
+export { createTimedString, isTimedString, type TimedString } from './voice/io.js';
 export * from './worker.js';
 
 export { cli, inference, ipc, llm, metrics, stream, stt, telemetry, tokenize, tts, voice };

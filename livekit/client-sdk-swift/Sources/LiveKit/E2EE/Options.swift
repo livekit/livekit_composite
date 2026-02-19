@@ -1,5 +1,5 @@
 /*
- * Copyright 2025 LiveKit
+ * Copyright 2026 LiveKit
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,12 +46,10 @@ extension Livekit_Encryption.TypeEnum {
 }
 
 @available(*, deprecated, message: "Migrate to 'EncryptionOptions' instead. Important: It will enable data channel encryption by default (requires support from all platforms).")
-@objc
+@objcMembers
 public final class E2EEOptions: NSObject, Sendable {
-    @objc
     public let keyProvider: BaseKeyProvider
 
-    @objc
     public let encryptionType: EncryptionType
 
     public init(keyProvider: BaseKeyProvider,
@@ -77,12 +75,10 @@ public final class E2EEOptions: NSObject, Sendable {
     }
 }
 
-@objc
+@objcMembers
 public final class EncryptionOptions: NSObject, Sendable {
-    @objc
     public let keyProvider: BaseKeyProvider
 
-    @objc
     public let encryptionType: EncryptionType
 
     public init(keyProvider: BaseKeyProvider,

@@ -15,52 +15,68 @@
 package rtp
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"math/rand"
 	"net"
 	"net/netip"
+	"syscall"
 )
 
 var ErrListenFailed = errors.New("failed to listen on udp port")
 
-func ListenUDPPortRange(portMin, portMax int, ip netip.Addr) (*net.UDPConn, error) {
-	if portMin == 0 && portMax == 0 {
-		return net.ListenUDP("udp", &net.UDPAddr{
-			IP:   ip.AsSlice(),
-			Port: 0,
-		})
-	}
+type bindFunc func(port int, ip netip.Addr) (*net.UDPConn, error)
 
-	i := portMin
-	if i == 0 {
-		i = 1
+func bindRange(portMin, portMax int, ip netip.Addr, create bindFunc) (*net.UDPConn, error) {
+	if portMin <= 0 && portMax <= 0 {
+		return create(0, ip)
+	} else if portMin == portMax {
+		return create(portMin, ip)
 	}
-
-	j := portMax
-	if j == 0 {
-		j = 0xFFFF
+	if portMin <= 0 {
+		portMin = 1
 	}
-
-	if i > j {
+	if portMax <= 0 || portMax > 0xFFFF {
+		portMax = 0xFFFF
+	}
+	if portMin > portMax {
 		return nil, ErrListenFailed
 	}
 
-	portStart := rand.Intn(portMax-portMin+1) + portMin
-	portCurrent := portStart
+	ports := portMax - portMin + 1
+	portCurrent := rand.Intn(ports) + portMin
 
-	for {
-		c, e := net.ListenUDP("udp", &net.UDPAddr{IP: ip.AsSlice(), Port: portCurrent})
-		if e == nil {
+	for try := 0; try < ports; try++ {
+		c, err := create(portCurrent, ip)
+		if err == nil {
 			return c, nil
+		} else if !errors.Is(err, syscall.EADDRINUSE) {
+			return c, err
 		}
-
 		portCurrent++
-		if portCurrent > j {
-			portCurrent = i
-		}
-		if portCurrent == portStart {
-			break
+		if portCurrent > portMax {
+			portCurrent = portMin
 		}
 	}
 	return nil, ErrListenFailed
+}
+
+func ListenUDPPortRange(portMin, portMax int, ip netip.Addr) (*net.UDPConn, error) {
+	return bindRange(portMin, portMax, ip, func(port int, ip netip.Addr) (*net.UDPConn, error) {
+		addr := &net.UDPAddr{IP: ip.AsSlice(), Port: port}
+		return net.ListenUDP("udp", addr)
+	})
+}
+
+func ListenUDPPortRangeWithConfig(portMin, portMax int, ip netip.Addr, lc *net.ListenConfig) (*net.UDPConn, error) {
+	ctx := context.Background() // ctx is only used to resolve domain names, which we don't use here.
+	ipStr := ip.String()
+	return bindRange(portMin, portMax, ip, func(port int, ip netip.Addr) (*net.UDPConn, error) {
+		conn, err := lc.ListenPacket(ctx, "udp", fmt.Sprintf("%s:%d", ipStr, port))
+		if err != nil {
+			return nil, err
+		}
+		return conn.(*net.UDPConn), nil
+	})
 }

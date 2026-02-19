@@ -122,6 +122,31 @@ func (c *Client) DeployAgent(
 	return c.uploadAndBuild(ctx, agentID, resp.PresignedUrl, resp.PresignedPostRequest, source, excludeFiles, buildLogStreamWriter)
 }
 
+// CreatePrivateLink creates a new private link for cloud agents.
+func (c *Client) CreatePrivateLink(ctx context.Context, req *lkproto.CreatePrivateLinkRequest) (*lkproto.CreatePrivateLinkResponse, error) {
+	return c.AgentClient.CreatePrivateLink(ctx, req)
+}
+
+// DestroyPrivateLink deletes a private link by ID.
+func (c *Client) DestroyPrivateLink(ctx context.Context, req *lkproto.DestroyPrivateLinkRequest) (*lkproto.DestroyPrivateLinkResponse, error) {
+	return c.AgentClient.DestroyPrivateLink(ctx, req)
+}
+
+// ListPrivateLinks lists private links for the project.
+func (c *Client) ListPrivateLinks(ctx context.Context, req *lkproto.ListPrivateLinksRequest) (*lkproto.ListPrivateLinksResponse, error) {
+	return c.AgentClient.ListPrivateLinks(ctx, req)
+}
+
+// GetPrivateLinkProvisioningStatus gets provisioning status for a private link.
+func (c *Client) GetPrivateLinkProvisioningStatus(ctx context.Context, req *lkproto.GetPrivateLinkProvisioningStatusRequest) (*lkproto.GetPrivateLinkProvisioningStatusResponse, error) {
+	return c.AgentClient.GetPrivateLinkProvisioningStatus(ctx, req)
+}
+
+// GetPrivateLinkHealthStatus gets health status for a private link.
+func (c *Client) GetPrivateLinkHealthStatus(ctx context.Context, req *lkproto.GetPrivateLinkHealthStatusRequest) (*lkproto.GetPrivateLinkHealthStatusResponse, error) {
+	return c.AgentClient.GetPrivateLinkHealthStatus(ctx, req)
+}
+
 // uploadAndBuild uploads the source and triggers remote build
 func (c *Client) uploadAndBuild(
 	ctx context.Context,

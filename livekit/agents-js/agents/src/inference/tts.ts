@@ -5,69 +5,132 @@ import type { AudioFrame } from '@livekit/rtc-node';
 import { WebSocket } from 'ws';
 import { APIError, APIStatusError } from '../_exceptions.js';
 import { AudioByteStream } from '../audio.js';
+import { ConnectionPool } from '../connection_pool.js';
 import { log } from '../log.js';
 import { createStreamChannel } from '../stream/stream_channel.js';
 import { basic as tokenizeBasic } from '../tokenize/index.js';
 import type { ChunkedStream } from '../tts/index.js';
 import { SynthesizeStream as BaseSynthesizeStream, TTS as BaseTTS } from '../tts/index.js';
 import { type APIConnectOptions, DEFAULT_API_CONNECT_OPTIONS } from '../types.js';
-import { shortuuid } from '../utils.js';
+import { Event, Future, Task, cancelAndWait, combineSignals, shortuuid } from '../utils.js';
 import {
   type TtsClientEvent,
   type TtsServerEvent,
-  type TtsSessionCreateEvent,
   ttsClientEventSchema,
   ttsServerEventSchema,
 } from './api_protos.js';
 import { type AnyString, connectWs, createAccessToken } from './utils.js';
 
 export type CartesiaModels =
-  | 'cartesia'
-  | 'cartesia/sonic'
+  | 'cartesia/sonic-3'
   | 'cartesia/sonic-2'
-  | 'cartesia/sonic-turbo';
+  | 'cartesia/sonic-turbo'
+  | 'cartesia/sonic';
+
+export type DeepgramTTSModels = 'deepgram/aura' | 'deepgram/aura-2';
 
 export type ElevenlabsModels =
-  | 'elevenlabs'
   | 'elevenlabs/eleven_flash_v2'
   | 'elevenlabs/eleven_flash_v2_5'
   | 'elevenlabs/eleven_turbo_v2'
   | 'elevenlabs/eleven_turbo_v2_5'
   | 'elevenlabs/eleven_multilingual_v2';
 
-export type RimeModels = 'rime' | 'rime/mist' | 'rime/mistv2' | 'rime/arcana';
+export type InworldModels =
+  | 'inworld/inworld-tts-1.5-max'
+  | 'inworld/inworld-tts-1.5-mini'
+  | 'inworld/inworld-tts-1-max'
+  | 'inworld/inworld-tts-1';
 
-export type InworldModels = 'inworld' | 'inworld/inworld-tts-1';
+export type RimeModels = 'rime/arcana' | 'rime/mistv2';
 
 export interface CartesiaOptions {
-  duration?: number; // max duration of audio in seconds
-  speed?: 'slow' | 'normal' | 'fast'; // default: not specified
+  /** Maximum duration of audio in seconds. */
+  duration?: number;
+  /** Speech speed. Default: not specified. */
+  speed?: 'slow' | 'normal' | 'fast';
 }
 
 export interface ElevenlabsOptions {
-  inactivity_timeout?: number; // default: 60
-  apply_text_normalization?: 'auto' | 'off' | 'on'; // default: "auto"
+  /** Inactivity timeout in seconds. Default: 60. */
+  inactivity_timeout?: number;
+  /** Text normalization mode. Default: "auto". */
+  apply_text_normalization?: 'auto' | 'off' | 'on';
 }
+
+export interface DeepgramTTSOptions {}
 
 export interface RimeOptions {}
 
 export interface InworldOptions {}
 
-type _TTSModels = CartesiaModels | ElevenlabsModels | RimeModels | InworldModels;
+type _TTSModels =
+  | CartesiaModels
+  | DeepgramTTSModels
+  | ElevenlabsModels
+  | RimeModels
+  | InworldModels;
 
-export type TTSModels = CartesiaModels | ElevenlabsModels | RimeModels | InworldModels | AnyString;
+export type TTSModels =
+  | CartesiaModels
+  | DeepgramTTSModels
+  | ElevenlabsModels
+  | RimeModels
+  | InworldModels
+  | AnyString;
 
 export type ModelWithVoice = `${_TTSModels}:${string}` | TTSModels;
 
 export type TTSOptions<TModel extends TTSModels> = TModel extends CartesiaModels
   ? CartesiaOptions
-  : TModel extends ElevenlabsModels
-    ? ElevenlabsOptions
-    : TModel extends RimeOptions
-      ? RimeOptions
-      : TModel extends InworldOptions
-        ? InworldOptions
-        : Record<string, unknown>;
+  : TModel extends DeepgramTTSModels
+    ? DeepgramTTSOptions
+    : TModel extends ElevenlabsModels
+      ? ElevenlabsOptions
+      : TModel extends RimeModels
+        ? RimeOptions
+        : TModel extends InworldModels
+          ? InworldOptions
+          : Record<string, unknown>;
+
+/** Parse a model string into [model, voice]. Voice is undefined if not specified. */
+export function parseTTSModelString(model: string): [string, string | undefined] {
+  const idx = model.lastIndexOf(':');
+  if (idx !== -1) {
+    return [model.slice(0, idx), model.slice(idx + 1)];
+  }
+  return [model, undefined];
+}
+
+/** A fallback model with optional extra configuration. Extra fields are passed through to the provider. */
+export interface TTSFallbackModel {
+  /** Model name (e.g. "cartesia/sonic", "elevenlabs/eleven_flash_v2", "rime/arcana"). */
+  model: string;
+  /** Voice to use for the model. */
+  voice: string;
+  /** Extra configuration for the model. */
+  extraKwargs?: Record<string, unknown>;
+}
+
+export type TTSFallbackModelType = TTSFallbackModel | string;
+
+/** Normalize a single or list of FallbackModelType into TTSFallbackModel[]. */
+export function normalizeTTSFallback(
+  fallback: TTSFallbackModelType | TTSFallbackModelType[],
+): TTSFallbackModel[] {
+  const makeFallback = (model: TTSFallbackModelType): TTSFallbackModel => {
+    if (typeof model === 'string') {
+      const [name, voice] = parseTTSModelString(model);
+      return { model: name, voice: voice ?? '' };
+    }
+    return model;
+  };
+
+  if (Array.isArray(fallback)) {
+    return fallback.map(makeFallback);
+  }
+  return [makeFallback(fallback)];
+}
 
 type TTSEncoding = 'pcm_s16le';
 
@@ -87,6 +150,8 @@ export interface InferenceTTSOptions<TModel extends TTSModels> {
   apiKey: string;
   apiSecret: string;
   modelOptions: TTSOptions<TModel>;
+  fallback?: TTSFallbackModel[];
+  connOptions?: APIConnectOptions;
 }
 
 /**
@@ -95,6 +160,7 @@ export interface InferenceTTSOptions<TModel extends TTSModels> {
 export class TTS<TModel extends TTSModels> extends BaseTTS {
   private opts: InferenceTTSOptions<TModel>;
   private streams: Set<SynthesizeStream<TModel>> = new Set();
+  pool: ConnectionPool<WebSocket>;
 
   #logger = log();
 
@@ -108,6 +174,8 @@ export class TTS<TModel extends TTSModels> extends BaseTTS {
     apiKey?: string;
     apiSecret?: string;
     modelOptions?: TTSOptions<TModel>;
+    fallback?: TTSFallbackModelType | TTSFallbackModelType[];
+    connOptions?: APIConnectOptions;
   }) {
     const sampleRate = opts?.sampleRate ?? DEFAULT_SAMPLE_RATE;
     super(sampleRate, 1, { streaming: true });
@@ -121,6 +189,8 @@ export class TTS<TModel extends TTSModels> extends BaseTTS {
       apiKey,
       apiSecret,
       modelOptions = {} as TTSOptions<TModel>,
+      fallback,
+      connOptions,
     } = opts || {};
 
     const lkBaseURL = baseURL || process.env.LIVEKIT_INFERENCE_URL || DEFAULT_BASE_URL;
@@ -154,6 +224,8 @@ export class TTS<TModel extends TTSModels> extends BaseTTS {
       }
     }
 
+    const normalizedFallback = fallback ? normalizeTTSFallback(fallback) : undefined;
+
     this.opts = {
       model: nextModel,
       voice: nextVoice,
@@ -164,7 +236,18 @@ export class TTS<TModel extends TTSModels> extends BaseTTS {
       apiKey: lkApiKey,
       apiSecret: lkApiSecret,
       modelOptions,
+      fallback: normalizedFallback,
+      connOptions: connOptions ?? DEFAULT_API_CONNECT_OPTIONS,
     };
+
+    // Initialize connection pool
+    this.pool = new ConnectionPool<WebSocket>({
+      connectCb: (timeout) => this.connectWs(timeout),
+      closeCb: (ws) => this.closeWs(ws),
+      maxSessionDuration: 300_000,
+      markRefreshedOnGet: true,
+      connectTimeout: 10_000, // 10 seconds default
+    });
   }
 
   get label() {
@@ -172,11 +255,8 @@ export class TTS<TModel extends TTSModels> extends BaseTTS {
   }
 
   static fromModelString(modelString: string): TTS<AnyString> {
-    if (modelString.includes(':')) {
-      const [model, voice] = modelString.split(':') as [TTSModels, string];
-      return new TTS({ model, voice });
-    }
-    return new TTS({ model: modelString });
+    const [model, voice] = parseTTSModelString(modelString);
+    return new TTS({ model, voice: voice || undefined });
   }
 
   updateOptions(opts: Partial<Pick<InferenceTTSOptions<TModel>, 'model' | 'voice' | 'language'>>) {
@@ -191,7 +271,7 @@ export class TTS<TModel extends TTSModels> extends BaseTTS {
   }
 
   stream(options?: { connOptions?: APIConnectOptions }): SynthesizeStream<TModel> {
-    const { connOptions = DEFAULT_API_CONNECT_OPTIONS } = options || {};
+    const { connOptions = this.opts.connOptions ?? DEFAULT_API_CONNECT_OPTIONS } = options || {};
     const stream = new SynthesizeStream(this, { ...this.opts }, connOptions);
     this.streams.add(stream);
     return stream;
@@ -212,12 +292,30 @@ export class TTS<TModel extends TTSModels> extends BaseTTS {
       sample_rate: String(this.opts.sampleRate),
       encoding: this.opts.encoding,
       extra: this.opts.modelOptions,
-    } as TtsSessionCreateEvent;
+    } as Record<string, unknown>;
 
-    if (this.opts.voice) params.voice = this.opts.voice;
-    if (this.opts.model) params.model = this.opts.model;
-    if (this.opts.language) params.language = this.opts.language;
+    if (this.opts.voice) (params as Record<string, unknown>).voice = this.opts.voice;
+    if (this.opts.model) (params as Record<string, unknown>).model = this.opts.model;
+    if (this.opts.language) (params as Record<string, unknown>).language = this.opts.language;
 
+    if (this.opts.fallback?.length) {
+      params.fallback = {
+        models: this.opts.fallback.map((m) => ({
+          model: m.model,
+          voice: m.voice,
+          extra: m.extraKwargs ?? {},
+        })),
+      };
+    }
+
+    if (this.opts.connOptions) {
+      params.connection = {
+        timeout: this.opts.connOptions.timeoutMs / 1000,
+        retries: this.opts.connOptions.maxRetry,
+      };
+    }
+
+    this.#logger.debug({ url }, 'inference.TTS creating new websocket connection (pool miss)');
     const socket = await connectWs(url, headers, timeout);
     socket.send(JSON.stringify(params));
     return socket;
@@ -227,11 +325,16 @@ export class TTS<TModel extends TTSModels> extends BaseTTS {
     await ws.close();
   }
 
+  prewarm(): void {
+    this.pool.prewarm();
+  }
+
   async close() {
     for (const stream of this.streams) {
       await stream.close();
     }
     this.streams.clear();
+    await this.pool.close();
   }
 }
 
@@ -256,30 +359,31 @@ export class SynthesizeStream<TModel extends TTSModels> extends BaseSynthesizeSt
   }
 
   protected async run(): Promise<void> {
-    let ws: WebSocket | null = null;
     let closing = false;
-    let finalReceived = false;
     let lastFrame: AudioFrame | undefined;
 
     const sendTokenizerStream = new tokenizeBasic.SentenceTokenizer().stream();
     const eventChannel = createStreamChannel<TtsServerEvent>();
     const requestId = shortuuid('tts_request_');
+    const inputSentEvent = new Event();
 
-    const resourceCleanup = () => {
+    // Signal for protocol-driven completion (when 'done' message is received)
+    const completionFuture = new Future<void>();
+
+    const resourceCleanup = async () => {
       if (closing) return;
       closing = true;
       sendTokenizerStream.close();
-      eventChannel.close();
-      ws?.removeAllListeners();
-      ws?.close();
+      // close() returns a promise; don't leak it
+      await eventChannel.close();
     };
 
-    const sendClientEvent = async (event: TtsClientEvent) => {
+    const sendClientEvent = async (event: TtsClientEvent, ws: WebSocket, signal: AbortSignal) => {
       // Don't send events to a closed WebSocket or aborted controller
-      if (this.abortController.signal.aborted || closing) return;
+      if (signal.aborted || closing) return;
 
       const validatedEvent = await ttsClientEventSchema.parseAsync(event);
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
+      if (ws.readyState !== WebSocket.OPEN) {
         this.#logger.warn('Trying to send client TTS event to a closed WebSocket');
         return;
       }
@@ -293,9 +397,9 @@ export class SynthesizeStream<TModel extends TTSModels> extends BaseSynthesizeSt
       }
     };
 
-    const createInputTask = async () => {
+    const createInputTask = async (signal: AbortSignal) => {
       for await (const data of this.input) {
-        if (this.abortController.signal.aborted || closing) break;
+        if (signal.aborted || closing) break;
         if (data === SynthesizeStream.FLUSH_SENTINEL) {
           sendTokenizerStream.flush();
           continue;
@@ -308,55 +412,108 @@ export class SynthesizeStream<TModel extends TTSModels> extends BaseSynthesizeSt
       }
     };
 
-    const createSentenceStreamTask = async () => {
+    const createSentenceStreamTask = async (ws: WebSocket, signal: AbortSignal) => {
       for await (const ev of sendTokenizerStream) {
-        if (this.abortController.signal.aborted) break;
+        if (signal.aborted || closing) break;
 
-        sendClientEvent({
-          type: 'input_transcript',
-          transcript: ev.token + ' ',
-        });
+        await sendClientEvent(
+          {
+            type: 'input_transcript',
+            transcript: ev.token + ' ',
+          },
+          ws,
+          signal,
+        );
+        inputSentEvent.set();
       }
 
-      sendClientEvent({ type: 'session.flush' });
+      await sendClientEvent({ type: 'session.flush' }, ws, signal);
+      // needed in case empty input is sent
+      inputSentEvent.set();
     };
 
-    const createWsListenerTask = async (ws: WebSocket) => {
-      return new Promise<void>((resolve, reject) => {
-        this.abortController.signal.addEventListener('abort', () => {
-          resourceCleanup();
-          resolve(); // Abort is triggered by close(), which is a normal shutdown, not an error
-        });
-
-        ws.on('message', async (data) => {
+    // Handles WebSocket message routing and error handling
+    // Completes based on protocol messages, NOT on ws.close()
+    const createWsListenerTask = async (ws: WebSocket, signal: AbortSignal) => {
+      const onMessage = (data: Buffer) => {
+        try {
           const eventJson = JSON.parse(data.toString()) as Record<string, unknown>;
           const validatedEvent = ttsServerEventSchema.parse(eventJson);
-          eventChannel.write(validatedEvent);
-        });
+          // writer.write returns a promise; avoid unhandled rejections if stream is closed
+          void eventChannel.write(validatedEvent).catch((error) => {
+            this.#logger.debug(
+              { error },
+              'Failed writing TTS event to stream channel (likely closed)',
+            );
+          });
+        } catch (e) {
+          this.#logger.error({ error: e }, 'Error parsing WebSocket message');
+        }
+      };
 
-        ws.on('error', (e) => {
-          this.#logger.error({ error: e }, 'WebSocket error');
-          resourceCleanup();
-          reject(e);
-        });
+      const onError = (e: Error) => {
+        this.#logger.error({ error: e }, 'WebSocket error');
+        void resourceCleanup();
+        try {
+          // If the ws is misbehaving, hard-stop it immediately to avoid buffering.
+          ws.terminate?.();
+        } catch {
+          // ignore
+        }
+        // Ensure this ws is not reused
+        this.tts.pool.remove(ws);
+        completionFuture.reject(e);
+      };
 
-        ws.on('close', () => {
-          resourceCleanup();
-
-          if (!closing) return this.#logger.error('WebSocket closed unexpectedly');
-          if (finalReceived) return resolve();
-
-          reject(
+      const onClose = () => {
+        // WebSocket closed unexpectedly (not by us)
+        if (!closing) {
+          this.#logger.error('WebSocket closed unexpectedly');
+          void resourceCleanup();
+          // Ensure this ws is not reused
+          this.tts.pool.remove(ws);
+          completionFuture.reject(
             new APIStatusError({
               message: 'Gateway connection closed unexpectedly',
               options: { requestId },
             }),
           );
-        });
-      });
+        }
+      };
+
+      const onAbort = () => {
+        void resourceCleanup();
+        try {
+          // On interruption/abort, close the websocket immediately so the server stops streaming
+          // and the ws library doesn't buffer unread frames in memory.
+          ws.terminate?.();
+        } catch {
+          // ignore
+        }
+        this.tts.pool.remove(ws);
+        inputSentEvent.set();
+        completionFuture.resolve();
+      };
+
+      // Attach listeners
+      ws.on('message', onMessage);
+      ws.on('error', onError);
+      ws.on('close', onClose);
+      signal.addEventListener('abort', onAbort);
+
+      try {
+        // Wait for protocol-driven completion or error
+        await completionFuture.await;
+      } finally {
+        // IMPORTANT: Remove listeners so connection can be reused
+        ws.off('message', onMessage);
+        ws.off('error', onError);
+        ws.off('close', onClose);
+        signal.removeEventListener('abort', onAbort);
+      }
     };
 
-    const createRecvTask = async () => {
+    const createRecvTask = async (signal: AbortSignal) => {
       let currentSessionId: string | null = null;
 
       const bstream = new AudioByteStream(this.opts.sampleRate, NUM_CHANNELS);
@@ -364,9 +521,11 @@ export class SynthesizeStream<TModel extends TTSModels> extends BaseSynthesizeSt
       const reader = serverEventStream.getReader();
 
       try {
-        while (!this.closed && !this.abortController.signal.aborted) {
+        await inputSentEvent.wait();
+
+        while (!this.closed && !signal.aborted) {
           const result = await reader.read();
-          if (this.abortController.signal.aborted) return;
+          if (signal.aborted) return;
           if (result.done) return;
 
           const serverEvent = result.value;
@@ -382,24 +541,29 @@ export class SynthesizeStream<TModel extends TTSModels> extends BaseSynthesizeSt
               }
               break;
             case 'done':
-              finalReceived = true;
               for (const frame of bstream.flush()) {
                 sendLastFrame(currentSessionId!, false);
                 lastFrame = frame;
               }
               sendLastFrame(currentSessionId!, true);
               this.queue.put(SynthesizeStream.END_OF_STREAM);
-              break;
+              await resourceCleanup();
+              completionFuture.resolve();
+              return;
             case 'session.closed':
-              resourceCleanup();
-              break;
+              await resourceCleanup();
+              completionFuture.resolve();
+              return;
             case 'error':
               this.#logger.error(
                 { serverEvent },
                 'Received error message from LiveKit TTS WebSocket',
               );
-              resourceCleanup();
-              throw new APIError(`LiveKit TTS returned error: ${serverEvent.message}`);
+              await resourceCleanup();
+              completionFuture.reject(
+                new APIError(`LiveKit TTS returned error: ${serverEvent.message}`),
+              );
+              return;
             default:
               this.#logger.warn('Unexpected message %s', serverEvent);
               break;
@@ -416,16 +580,81 @@ export class SynthesizeStream<TModel extends TTSModels> extends BaseSynthesizeSt
     };
 
     try {
-      ws = await this.tts.connectWs(this.connOptions.timeoutMs);
+      await this.tts.pool.withConnection(
+        async (ws: WebSocket) => {
+          try {
+            // IMPORTANT: don't cancel the stream's controller on normal completion,
+            // otherwise the pool will remove+close the ws and every run becomes a pool miss.
+            const runController = new AbortController();
+            const onStreamAbort = () => runController.abort(this.abortController.signal.reason);
+            this.abortController.signal.addEventListener('abort', onStreamAbort, { once: true });
 
-      await Promise.all([
-        createInputTask(),
-        createSentenceStreamTask(),
-        createWsListenerTask(ws),
-        createRecvTask(),
-      ]);
+            const tasks = [
+              Task.from(
+                async (controller) => {
+                  const combined = combineSignals(runController.signal, controller.signal);
+                  await createInputTask(combined);
+                },
+                undefined,
+                'inference-tts-input',
+              ),
+              Task.from(
+                async (controller) => {
+                  const combined = combineSignals(runController.signal, controller.signal);
+                  await createSentenceStreamTask(ws, combined);
+                },
+                undefined,
+                'inference-tts-sentence',
+              ),
+              Task.from(
+                async (controller) => {
+                  const combined = combineSignals(runController.signal, controller.signal);
+                  await createWsListenerTask(ws, combined);
+                },
+                undefined,
+                'inference-tts-ws-listener',
+              ),
+              Task.from(
+                async (controller) => {
+                  const combined = combineSignals(runController.signal, controller.signal);
+                  await createRecvTask(combined);
+                },
+                undefined,
+                'inference-tts-recv',
+              ),
+            ];
+
+            try {
+              await Promise.all(tasks.map((t) => t.result));
+            } finally {
+              // Mirror python finally: unblock recv and cancel all tasks.
+              inputSentEvent.set();
+              await resourceCleanup();
+              await cancelAndWait(tasks, 5000);
+              this.abortController.signal.removeEventListener('abort', onStreamAbort);
+            }
+          } catch (e) {
+            // If aborted, don't throw - let cleanup handle it
+            if (e instanceof Error && e.name === 'AbortError') {
+              return;
+            }
+            throw e;
+          }
+        },
+        {
+          timeout: this.connOptions.timeoutMs,
+        },
+      );
+    } catch (e) {
+      // Handle connection errors
+      if (e instanceof Error && e.name === 'AbortError') {
+        // Abort is expected during normal shutdown
+        return;
+      }
+      throw e;
     } finally {
-      resourceCleanup();
+      // Ensure cleanup always runs (and don't leak the promise)
+      await resourceCleanup();
     }
   }
 }

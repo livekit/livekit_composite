@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "livekit-protocol"
+dynamic = ["version"]
+description = "Python protocol stubs for LiveKit"
+requires-python = ">=3.7.0"
+license = "Apache-2.0"
+readme = { content-type = "text/plain", text = "Python protocol stubs for LiveKit" }
+keywords = ["webrtc", "realtime", "audio", "video", "livekit"]
+authors = [
+    { name = "LiveKit", email = "support@livekit.io" }
+]
+classifiers = [
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3 :: Only",
+]
+dependencies = [
+    "protobuf>=4",
+    "types-protobuf>=4",
+]
+
+[project.urls]
+Documentation = "https://docs.livekit.io"
+Website = "https://livekit.io/"
+Source = "https://github.com/livekit/python-sdks/"
+
+[tool.hatch.version]
+path = "livekit/protocol/version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["livekit"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/livekit"]

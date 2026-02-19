@@ -1,11 +1,11 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { Track } from 'livekit-client';
 import {
-  type TrackReferenceOrPlaceholder,
+  type TrackReference,
   useTrackToggle,
-  useLocalParticipant,
   usePersistentUserChoices,
   useLocalParticipantPermissions,
+  useSessionContext,
 } from '@livekit/components-react';
 
 const trackSourceToProtocol = (source: Track.Source) => {
@@ -55,7 +55,7 @@ export interface UseInputControlsProps {
 }
 
 export interface UseInputControlsReturn {
-  micTrackRef: TrackReferenceOrPlaceholder;
+  microphoneTrack?: TrackReference;
   microphoneToggle: ReturnType<typeof useTrackToggle<Track.Source.Microphone>>;
   cameraToggle: ReturnType<typeof useTrackToggle<Track.Source.Camera>>;
   screenShareToggle: ReturnType<typeof useTrackToggle<Track.Source.ScreenShare>>;
@@ -69,7 +69,9 @@ export function useInputControls({
   saveUserChoices = true,
   onDeviceError,
 }: UseInputControlsProps = {}): UseInputControlsReturn {
-  const { microphoneTrack, localParticipant } = useLocalParticipant();
+  const {
+    local: { microphoneTrack },
+  } = useSessionContext();
 
   const microphoneToggle = useTrackToggle({
     source: Track.Source.Microphone,
@@ -85,14 +87,6 @@ export function useInputControls({
     source: Track.Source.ScreenShare,
     onDeviceError: (error) => onDeviceError?.({ source: Track.Source.ScreenShare, error }),
   });
-
-  const micTrackRef = useMemo(() => {
-    return {
-      participant: localParticipant,
-      source: Track.Source.Microphone,
-      publication: microphoneTrack,
-    };
-  }, [localParticipant, microphoneTrack]);
 
   const {
     saveAudioInputEnabled,
@@ -156,7 +150,7 @@ export function useInputControls({
   );
 
   return {
-    micTrackRef,
+    microphoneTrack,
     cameraToggle: {
       ...cameraToggle,
       toggle: handleToggleCamera,

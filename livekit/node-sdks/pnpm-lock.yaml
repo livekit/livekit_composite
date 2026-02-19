@@ -70,10 +70,13 @@ importers:
         version: 5.8.2
       vitest:
         specifier: ^3.0.0
-        version: 3.2.4(@edge-runtime/vm@5.0.0)(@types/node@22.15.29)(happy-dom@20.0.0)
+        version: 3.2.4(@edge-runtime/vm@5.0.0)(@types/node@22.15.29)(happy-dom@20.0.2)
 
   examples/agent-dispatch:
     dependencies:
+      '@livekit/protocol':
+        specifier: ^1.43.4
+        version: 1.43.4
       dotenv:
         specifier: ^16.4.5
         version: 16.4.5
@@ -200,34 +203,34 @@ importers:
 
   packages/livekit-rtc:
     dependencies:
-      '@bufbuild/protobuf':
-        specifier: ^1.10.1
-        version: 1.10.1
       '@datastructures-js/deque':
         specifier: 1.0.8
         version: 1.0.8
       '@livekit/mutex':
         specifier: ^1.0.0
         version: 1.1.1
+      '@livekit/rtc-ffi-bindings':
+        specifier: 0.12.46-dev.8
+        version: 0.12.46-dev.8
       '@livekit/typed-emitter':
         specifier: ^3.0.0
         version: 3.0.0
       pino:
         specifier: ^9.0.0
-        version: 9.9.5
+        version: 9.14.0
       pino-pretty:
         specifier: ^13.0.0
         version: 13.0.0
     devDependencies:
-      '@bufbuild/protoc-gen-es':
+      '@bufbuild/protobuf':
         specifier: ^1.10.1
-        version: 1.10.1(@bufbuild/protobuf@1.10.1)
-      '@napi-rs/cli':
-        specifier: ^2.18.0
-        version: 2.18.4
+        version: 1.10.1
       '@types/node':
         specifier: ^22.13.10
         version: 22.15.29
+      livekit-server-sdk:
+        specifier: workspace:*
+        version: link:../livekit-server-sdk
       prettier:
         specifier: ^3.0.3
         version: 3.6.2
@@ -237,32 +240,9 @@ importers:
       typescript:
         specifier: 5.8.2
         version: 5.8.2
-    optionalDependencies:
-      '@livekit/rtc-node-darwin-arm64':
-        specifier: workspace:*
-        version: link:npm/darwin-arm64
-      '@livekit/rtc-node-darwin-x64':
-        specifier: workspace:*
-        version: link:npm/darwin-x64
-      '@livekit/rtc-node-linux-arm64-gnu':
-        specifier: workspace:*
-        version: link:npm/linux-arm64-gnu
-      '@livekit/rtc-node-linux-x64-gnu':
-        specifier: workspace:*
-        version: link:npm/linux-x64-gnu
-      '@livekit/rtc-node-win32-x64-msvc':
-        specifier: workspace:*
-        version: link:npm/win32-x64-msvc
-
-  packages/livekit-rtc/npm/darwin-arm64: {}
-
-  packages/livekit-rtc/npm/darwin-x64: {}
-
-  packages/livekit-rtc/npm/linux-arm64-gnu: {}
-
-  packages/livekit-rtc/npm/linux-x64-gnu: {}
-
-  packages/livekit-rtc/npm/win32-x64-msvc: {}
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@edge-runtime/vm@5.0.0)(@types/node@22.15.29)(happy-dom@20.0.2)
 
   packages/livekit-server-sdk:
     dependencies:
@@ -271,7 +251,7 @@ importers:
         version: 1.10.1
       '@livekit/protocol':
         specifier: ^1.43.1
-        version: 1.43.1
+        version: 1.43.4
       camelcase-keys:
         specifier: ^9.0.0
         version: 9.1.3
@@ -293,7 +273,7 @@ importers:
         version: 20.19.11
       happy-dom:
         specifier: ^20.0.0
-        version: 20.0.0
+        version: 20.0.2
       prettier:
         specifier: ^3.0.0
         version: 3.6.2
@@ -311,7 +291,7 @@ importers:
         version: 5.4.20(@types/node@20.19.11)
       vitest:
         specifier: ^3.0.0
-        version: 3.2.4(@edge-runtime/vm@5.0.0)(@types/node@20.19.11)(happy-dom@20.0.0)
+        version: 3.2.4(@edge-runtime/vm@5.0.0)(@types/node@20.19.11)(happy-dom@20.0.2)
 
 packages:
 
@@ -354,19 +334,6 @@ packages:
 
   '@bufbuild/protobuf@1.10.1':
     resolution: {integrity: sha512-wJ8ReQbHxsAfXhrf9ixl0aYbZorRuOWpBNzm8pL8ftmSxQx/wnJD5Eg861NwJU/czy2VXFIebCeZnZrI9rktIQ==}
-
-  '@bufbuild/protoc-gen-es@1.10.1':
-    resolution: {integrity: sha512-YADugbvibIdZSb0NGf5OF87IyKTuMvMFZ7vMHgm6pL1SCfDwJ/ZRianTdrPG9hq/gOipK+NwHmXBViyS3J7nxA==}
-    engines: {node: '>=14'}
-    hasBin: true
-    peerDependencies:
-      '@bufbuild/protobuf': 1.10.1
-    peerDependenciesMeta:
-      '@bufbuild/protobuf':
-        optional: true
-
-  '@bufbuild/protoplugin@1.10.1':
-    resolution: {integrity: sha512-LaSbfwabAFIvbVnbn8jWwElRoffCIxhVraO8arliVwWupWezHLXgqPHEYLXZY/SsAR+/YsFBQJa8tAGtNPJyaQ==}
 
   '@changesets/apply-release-plan@7.0.12':
     resolution: {integrity: sha512-EaET7As5CeuhTzvXTQCRZeBUcisoYPDDcXvgTE/2jmmypKp0RC7LxKj/yzqeh/1qFTZI7oDGFcL1PHRuQuketQ==}
@@ -995,8 +962,42 @@ packages:
   '@livekit/mutex@1.1.1':
     resolution: {integrity: sha512-EsshAucklmpuUAfkABPxJNhzj9v2sG7JuzFDL4ML1oJQSV14sqrpTYnsaOudMAw9yOaW53NU3QQTlUQoRs4czw==}
 
-  '@livekit/protocol@1.43.1':
-    resolution: {integrity: sha512-0NiinrCw9PruS9rFqr/F4UhLn0t09DDjSRgMnU3uu2iHT7uW4wgXPBlTp9HZ/nSShsSd0YCcG2HLX3ltwgkVcw==}
+  '@livekit/protocol@1.43.4':
+    resolution: {integrity: sha512-mJDFt/p+G2OKmIGizYiACK7Jb06wd42m9Pe7Y9cAOfdYpvwCqHlw4yul5Z7iRU3VKPsYJ27WL3oeHEoiu+HuAA==}
+
+  '@livekit/rtc-ffi-bindings-darwin-arm64@0.12.46-dev.8':
+    resolution: {integrity: sha512-AZdrtSe4/tBQSv1rXcWi1yqDmJ8n0bSjRXjzWePCToQAJvG1M1ilV3YzJMuw6/8mPebqx6Fs/wxuqC0b3CTfaA==}
+    engines: {node: '>= 18'}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@livekit/rtc-ffi-bindings-darwin-x64@0.12.46-dev.8':
+    resolution: {integrity: sha512-5gOTRsb9vdldJbqKDtQ+0q9ApEjzyD7M89EJ3GCp+HXwnNjQxcyLdXsK7DuaTJ52W3Fao2kjd2D4QE9IErmFlw==}
+    engines: {node: '>= 18'}
+    cpu: [x64]
+    os: [darwin]
+
+  '@livekit/rtc-ffi-bindings-linux-arm64-gnu@0.12.46-dev.8':
+    resolution: {integrity: sha512-fFhQ0apSF7R6BkN78V9C8n4WQu1MKin1qiCt9W2oldiQ62sAGeHmH42ZsvF+Tss6rtqp+QBUezH2A5S+Tcz/YQ==}
+    engines: {node: '>= 18'}
+    cpu: [arm64]
+    os: [linux]
+
+  '@livekit/rtc-ffi-bindings-linux-x64-gnu@0.12.46-dev.8':
+    resolution: {integrity: sha512-eUj0PZvlbRaMTNAnulkRGojjgpT4PYLqrdl1UpT0KW3Jsx2dQddYh4LJfPVQNvHkikyoRcMKkhtdZkKSjKnOmg==}
+    engines: {node: '>= 18'}
+    cpu: [x64]
+    os: [linux]
+
+  '@livekit/rtc-ffi-bindings-win32-x64-msvc@0.12.46-dev.8':
+    resolution: {integrity: sha512-mIOJtXoRKYO46JutRo2JRqkglc43eMewowHYdZbnAwU1iL5SEIRGWlw0m8ns2iQpGCRoFCiIMOXtzOmuqfzYRg==}
+    engines: {node: '>= 18'}
+    cpu: [x64]
+    os: [win32]
+
+  '@livekit/rtc-ffi-bindings@0.12.46-dev.8':
+    resolution: {integrity: sha512-b3J88DkWO2OPpNWZ02kImYQn/yd4RINsd1CzPVlW77LXhUmaLwZjyJtJFk6amHHIr9SrZ7uqtVuH2RrKFFU+pw==}
+    engines: {node: '>= 18'}
 
   '@livekit/typed-emitter@3.0.0':
     resolution: {integrity: sha512-9bl0k4MgBPZu3Qu3R3xy12rmbW17e3bE9yf4YY85gJIQ3ezLEj/uzpKHWBsLaDoL5Mozz8QCgggwIBudYQWeQg==}
@@ -1012,11 +1013,6 @@ packages:
 
   '@microsoft/tsdoc@0.15.1':
     resolution: {integrity: sha512-4aErSrCR/On/e5G2hDP0wjooqDdauzEbIq8hIkIe5pXV0rtWJZvdCEKL0ykZxex+IxIwBp0eGeV48hQN07dXtw==}
-
-  '@napi-rs/cli@2.18.4':
-    resolution: {integrity: sha512-SgJeA4df9DE2iAEpr3M2H0OKl/yjtg1BnRI5/JyowS71tUWhrfSu2LT0V3vlHET+g1hBVlrO60PmEXwUEKp8Mg==}
-    engines: {node: '>= 10'}
-    hasBin: true
 
   '@napi-rs/wasm-runtime@0.2.12':
     resolution: {integrity: sha512-ZVWUcfwY4E/yPitQJl481FjFo3K22D6qF0DuFH6Y/nbnE11GY5uguDxZMGXPQ8WQ0128MXQD7TnfHyK4oWoIJQ==}
@@ -1123,6 +1119,9 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@pinojs/redact@0.4.0':
+    resolution: {integrity: sha512-k2ENnmBugE/rzQfEcdWHcCY+/FM3VLzH9cYEsbdsoqrvzAKRhUZeRNhAZvB8OitQJ1TBed3yqWtdjzS6wJKBwg==}
 
   '@pkgjs/parseargs@0.11.0':
     resolution: {integrity: sha512-+1VkjdD0QBLPodGrJUeqarH8VAIvQODIbwh9XpP5Syisf7YoQgsJKPNFoqqLQlu+VQ/tVSshMR6loPMn8U+dPg==}
@@ -1528,11 +1527,6 @@ packages:
   '@typescript-eslint/visitor-keys@8.39.1':
     resolution: {integrity: sha512-W8FQi6kEh2e8zVhQ0eeRnxdvIoOkAp/CPAahcNio6nO9dsIwb9b34z90KOlheoyuVf6LSOEdjlkxSkapNEc+4A==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
-
-  '@typescript/vfs@1.6.1':
-    resolution: {integrity: sha512-JwoxboBh7Oz1v38tPbkrZ62ZXNHAk9bJ7c9x0eI5zBfBnBYGhURdbnh7Z4smN/MV48Y5OCcZb58n972UtbazsA==}
-    peerDependencies:
-      typescript: '*'
 
   '@ungap/structured-clone@1.2.0':
     resolution: {integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==}
@@ -2310,10 +2304,6 @@ packages:
   fast-levenshtein@2.0.6:
     resolution: {integrity: sha512-DCXu6Ifhqcks7TZKY3Hxp3y6qphY5SJZmrWMDrKcERSOXWQdMhU9Ig/PYrzyw/ul9jOIyh0N4M0tbC5hodg8dw==}
 
-  fast-redact@3.5.0:
-    resolution: {integrity: sha512-dwsoQlS7h9hMeYUq1W++23NDcBLV4KqONnITDV9DjfS3q1SgDGVrBdvvTLUotWtPSD7asWDV9/CmsZPy8Hf70A==}
-    engines: {node: '>=6'}
-
   fast-safe-stringify@2.1.1:
     resolution: {integrity: sha512-W+KJc2dmILlPplD/H4K9l9LcAHAfPtP6BY84uVLXQ6Evcz9Lcg33Y2z1IVblT6xdY54PXYVHEv+0Wpq8Io6zkA==}
 
@@ -2433,15 +2423,17 @@ packages:
   glob@10.3.10:
     resolution: {integrity: sha512-fa46+tv1Ak0UPK1TOy/pZrIybNNt4HCv7SDzwyfiOZkvZLEbjsZkJBPtDHVshZjbecAoAGSC20MjLDG/qr679g==}
     engines: {node: '>=16 || 14 >=14.17'}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@10.4.5:
     resolution: {integrity: sha512-7Bv8RF0k6xjo7d4A/PxYLbUCfb6c+Vpd2/mB2yRDlew7Jb5hEXiCD9ibfO7wpk8i4sevK6DFny9h7EYbM3/sHg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   globals@11.12.0:
     resolution: {integrity: sha512-WOBp/EEGUiIsJSp7wcv/y6MO+lV9UoncWqxuFfm8eBwzWNgyfBd6Gz+IeKQ9jCmyhoH99g15M3T+QaVHFjizVA==}
@@ -2476,8 +2468,8 @@ packages:
   graphemer@1.4.0:
     resolution: {integrity: sha512-EtKwoO6kxCL9WO5xipiHTZlSzBm7WLT627TqC/uVRd0HKmq8NXyebnNYxDoBi7wt8eTWrUrKXCOVaFq9x1kgag==}
 
-  happy-dom@20.0.0:
-    resolution: {integrity: sha512-GkWnwIFxVGCf2raNrxImLo397RdGhLapj5cT3R2PT7FwL62Ze1DROhzmYW7+J3p9105DYMVenEejEbnq5wA37w==}
+  happy-dom@20.0.2:
+    resolution: {integrity: sha512-pYOyu624+6HDbY+qkjILpQGnpvZOusItCk+rvF5/V+6NkcgTKnbOldpIy22tBnxoaLtlM9nXgoqAcW29/B7CIw==}
     engines: {node: '>=20.0.0'}
 
   has-bigints@1.1.0:
@@ -3060,11 +3052,11 @@ packages:
     resolution: {integrity: sha512-cQBBIVG3YajgoUjo1FdKVRX6t9XPxwB9lcNJVD5GCnNM4Y6T12YYx8c6zEejxQsU0wrg9TwmDulcE9LR7qcJqA==}
     hasBin: true
 
-  pino-std-serializers@7.0.0:
-    resolution: {integrity: sha512-e906FRY0+tV27iq4juKzSYPbUj2do2X2JX4EzSca1631EB2QJQUqGbDuERal7LCtOpxl6x3+nvo9NPZcmjkiFA==}
+  pino-std-serializers@7.1.0:
+    resolution: {integrity: sha512-BndPH67/JxGExRgiX1dX0w1FvZck5Wa4aal9198SrRhZjH3GxKQUKIBnYJTdj2HDN3UQAS06HlfcSbQj2OHmaw==}
 
-  pino@9.9.5:
-    resolution: {integrity: sha512-d1s98p8/4TfYhsJ09r/Azt30aYELRi6NNnZtEbqFw6BoGsdPVf5lKNK3kUwH8BmJJfpTLNuicjUQjaMbd93dVg==}
+  pino@9.14.0:
+    resolution: {integrity: sha512-8OEwKp5juEvb/MjpIc4hjqfgCNysrS94RIOMXYvpYCdm/jglrKEiAYmiumbmGhCvs+IcInsphYDFwqrjr7398w==}
     hasBin: true
 
   pirates@4.0.7:
@@ -3318,6 +3310,9 @@ packages:
 
   sonic-boom@4.2.0:
     resolution: {integrity: sha512-INb7TM37/mAcsGmc9hyyI6+QR3rR1zVRu36B0NeGXKnOOLiZOfER5SA+N7X7k3yUYRzLWafduTDvJAfDswwEww==}
+
+  sonic-boom@4.2.1:
+    resolution: {integrity: sha512-w6AxtubXa2wTXAUsZMMWERrsIRAdrK0Sc+FUytWvYAhBJLyuI4llrMIC1DtlNSdI99EI86KZum2MMq3EAZlF9Q==}
 
   source-map-js@1.2.0:
     resolution: {integrity: sha512-itJW8lvSA0TXEphiRoawsCksnlf8SyvmFzIhltqAHluXd88pkCd+cXJVHTDwdCr0IzwptSm035IHQktUu1QUMg==}
@@ -3617,11 +3612,6 @@ packages:
     peerDependencies:
       typescript: 5.0.x || 5.1.x || 5.2.x || 5.3.x || 5.4.x || 5.5.x || 5.6.x || 5.7.x || 5.8.x || 5.9.x
 
-  typescript@4.5.2:
-    resolution: {integrity: sha512-5BlMof9H1yGt0P8/WF+wPNw6GfctgGjXp5hkblpyT+8rkASSmkUKMXrxR0Xg8ThVCi/JnHQiKXeBaEwCeQwMFw==}
-    engines: {node: '>=4.2.0'}
-    hasBin: true
-
   typescript@5.8.2:
     resolution: {integrity: sha512-aJn6wq13/afZp/jT9QZmwEjDqqvSGp1VT5GVg+f/t6/oVyrgXM6BY1h9BRh/O5p3PlUPAe+WuiEZOmb/49RqoQ==}
     engines: {node: '>=14.17'}
@@ -3846,22 +3836,6 @@ snapshots:
       '@babel/helper-validator-identifier': 7.25.9
 
   '@bufbuild/protobuf@1.10.1': {}
-
-  '@bufbuild/protoc-gen-es@1.10.1(@bufbuild/protobuf@1.10.1)':
-    dependencies:
-      '@bufbuild/protoplugin': 1.10.1
-    optionalDependencies:
-      '@bufbuild/protobuf': 1.10.1
-    transitivePeerDependencies:
-      - supports-color
-
-  '@bufbuild/protoplugin@1.10.1':
-    dependencies:
-      '@bufbuild/protobuf': 1.10.1
-      '@typescript/vfs': 1.6.1(typescript@4.5.2)
-      typescript: 4.5.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@changesets/apply-release-plan@7.0.12':
     dependencies:
@@ -4417,9 +4391,34 @@ snapshots:
 
   '@livekit/mutex@1.1.1': {}
 
-  '@livekit/protocol@1.43.1':
+  '@livekit/protocol@1.43.4':
     dependencies:
       '@bufbuild/protobuf': 1.10.1
+
+  '@livekit/rtc-ffi-bindings-darwin-arm64@0.12.46-dev.8':
+    optional: true
+
+  '@livekit/rtc-ffi-bindings-darwin-x64@0.12.46-dev.8':
+    optional: true
+
+  '@livekit/rtc-ffi-bindings-linux-arm64-gnu@0.12.46-dev.8':
+    optional: true
+
+  '@livekit/rtc-ffi-bindings-linux-x64-gnu@0.12.46-dev.8':
+    optional: true
+
+  '@livekit/rtc-ffi-bindings-win32-x64-msvc@0.12.46-dev.8':
+    optional: true
+
+  '@livekit/rtc-ffi-bindings@0.12.46-dev.8':
+    dependencies:
+      '@bufbuild/protobuf': 1.10.1
+    optionalDependencies:
+      '@livekit/rtc-ffi-bindings-darwin-arm64': 0.12.46-dev.8
+      '@livekit/rtc-ffi-bindings-darwin-x64': 0.12.46-dev.8
+      '@livekit/rtc-ffi-bindings-linux-arm64-gnu': 0.12.46-dev.8
+      '@livekit/rtc-ffi-bindings-linux-x64-gnu': 0.12.46-dev.8
+      '@livekit/rtc-ffi-bindings-win32-x64-msvc': 0.12.46-dev.8
 
   '@livekit/typed-emitter@3.0.0': {}
 
@@ -4447,8 +4446,6 @@ snapshots:
       resolve: 1.22.10
 
   '@microsoft/tsdoc@0.15.1': {}
-
-  '@napi-rs/cli@2.18.4': {}
 
   '@napi-rs/wasm-runtime@0.2.12':
     dependencies:
@@ -4519,6 +4516,8 @@ snapshots:
       fastq: 1.17.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@pinojs/redact@0.4.0': {}
 
   '@pkgjs/parseargs@0.11.0':
     optional: true
@@ -4901,13 +4900,6 @@ snapshots:
     dependencies:
       '@typescript-eslint/types': 8.39.1
       eslint-visitor-keys: 4.2.1
-
-  '@typescript/vfs@1.6.1(typescript@4.5.2)':
-    dependencies:
-      debug: 4.4.1
-      typescript: 4.5.2
-    transitivePeerDependencies:
-      - supports-color
 
   '@ungap/structured-clone@1.2.0': {}
 
@@ -5928,8 +5920,6 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
-  fast-redact@3.5.0: {}
-
   fast-safe-stringify@2.1.1: {}
 
   fastq@1.17.1:
@@ -6122,7 +6112,7 @@ snapshots:
 
   graphemer@1.4.0: {}
 
-  happy-dom@20.0.0:
+  happy-dom@20.0.2:
     dependencies:
       '@types/node': 20.19.11
       '@types/whatwg-mimetype': 3.0.2
@@ -6688,20 +6678,20 @@ snapshots:
       sonic-boom: 4.2.0
       strip-json-comments: 3.1.1
 
-  pino-std-serializers@7.0.0: {}
+  pino-std-serializers@7.1.0: {}
 
-  pino@9.9.5:
+  pino@9.14.0:
     dependencies:
+      '@pinojs/redact': 0.4.0
       atomic-sleep: 1.0.0
-      fast-redact: 3.5.0
       on-exit-leak-free: 2.1.2
       pino-abstract-transport: 2.0.0
-      pino-std-serializers: 7.0.0
+      pino-std-serializers: 7.1.0
       process-warning: 5.0.0
       quick-format-unescaped: 4.0.4
       real-require: 0.2.0
       safe-stable-stringify: 2.5.0
-      sonic-boom: 4.2.0
+      sonic-boom: 4.2.1
       thread-stream: 3.1.0
 
   pirates@4.0.7: {}
@@ -6995,6 +6985,10 @@ snapshots:
   slash@3.0.0: {}
 
   sonic-boom@4.2.0:
+    dependencies:
+      atomic-sleep: 1.0.0
+
+  sonic-boom@4.2.1:
     dependencies:
       atomic-sleep: 1.0.0
 
@@ -7313,8 +7307,6 @@ snapshots:
       typescript: 5.8.2
       yaml: 2.8.1
 
-  typescript@4.5.2: {}
-
   typescript@5.8.2: {}
 
   uc.micro@2.1.0: {}
@@ -7420,7 +7412,7 @@ snapshots:
       '@types/node': 22.15.29
       fsevents: 2.3.3
 
-  vitest@3.2.4(@edge-runtime/vm@5.0.0)(@types/node@20.19.11)(happy-dom@20.0.0):
+  vitest@3.2.4(@edge-runtime/vm@5.0.0)(@types/node@20.19.11)(happy-dom@20.0.2):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
@@ -7448,7 +7440,7 @@ snapshots:
     optionalDependencies:
       '@edge-runtime/vm': 5.0.0
       '@types/node': 20.19.11
-      happy-dom: 20.0.0
+      happy-dom: 20.0.2
     transitivePeerDependencies:
       - less
       - lightningcss
@@ -7460,7 +7452,7 @@ snapshots:
       - supports-color
       - terser
 
-  vitest@3.2.4(@edge-runtime/vm@5.0.0)(@types/node@22.15.29)(happy-dom@20.0.0):
+  vitest@3.2.4(@edge-runtime/vm@5.0.0)(@types/node@22.15.29)(happy-dom@20.0.2):
     dependencies:
       '@types/chai': 5.2.2
       '@vitest/expect': 3.2.4
@@ -7488,7 +7480,7 @@ snapshots:
     optionalDependencies:
       '@edge-runtime/vm': 5.0.0
       '@types/node': 22.15.29
-      happy-dom: 20.0.0
+      happy-dom: 20.0.2
     transitivePeerDependencies:
       - less
       - lightningcss

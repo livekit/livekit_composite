@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.47](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit-ffi@0.12.46...rust-sdks/livekit-ffi@0.12.47) - 2026-02-10
+
+### Other
+
+- update Cargo.toml dependencies
+- don't use clamp as the ultimate_kbps can be lower than 300 ([#886](https://github.com/livekit/rust-sdks/pull/886))
+- pre-connect the publisher PC when an RPC handler is registered ([#880](https://github.com/livekit/rust-sdks/pull/880))
+
+## [0.12.46](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit-ffi@0.12.45...rust-sdks/livekit-ffi@0.12.46) - 2026-02-09
+
+### Other
+
+- update Cargo.toml dependencies
+
+## [0.12.45](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit-ffi@0.12.44...rust-sdks/livekit-ffi@0.12.45) - 2026-02-09
+
+### Fixed
+
+- fix the RPC race condition ([#865](https://github.com/livekit/rust-sdks/pull/865))
+
+### Other
+
+- update proto & fix CI ([#871](https://github.com/livekit/rust-sdks/pull/871))
+- add can_manage_agent_session permission ([#870](https://github.com/livekit/rust-sdks/pull/870))
+- Use workspace dependencies & settings ([#856](https://github.com/livekit/rust-sdks/pull/856))
+- Upgrade protocol to v1.44.0 ([#857](https://github.com/livekit/rust-sdks/pull/857))
+- Use dedicated audio_runtime with high priority for audio capture  ([#854](https://github.com/livekit/rust-sdks/pull/854))
+- Expose participant's permission to ffi layer ([#824](https://github.com/livekit/rust-sdks/pull/824))
+- Add a request_async_id to the async requests ([#842](https://github.com/livekit/rust-sdks/pull/842))
+- Use the correct download url in webrtc-sys build. ([#825](https://github.com/livekit/rust-sdks/pull/825))
+
+## [0.12.44](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit-ffi@0.12.43...rust-sdks/livekit-ffi@0.12.44) - 2026-01-15
+
+### Fixed
+
+- ensure Room.creation_time is ms ([#822](https://github.com/livekit/rust-sdks/pull/822))
+
+### Other
+
+- try setting x-google-start-bitrate for vp9 ([#820](https://github.com/livekit/rust-sdks/pull/820))
+
+## [0.12.43](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit-ffi@0.12.42...rust-sdks/livekit-ffi@0.12.43) - 2025-12-19
+
+### Added
+
+- *(ParticipantInfo)* export kind details ([#813](https://github.com/livekit/rust-sdks/pull/813))
+
+## [0.12.42](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit-ffi@0.12.41...rust-sdks/livekit-ffi@0.12.42) - 2025-12-17
+
+### Other
+
+- Handle server initiated mute request ([#812](https://github.com/livekit/rust-sdks/pull/812))
+
 ## [0.12.41](https://github.com/livekit/rust-sdks/compare/rust-sdks/livekit-ffi@0.12.40...rust-sdks/livekit-ffi@0.12.41) - 2025-12-04
 
 ### Added

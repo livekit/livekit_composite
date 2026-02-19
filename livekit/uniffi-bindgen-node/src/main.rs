@@ -4,9 +4,9 @@
 
 use anyhow::Result;
 use clap::Parser;
-use uniffi_bindgen_node::{Args, run};
+use uniffi_bindgen_node::{RootArgs, run};
 
 fn main() -> Result<()> {
-    let args = Args::parse();
+    let args = RootArgs::parse();
     run(args)
 }

@@ -15,7 +15,6 @@
 package rtc
 
 import (
-	"context"
 	"math"
 	"sync"
 	"time"
@@ -24,9 +23,11 @@ import (
 	"github.com/pion/webrtc/v4"
 	"go.uber.org/atomic"
 
+	"github.com/livekit/protocol/codecs/mime"
 	"github.com/livekit/protocol/livekit"
 	"github.com/livekit/protocol/logger"
 	"github.com/livekit/protocol/observability/roomobs"
+	"github.com/livekit/protocol/utils/mono"
 
 	"github.com/livekit/livekit-server/pkg/config"
 	"github.com/livekit/livekit-server/pkg/rtc/dynacast"
@@ -34,7 +35,7 @@ import (
 	"github.com/livekit/livekit-server/pkg/sfu"
 	"github.com/livekit/livekit-server/pkg/sfu/buffer"
 	"github.com/livekit/livekit-server/pkg/sfu/connectionquality"
-	"github.com/livekit/livekit-server/pkg/sfu/mime"
+	"github.com/livekit/livekit-server/pkg/sfu/interceptor"
 	"github.com/livekit/livekit-server/pkg/telemetry"
 	util "github.com/livekit/mediatransportutil"
 )
@@ -74,32 +75,38 @@ type MediaTrack struct {
 }
 
 type MediaTrackParams struct {
-	ParticipantID                   func() livekit.ParticipantID
-	ParticipantIdentity             livekit.ParticipantIdentity
-	ParticipantVersion              uint32
-	ParticipantCountry              string
-	BufferFactory                   *buffer.Factory
-	ReceiverConfig                  ReceiverConfig
-	SubscriberConfig                DirectionConfig
-	PLIThrottleConfig               sfu.PLIThrottleConfig
-	AudioConfig                     sfu.AudioConfig
-	VideoConfig                     config.VideoConfig
-	Telemetry                       telemetry.TelemetryService
-	Logger                          logger.Logger
-	Reporter                        roomobs.TrackReporter
-	SimTracks                       map[uint32]SimulcastTrackInfo
-	OnRTCP                          func([]rtcp.Packet)
-	ForwardStats                    *sfu.ForwardStats
-	OnTrackEverSubscribed           func(livekit.TrackID)
-	ShouldRegressCodec              func() bool
-	PreferVideoSizeFromMedia        bool
-	EnableRTPStreamRestartDetection bool
+	ParticipantID                    func() livekit.ParticipantID
+	ParticipantIdentity              livekit.ParticipantIdentity
+	ParticipantVersion               uint32
+	ParticipantCountry               string
+	BufferFactory                    *buffer.Factory
+	ReceiverConfig                   ReceiverConfig
+	SubscriberConfig                 DirectionConfig
+	PLIThrottleConfig                sfu.PLIThrottleConfig
+	AudioConfig                      sfu.AudioConfig
+	VideoConfig                      config.VideoConfig
+	TelemetryListener                types.ParticipantTelemetryListener
+	Logger                           logger.Logger
+	Reporter                         roomobs.TrackReporter
+	SimTracks                        map[uint32]interceptor.SimulcastTrackInfo
+	OnRTCP                           func([]rtcp.Packet)
+	ForwardStats                     *sfu.ForwardStats
+	OnTrackEverSubscribed            func(livekit.TrackID)
+	ShouldRegressCodec               func() bool
+	PreferVideoSizeFromMedia         bool
+	EnableRTPStreamRestartDetection  bool
+	UpdateTrackInfoByVideoSizeChange bool
+	ForceBackupCodecPolicySimulcast  bool
 }
 
 func NewMediaTrack(params MediaTrackParams, ti *livekit.TrackInfo) *MediaTrack {
 	t := &MediaTrack{
 		params:            params,
 		backupCodecPolicy: ti.BackupCodecPolicy,
+	}
+
+	if t.params.ForceBackupCodecPolicySimulcast {
+		t.backupCodecPolicy = livekit.BackupCodecPolicy_SIMULCAST
 	}
 
 	if t.backupCodecPolicy != livekit.BackupCodecPolicy_SIMULCAST && len(ti.Codecs) > 1 {
@@ -116,7 +123,7 @@ func NewMediaTrack(params MediaTrackParams, ti *livekit.TrackInfo) *MediaTrack {
 		ReceiverConfig:           params.ReceiverConfig,
 		SubscriberConfig:         params.SubscriberConfig,
 		AudioConfig:              params.AudioConfig,
-		Telemetry:                params.Telemetry,
+		TelemetryListener:        params.TelemetryListener,
 		Logger:                   params.Logger,
 		RegressionTargetCodec:    t.regressionTargetCodec,
 		PreferVideoSizeFromMedia: params.PreferVideoSizeFromMedia,
@@ -306,7 +313,13 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 			case *rtcp.SourceDescription:
 			case *rtcp.SenderReport:
 				if pkt.SSRC == uint32(track.SSRC()) {
-					buff.SetSenderReportData(pkt.RTPTime, pkt.NTPTime, pkt.PacketCount, pkt.OctetCount)
+					buff.SetSenderReportData(&livekit.RTCPSenderReportState{
+						RtpTimestamp: pkt.RTPTime,
+						NtpTimestamp: pkt.NTPTime,
+						Packets:      pkt.PacketCount,
+						Octets:       uint64(pkt.OctetCount),
+						At:           mono.UnixNano(),
+					})
 				}
 			case *rtcp.ExtendedReport:
 			rttFromXR:
@@ -431,7 +444,7 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 			regressionTargetCodecReceived := t.regressionTargetCodecReceived
 			t.lock.RUnlock()
 			if priority == 0 || regressionTargetCodecReceived {
-				t.params.Telemetry.TrackStats(statsKey, stat)
+				t.params.TelemetryListener.OnTrackStats(statsKey, stat)
 
 				if cs, ok := telemetry.CondenseStat(stat); ok {
 					t.params.Reporter.Tx(func(tx roomobs.TrackTx) {
@@ -487,8 +500,8 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 		t.MediaTrackReceiver.SetupReceiver(newWR, priority, mid)
 
 		for ssrc, info := range t.params.SimTracks {
-			if info.Mid == mid {
-				t.MediaTrackReceiver.SetLayerSsrc(mimeType, info.Rid, ssrc)
+			if info.Mid == mid && !info.IsRepairStream {
+				t.MediaTrackReceiver.SetLayerSsrcsForRid(mimeType, info.StreamID, ssrc, info.RepairSSRC)
 			}
 		}
 		wr = newWR
@@ -500,6 +513,10 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 
 		// update subscriber video layers when video size changes
 		newWR.OnVideoSizeChanged(func() {
+			if t.params.UpdateTrackInfoByVideoSizeChange {
+				t.MediaTrackReceiver.UpdateVideoSize(mimeType, newWR.VideoSizes())
+			}
+
 			t.MediaTrackSubscriptions.UpdateVideoLayers()
 		})
 	}
@@ -527,12 +544,12 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 		return newCodec, false
 	}
 
-	var bitrates int
+	var expectedBitrate int
 	layers := buffer.GetVideoLayersForMimeType(mimeType, ti)
 	if layer >= 0 && len(layers) > int(layer) {
-		bitrates = int(layers[layer].GetBitrate())
+		expectedBitrate = int(layers[layer].GetBitrate())
 	}
-	if err := buff.Bind(receiver.GetParameters(), track.Codec().RTPCodecCapability, bitrates); err != nil {
+	if err := buff.Bind(receiver.GetParameters(), track.Codec().RTPCodecCapability, expectedBitrate); err != nil {
 		t.params.Logger.Warnw(
 			"binding buffer failed", err,
 			"rid", track.RID(),
@@ -544,7 +561,7 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 		return newCodec, false
 	}
 
-	t.MediaTrackReceiver.SetLayerSsrc(mimeType, track.RID(), uint32(track.SSRC()))
+	t.MediaTrackReceiver.SetLayerSsrcsForRid(mimeType, track.RID(), uint32(track.SSRC()), 0)
 
 	if regressCodec {
 		for _, c := range ti.Codecs {
@@ -561,14 +578,15 @@ func (t *MediaTrack) AddReceiver(receiver *webrtc.RTPReceiver, track sfu.TrackRe
 		}
 	}
 
+	buff.OnNotifyRTX(t.MediaTrackReceiver.setLayerRtxInfo)
+
 	// if subscriber request fps before fps calculated, update them after fps updated.
 	buff.OnFpsChanged(func() {
 		t.MediaTrackSubscriptions.UpdateVideoLayers()
 	})
 
 	buff.OnFinalRtpStats(func(stats *livekit.RTPStats) {
-		t.params.Telemetry.TrackPublishRTPStats(
-			context.Background(),
+		t.params.TelemetryListener.OnTrackPublishRTPStats(
 			t.params.ParticipantID(),
 			t.ID(),
 			mimeType,

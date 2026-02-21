@@ -44,9 +44,7 @@ function fillField(container, name, value, tabId) {
     container.appendChild(entry);
 }
 
-if (typeof browser === "undefined") {
-    var browser = chrome;
-}
+const browser = typeof globalThis.browser !== "undefined" ? globalThis.browser : chrome;
 
 function getCurrentWindowTabs() {
     return browser.tabs.query({ currentWindow: true, active: true });
@@ -103,19 +101,31 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     information.querySelector('#go-to-source-btn').addEventListener('click', async () => {
         const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-        const currentUrl = tab.url;
-        const prefix = 'https://github.com/livekit/livekit_composite/blob/';
-        if (currentUrl.startsWith(prefix)) {
-            const rest = currentUrl.slice(prefix.length);
-            const match = rest.match(/^[^/]+\/([^/]+)\/([^/]+)\/(.+)$/);
-            if (match) {
-                const [, org, repo, filePath] = match;
-                const newUrl = `https://github.com/${org}/${repo}/blob/main/${filePath}`;
-                browser.tabs.update(tab.id, { url: newUrl });
+
+        // Sanity check: input must be livekit_composite
+        if (!tab.url.startsWith('https://github.com/livekit/livekit_composite')) {
+            alert('This is not a livekit_composite file URL.');
+            return;
+        }
+
+        const response = await browser.runtime.sendMessage({ type: 'convertCompositeUrl', url: tab.url });
+
+        if (response.url) {
+            // Sanity check: output must be github.com/livekit or github.com/livekit-examples before redirection
+            if (!response.url.startsWith('https://github.com/livekit/') &&
+                !response.url.startsWith('https://github.com/livekit-examples/')) {
+                alert('Internal Error: Invalid redirect URL generated.');
                 return;
             }
+            // Use scripting API to navigate, preserving browser history
+            browser.scripting.executeScript({
+                target: { tabId: tab.id },
+                func: (url) => { location.assign(url); },
+                args: [response.url]
+            });
+        } else {
+            alert('Internal Error: could not parse the redirection url. This only works on file URLs (/blob/)');
         }
-        alert('This is not a livekit_composite file URL or could not parse the path.');
     });
 
     information.querySelector('#ask-deepwiki-btn').addEventListener('click', () => {

@@ -1,4 +1,6 @@
 output
+.idea
 .vscode
 __pycache__
 *.raw
+*.local.*

@@ -1,6 +1,0 @@
-package io.livekit.example
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity: FlutterActivity() {
-}

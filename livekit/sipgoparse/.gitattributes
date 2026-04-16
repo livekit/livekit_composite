@@ -1,2 +1,0 @@
-sip/testdata/torture/invalid/*.dat -text
-sip/testdata/torture/valid/*.dat -text

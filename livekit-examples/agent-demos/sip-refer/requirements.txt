@@ -1,6 +1,0 @@
-livekit-api
-livekit-agents
-livekit-plugins-openai
-python-dotenv
-asyncio
-logging

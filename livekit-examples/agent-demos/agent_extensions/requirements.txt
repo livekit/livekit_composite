@@ -1,4 +1,0 @@
-livekit
-python-dotenv
-simpleaudio
-livekit-agents

@@ -1,3 +1,0 @@
-[submodule "solutions/livekit_demo/components/nanopb/nanopb"]
-	path = solutions/livekit_demo/components/nanopb/nanopb
-	url = https://github.com/nanopb/nanopb

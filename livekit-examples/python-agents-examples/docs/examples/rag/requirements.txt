@@ -1,7 +1,0 @@
-livekit-agents[openai,silero,turn-detector,deepgram]~=1.0
-livekit-plugins-noise-cancellation~=0.2
-python-dotenv
-annoy
-aiohttp>=3.8.0
-beautifulsoup4>=4.12.0
-lxml>=4.9.0

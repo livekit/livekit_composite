@@ -1,7 +1,0 @@
-.DS_Store
-.idea/
-bin/
-cmd/server/server
-
-test/config.yaml
-test/*/*.mkv

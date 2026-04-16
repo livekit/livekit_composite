@@ -1,8 +1,0 @@
-headerPath = "LICENSE.txt"
-excludes = [
-    "templates",
-    "*.toml",
-    ".github",
-    # Generated files
-    "output",
-]

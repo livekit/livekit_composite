@@ -1,9 +1,0 @@
-exclude = [
-  "_proto",
-  "livekit-protocol/livekit/protocol"
-]
-
-line-length = 100
-indent-width = 4
-
-target-version = "py39"

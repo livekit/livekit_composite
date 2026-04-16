@@ -1,3 +1,0 @@
-components/third_party/* linguist-vendored
-components/livekit/protocol/*.c linguist-generated
-components/livekit/protocol/*.h linguist-generated

@@ -1,5 +1,0 @@
-requests
-beautifulsoup4
-lxml
-tqdm
-openai>=1.0.0
